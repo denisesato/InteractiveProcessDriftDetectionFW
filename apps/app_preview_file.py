@@ -13,6 +13,7 @@ from info import Info
 
 layout = [
         html.Div([
+            dcc.Link('Analisar concept drift', id='link-analyze', href='/apps/app_generate_process_models'),
             html.H3('Visualização do arquivo com dados de eventos:'),
             html.Div(id='preview-event-data'),
         ])
@@ -53,11 +54,10 @@ def show_file(filename):
     ])
 
 
-@app.callback(Output('preview-event-data', 'children'),
+@app.callback([Output('preview-event-data', 'children'),
+              Output('link-analyze', 'href')],
               [Input('hidden-filename', 'children')])
 def display_page(file):
     if file:
         filename = os.path.join(Info.data_input_path, file)
-        return show_file(filename)
-    else:
-        pass
+        return show_file(filename), f'/apps/app_generate_process_models?filename={file}'

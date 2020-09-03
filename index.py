@@ -24,7 +24,7 @@ def display_page(pathname, search):
         return app_manage_files.layout, filename
     elif pathname == '/apps/app_generate_process_models':
         return app_generate_process_models.layout, filename
-    elif pathname == '/apps/app_show_file':
+    elif pathname == '/apps/app_preview_file':
         return app_preview_file.layout, filename
     else:
         return '404'

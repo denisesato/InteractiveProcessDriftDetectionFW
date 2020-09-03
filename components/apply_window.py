@@ -1,12 +1,12 @@
 import os
-
+import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.log import EventStream
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from datetime import datetime
 from datetime import timedelta
 
-from discovery_dfg import generate_dfg, get_dfg
+from discovery.discovery_dfg import generate_dfg, get_dfg
 from info import Info
 
 
@@ -24,10 +24,10 @@ class WindowUnity:
 
 # por enquando o nome do arquivo de log ainda está fixo no código
 event_data_path = Info.data_input_path
-event_data_original_name = 'cb2.5k.xes'
+#event_data_original_name = 'cb2.5k.xes'
 
 
-def apply_window_unit(event_data, window_type, window_size):
+def apply_window_unit(event_data, window_type, window_size, original_file_name):
     w_count = 1
     for i, item in enumerate(event_data):
         # window checkpoint
@@ -42,14 +42,14 @@ def apply_window_unit(event_data, window_type, window_size):
                 print(f'Tipo de janela informado incorretamente: {window_type}.')
 
             # Gera o dfg e salva
-            generate_dfg(sub_log, event_data_original_name, w_count)
+            generate_dfg(sub_log, original_file_name, w_count)
 
             # Incrementa janela
             w_count += 1
     return w_count
 
 
-def apply_window_time(event_data, window_type, window_size):
+def apply_window_time(event_data, window_type, window_size, original_file_name):
     w_count = 1
     initial_window_index = -1
     for i, item in enumerate(event_data):
@@ -82,7 +82,7 @@ def apply_window_time(event_data, window_type, window_size):
                 print(f'Tipo de janela informado incorretamente: {window_type}.')
 
             # Gera o dfg e salva
-            generate_dfg(sub_log, event_data_original_name, w_count)
+            generate_dfg(sub_log, original_file_name, w_count)
 
             w_count += 1
 
@@ -92,7 +92,7 @@ def apply_window_time(event_data, window_type, window_size):
     return w_count
 
 
-def apply_window_day(event_data, window_type, window_size):
+def apply_window_day(event_data, window_type, window_size, original_file_name):
     w_count = 1
     initial_window_index = -1
     for i, item in enumerate(event_data):
@@ -124,7 +124,7 @@ def apply_window_day(event_data, window_type, window_size):
                 print(f'Tipo de janela informado incorretamente: {window_type}.')
 
             # Gera o dfg e salva
-            generate_dfg(sub_log, event_data_original_name, w_count)
+            generate_dfg(sub_log, original_file_name, w_count)
 
             w_count += 1
 
@@ -141,9 +141,26 @@ def apply_window_day(event_data, window_type, window_size):
     return w_count
 
 
+# Função que importa os dados de evento de acordo com o tipo
+# do arquivo (CSV ou XES)
+def import_event_data(filename):
+    try:
+        if 'csv' in filename:
+            log_csv = pd.read_csv(filename, sep=';')
+            event_data = log_converter.apply(log_csv)
+        elif 'xes' in filename:
+            # Assume that the user uploaded an excel file
+            event_data = xes_importer.apply(input)
+    except Exception as e:
+        print(e)
+        print(f'Problemas ao carregar o arquivo {filename}')
+        return None
+    return event_data
+
+
 # Função que gera todos os modelos de processos para o tipo de janelamento
 # escolhido
-def generate_models(window_type, window_unity, window_size):
+def generate_models(window_type, window_unity, window_size, event_data_original_name):
     variant = xes_importer.Variants.ITERPARSE
     parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
 
@@ -152,32 +169,33 @@ def generate_models(window_type, window_unity, window_size):
     if not os.path.exists(Info.data_models_path):
         os.makedirs(Info.data_models_path)
 
-    input = os.path.join(event_data_path, event_data_original_name)
+    input = os.path.join(Info.data_input_path, event_data_original_name)
     print(f'Analisando arquivo de entrada: {input}')
 
+    # faz a importação do arquivo de acordo com o seu tipo (CSV ou XES)
     # importa o log
-    event_data = xes_importer.apply(input)
+    event_data = import_event_data(input)
+    if event_data is not None:
+        # caso o usuário utilize o janelamento por evento ou tempo precisamos ler como stream
+        if window_type == WindowType.EVENT:
+            # converte para event stream, será que preciso conterter ou posso importar direto?
+            event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
 
-    # caso o usuário utilize o janelamento por evento ou tempo precisamos ler como stream
-    if window_type == WindowType.EVENT:
-        # converte para event stream, será que preciso conterter ou posso importar direto?
-        event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
-
-    # para os janelamentos por evento ou trace, itera na event stream ou no log
-    # verificando checkpoint de acordo com tamanho da janela
-    if window_unity == WindowUnity.UNITY:
-        return apply_window_unit(event_data, window_type, window_size)
-    elif window_unity == WindowUnity.HOUR:
-        return apply_window_time(event_data, window_type, window_size)
-    elif window_unity == WindowUnity.DAY:
-        return apply_window_day(event_data, window_type, window_size)
-    else:
-        print(f'Janelamento não implementado [{window_type}-{window_unity}].')
-        return 0
+        # para os janelamentos por evento ou trace, itera na event stream ou no log
+        # verificando checkpoint de acordo com tamanho da janela
+        if window_unity == WindowUnity.UNITY:
+            return apply_window_unit(event_data, window_type, window_size, event_data_original_name)
+        elif window_unity == WindowUnity.HOUR:
+            return apply_window_time(event_data, window_type, window_size, event_data_original_name)
+        elif window_unity == WindowUnity.DAY:
+            return apply_window_day(event_data, window_type, window_size, event_data_original_name)
+        else:
+            print(f'Janelamento não implementado [{window_type}-{window_unity}].')
+            return 0
 
 
-def get_model(window):
-    return get_dfg(event_data_original_name, window)
+def get_model(window, file):
+    return get_dfg(file, window)
 
 
 

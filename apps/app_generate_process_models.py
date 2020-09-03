@@ -57,22 +57,27 @@ layout = html.Div([
                Output('window-slider', 'value')],
               [Input('final-window', 'children')])
 def update_slider(value):
-    print(f'Update slider {value}')
+    if not value:
+        value = 0
+    else:
+        print('Problema na geração dos modelos, não foi possível obter final-window')
+
+    print(f'Atualiza slider {value}')
     mark = {str(w): str(w) for w in range(1, value)}
 
     return value, mark, 1
-
 
 @app.callback([Output('window-size', 'children'),
                Output('final-window', 'children')],
               [Input('submit-button-state', 'n_clicks')],
               [State('input-window-size', 'value'),
                State('window-type', 'value'),
-               State('window-unity', 'value')])
-def update_output(n_clicks, input_window_size, window_type, window_unity):
-    if input_window_size != '0':
-        print(f'Usuário selecionou janela por {window_type}-{window_unity} de tamanho {input_window_size}')
-        window_count = generate_models(window_type, window_unity, int(input_window_size))
+               State('window-unity', 'value'),
+               State('hidden-filename', 'children')])
+def update_output(n_clicks, input_window_size, window_type, window_unity, file):
+    if file and input_window_size != '0':
+        print(f'Usuário selecionou janela por {window_type}-{window_unity} de tamanho {input_window_size} - arquivo {file}')
+        window_count = generate_models(window_type, window_unity, int(input_window_size), file)
 
         return input_window_size, window_count
     return 0, 0
@@ -80,22 +85,19 @@ def update_output(n_clicks, input_window_size, window_type, window_unity):
 
 @app.callback(Output('graph-with-slider', 'dot_source'),
               [Input('window-slider', 'value'),
-               Input('final-window', 'children')])
-def update_figure(window_value, window_size):
+               Input('final-window', 'children')],
+               [State('hidden-filename', 'children')])
+def update_figure(window_value, window_size, file):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     process_map = """digraph  {
           node[style="filled"]
         }
         """
     if 'final-window' in changed_id:
-        process_map = get_model(1)
+        process_map = get_model(1, file)
     elif 'window-slider' in changed_id:
-        process_map = get_model(window_value)
+        process_map = get_model(window_value, file)
     return str(process_map)
 
 
-@app.callback(
-    Output('app-2-display-value', 'children'),
-    [Input('app-2-dropdown', 'value')])
-def display_value(value):
-    return 'You have selected "{}"'.format(value)
+

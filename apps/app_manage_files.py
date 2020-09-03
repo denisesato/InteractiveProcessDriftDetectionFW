@@ -1,5 +1,4 @@
 import base64
-import io
 import os
 
 import dash_core_components as dcc
@@ -33,8 +32,6 @@ layout = html.Div([
         multiple=False
     ),
     html.Div(id='list-files'),
-
-    dcc.Link('Analisar concept drift', href='/apps/app_generate_process_models')
 ])
 
 
@@ -48,10 +45,6 @@ def save_file(content, filename):
     with open(uploaded_file, "wb") as fp:
         fp.write(base64.decodebytes(data))
 
-    #file = open(f'{uploaded_file}', 'w+')
-    #file.write(content)
-    #file.close()
-
 
 def list_uploaded_files():
     files = []
@@ -63,7 +56,7 @@ def list_uploaded_files():
 
 
 def show_file_link(filename):
-    location = f'/apps/app_show_file?filename={filename}'
+    location = f'/apps/app_preview_file?filename={filename}'
     return dcc.Link(filename, href=location)
 
 
