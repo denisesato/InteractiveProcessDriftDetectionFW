@@ -1,0 +1,32 @@
+https://stackoverflow.com/questions/40809758/howto-install-pygraphviz-on-windows-10-64bit
+
+
+It is a real pain to install pygraphviz on Windows 10 but this is the simples solution which works for me:
+
+Step 1: Download and install Graphviz
+
+https://graphviz.gitlab.io/_pages/Download/Download_windows.html
+
+Step 2: Add below path to your PATH environment variable
+
+C:\Program Files (x86)\Graphviz2.38\bin
+
+Step 3: Re-open command line and activate venv in your project, example:
+
+venv\Scripts\activate
+
+Step 4: Download binaries from below link:
+
+https://github.com/CristiFati/Prebuilt-Binaries/tree/master/PyGraphviz/v1.5/Graphviz-2.42.2
+
+Step 5. Install whl into your virtual environment
+
+For example:
+
+In case of python 3.7
+
+pip install pygraphviz-1.5-cp37-cp37m-win_amd64.whl
+
+In case of python 3.8
+
+pip install pygraphviz-1.5-cp38-cp38-win_amd64.whl

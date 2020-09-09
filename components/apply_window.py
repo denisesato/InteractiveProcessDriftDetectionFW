@@ -6,8 +6,9 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from datetime import datetime
 from datetime import timedelta
 
-from discovery.discovery_dfg import generate_dfg, get_dfg
-from info import Info
+from components.compare.compare_dfg import compare_dfg
+from components.info import Info
+from components.discovery.discovery_dfg import generate_dfg, get_dfg, get_dfg_filename
 
 
 class WindowType:
@@ -144,17 +145,17 @@ def apply_window_day(event_data, window_type, window_size, original_file_name):
 # Função que importa os dados de evento de acordo com o tipo
 # do arquivo (CSV ou XES)
 def import_event_data(filename):
+    event_data = None
     try:
         if 'csv' in filename:
             log_csv = pd.read_csv(filename, sep=';')
             event_data = log_converter.apply(log_csv)
         elif 'xes' in filename:
             # Assume that the user uploaded an excel file
-            event_data = xes_importer.apply(input)
+            event_data = xes_importer.apply(filename)
     except Exception as e:
         print(e)
         print(f'Problemas ao carregar o arquivo {filename}')
-        return None
     return event_data
 
 
@@ -194,8 +195,13 @@ def generate_models(window_type, window_unity, window_size, event_data_original_
             return 0
 
 
-def get_model(window, file):
+def get_model(file, window):
     return get_dfg(file, window)
 
 
+def get_model_filename(file, window):
+    return get_dfg_filename(file, window)
 
+
+def get_model_to_model_comparison(file, current_window):
+    return compare_dfg(file, current_window)

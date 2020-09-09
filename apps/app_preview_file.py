@@ -8,12 +8,17 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 from app import app
-from info import Info
+from components.info import Info
 
 
 layout = [
         html.Div([
-            dcc.Link('Analisar concept drift', id='link-analyze', href='/apps/app_generate_process_models'),
+            html.Div(
+                dcc.Link('Analisar concept drift', id='link-analyze', href='/apps/app_process_models')
+            ),
+            html.Div(
+                dcc.Link('Voltar ao gerenciamento de arquivos', href='/apps/app_manage_files')
+            ),
             html.H3('Visualização do arquivo com dados de eventos:'),
             html.Div(id='preview-event-data'),
         ])
@@ -60,4 +65,4 @@ def show_file(filename):
 def display_page(file):
     if file:
         filename = os.path.join(Info.data_input_path, file)
-        return show_file(filename), f'/apps/app_generate_process_models?filename={file}'
+        return show_file(filename), f'/apps/app_process_models?filename={file}'

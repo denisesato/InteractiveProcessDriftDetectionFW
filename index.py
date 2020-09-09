@@ -3,7 +3,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
 from app import app
-from apps import app_manage_files, app_generate_process_models, app_preview_file
+from apps import app_manage_files, app_process_models, app_preview_file
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -22,8 +22,10 @@ def display_page(pathname, search):
 
     if pathname == '/':
         return app_manage_files.layout, filename
-    elif pathname == '/apps/app_generate_process_models':
-        return app_generate_process_models.layout, filename
+    if pathname == '/apps/app_manage_files':
+        return app_manage_files.layout, filename
+    elif pathname == '/apps/app_process_models':
+        return app_process_models.layout, filename
     elif pathname == '/apps/app_preview_file':
         return app_preview_file.layout, filename
     else:
@@ -31,4 +33,4 @@ def display_page(pathname, search):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, host='0.0.0.0', port=8050)
