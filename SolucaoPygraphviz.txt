@@ -1,3 +1,5 @@
+Para instalar o pacote pygraphviz no windows, se utilizar o docker não é necessário
+
 https://stackoverflow.com/questions/40809758/howto-install-pygraphviz-on-windows-10-64bit
 
 

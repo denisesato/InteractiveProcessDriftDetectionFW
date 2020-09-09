@@ -1,0 +1,14 @@
+Build the image:
+- Open Docker app
+- Open command prompt
+- Goto project directory
+- Execute the command (replace <version> value)
+
+docker build --tag icdd:<version> .
+
+Run the container:
+- Execute the command
+
+docker run -d -p 8050:8050 --name icdd icdd:<version>
+
+
