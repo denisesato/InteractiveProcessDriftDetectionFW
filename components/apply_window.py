@@ -6,7 +6,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from datetime import datetime
 from datetime import timedelta
 
-from components.compare.compare_dfg import compare_dfg
+from components.compare.compare_dfg import calculate_dfg_metrics
 from components.info import Info
 from components.discovery.discovery_dfg import generate_dfg, get_dfg, get_dfg_filename
 
@@ -22,38 +22,56 @@ class WindowUnity:
     DAY = 'DIA'
 
 
-
-# por enquando o nome do arquivo de log ainda está fixo no código
 event_data_path = Info.data_input_path
-#event_data_original_name = 'cb2.5k.xes'
+
+
+def execute_processes_for_window(sub_log, original_file_name, w_count):
+    # Gera o modelo de processo e salva
+    generate_dfg(sub_log, original_file_name, w_count)
+
+    # Calcula métricas de similaridade com processo da janela anterior
+    if w_count > 1:
+        calculate_dfg_metrics(w_count, original_file_name)
+
+
+def new_window(window_type, event_data, initial_index, i, original_file_name, w_count):
+    if window_type == WindowType.EVENT:
+        # Gera o sublog da janela
+        window = EventStream(event_data[initial_index:i])
+        sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+    elif window_type == WindowType.TRACE:
+        sub_log = event_data[initial_index:i]
+    else:
+        print(f'Tipo de janela informado incorretamente: {window_type}.')
+
+    execute_processes_for_window(sub_log, original_file_name, w_count)
 
 
 def apply_window_unit(event_data, window_type, window_size, original_file_name):
     w_count = 1
+    initial_index = 0
     for i, item in enumerate(event_data):
         # window checkpoint
-        if i > 0 and i % window_size == 0:
-            if window_type == WindowType.EVENT:
-                # Gera o sublog da janela
-                window = EventStream(event_data[(i - window_size):i])
-                sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
-            elif window_type == WindowType.TRACE:
-                sub_log = event_data[(i - window_size):i]
-            else:
-                print(f'Tipo de janela informado incorretamente: {window_type}.')
+        if (i > 0 and i % window_size == 0) or i == len(event_data)-1:
+            # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+            if i == len(event_data) - 1:
+                i += 1
 
-            # Gera o dfg e salva
-            generate_dfg(sub_log, original_file_name, w_count)
+            new_window(window_type, event_data, initial_index, i, original_file_name, w_count)
 
             # Incrementa janela
             w_count += 1
+            # Atualiza índice inicial da próxima janela
+            initial_index = i
+
     return w_count
 
 
 def apply_window_time(event_data, window_type, window_size, original_file_name):
     w_count = 1
-    initial_window_index = -1
+    initial_index = 0
     for i, item in enumerate(event_data):
+        # obtém o timestamp atual
         if window_type == WindowType.EVENT:
             timestamp_aux = datetime.timestamp(item['time:timestamp'])
         elif window_type == WindowType.TRACE:
@@ -62,9 +80,8 @@ def apply_window_time(event_data, window_type, window_size, original_file_name):
         else:
             print(f'Tipo de janela informado incorretamente: {window_type}.')
 
-        # inicializa o tempo e o índice inicial da janela
-        if initial_window_index == -1:
-            initial_window_index = i
+        # inicializa o timestamp inicial da primeira janela
+        if initial_index == 0:
             initial_timestamp = timestamp_aux
 
         # window checkpoint
@@ -72,30 +89,26 @@ def apply_window_time(event_data, window_type, window_size, original_file_name):
         time_difference = actual_timestamp - initial_timestamp
         # converte para horas
         time_difference = time_difference / 1000 / 60 / 60
-        if time_difference > window_size:
-            if window_type == WindowType.EVENT:
-                # Gera o sublog da janela
-                window = EventStream(event_data[initial_window_index:i])
-                sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
-            elif window_type == WindowType.TRACE:
-                sub_log = event_data[initial_window_index:i]
-            else:
-                print(f'Tipo de janela informado incorretamente: {window_type}.')
+        if time_difference > window_size or i == len(event_data)-1:
+            # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+            if i == len(event_data) - 1:
+                i += 1
 
-            # Gera o dfg e salva
-            generate_dfg(sub_log, original_file_name, w_count)
+            new_window(window_type, event_data, initial_index, i, original_file_name, w_count)
 
+            # Incrementa janela
             w_count += 1
+            # Atualiza índice inicial da próxima janela
+            initial_index = i
 
-            # reinicializa variáveis para nova janela
-            initial_window_index = i
+            # Atualiza timestamp inicial da próxima janela
             initial_timestamp = datetime.timestamp(item['time:timestamp'])
     return w_count
 
 
 def apply_window_day(event_data, window_type, window_size, original_file_name):
     w_count = 1
-    initial_window_index = -1
+    initial_index = 0
     for i, item in enumerate(event_data):
         if window_type == WindowType.EVENT:
             date_aux = item['time:timestamp']
@@ -105,32 +118,27 @@ def apply_window_day(event_data, window_type, window_size, original_file_name):
         else:
             print(f'Tipo de janela informado incorretamente: {window_type}.')
 
-        # inicializa o tempo e o índice inicial da janela
-        if initial_window_index == -1:
-            initial_window_index = i
+        # inicializa o dia inicial da primeira janela
+        if initial_index == 0:
             initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
 
         # window checkpoint
         actual_day = datetime(date_aux.year, date_aux.month, date_aux.day)
         day_difference = actual_day - initial_day
 
-        if day_difference > timedelta(days=window_size):
-            if window_type == WindowType.EVENT:
-                # Gera o sublog da janela
-                window = EventStream(event_data[initial_window_index:i])
-                sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
-            elif window_type == WindowType.TRACE:
-                sub_log = event_data[initial_window_index:i]
-            else:
-                print(f'Tipo de janela informado incorretamente: {window_type}.')
+        if day_difference > timedelta(days=window_size) or i == len(event_data)-1:
+            # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+            if i == len(event_data) - 1:
+                i += 1
 
-            # Gera o dfg e salva
-            generate_dfg(sub_log, original_file_name, w_count)
+            new_window(window_type, event_data, initial_index, i, original_file_name, w_count)
 
+            # Incrementa janela
             w_count += 1
+            # Atualiza índice inicial da próxima janela
+            initial_index = i
 
-            # reinicializa variáveis para nova janela
-            initial_window_index = i
+            # Atualiza dia inicial da próxima janela
             if window_type == WindowType.EVENT:
                 date_aux = item['time:timestamp']
             elif window_type == WindowType.TRACE:
@@ -197,11 +205,3 @@ def generate_models(window_type, window_unity, window_size, event_data_original_
 
 def get_model(file, window):
     return get_dfg(file, window)
-
-
-def get_model_filename(file, window):
-    return get_dfg_filename(file, window)
-
-
-def get_model_to_model_comparison(file, current_window):
-    return compare_dfg(file, current_window)

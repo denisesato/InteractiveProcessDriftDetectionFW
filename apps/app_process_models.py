@@ -4,7 +4,7 @@ import dash_html_components as html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
 from app import app
-from components.apply_window import WindowUnity, WindowType, generate_models, get_model, get_model_to_model_comparison
+from components.apply_window import WindowUnity, WindowType, generate_models, get_model
 
 layout = html.Div([
     html.Div([
@@ -62,11 +62,10 @@ layout = html.Div([
               [Input('final-window', 'children')])
 def update_slider(value):
     if not value:
-        value = 0
-        print('Problema na geração dos modelos, não foi possível obter final-window')
+        app.logger.error('Problema na geração dos modelos, não foi possível obter final-window')
         return 0, 0, {0:{'label': '0'}}, 0
 
-    print(f'Atualiza slider {value}')
+    app.logger.info(f'Atualiza slider {value}')
     mark = {str(w): str(w) for w in range(1, value)}
 
     return 1, value, mark, 1
@@ -106,8 +105,9 @@ def update_figure(window_value, window_size, file):
     if 'final-window' in changed_id:
         div = 'Escolha uma opção de janelamento para gerar os modelos de processo'
     elif 'window-slider' in changed_id and window_value != 0:
+        app.logger.info(f'Recuperando modelo da janela: {window_value}')
         process_map = get_model(file, window_value)
-        get_model_to_model_comparison(file, window_value)
+        div = 'Modelos de processo gerados e analisados'
     return process_map, div
 
 

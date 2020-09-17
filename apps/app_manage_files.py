@@ -37,7 +37,7 @@ def save_file(content, filename):
     # Salva arquivo carregado
     uploaded_file = os.path.join(Info.data_input_path,
                                  f'{filename}')
-    print(f'Saving {uploaded_file}')
+    print(f'Salvando arquivo: {uploaded_file}')
 
     data = content.encode("utf8").split(b";base64,")[1]
     with open(uploaded_file, "wb") as fp:

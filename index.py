@@ -18,7 +18,7 @@ app.layout = html.Div([
 def display_page(pathname, search):
     filename = ''
     if search:
-        filename = search.lstrip('?filename=')
+        filename = search.partition('?filename=')[2]
 
     if pathname == '/':
         return app_manage_files.layout, filename
@@ -33,4 +33,4 @@ def display_page(pathname, search):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8050)
+    app.run_server(debug=True, host='0.0.0.0', port=8050, threaded=True)

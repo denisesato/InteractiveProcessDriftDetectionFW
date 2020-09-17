@@ -59,10 +59,10 @@ def show_file(filename):
     ])
 
 
-@app.callback([Output('preview-event-data', 'children'),
-              Output('link-analyze', 'href')],
+@app.callback([Output('link-analyze', 'href'),
+               Output('preview-event-data', 'children')],
               [Input('hidden-filename', 'children')])
 def display_page(file):
     if file:
         filename = os.path.join(Info.data_input_path, file)
-        return show_file(filename), f'/apps/app_process_models?filename={file}'
+        return f'/apps/app_process_models?filename={file}', show_file(filename)
