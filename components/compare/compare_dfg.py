@@ -1,6 +1,7 @@
 import json
 import os
 from threading import Thread, RLock
+from typing import Any
 
 from networkx import graph_edit_distance, optimize_graph_edit_distance
 from networkx.drawing.nx_agraph import read_dot
@@ -19,10 +20,17 @@ def threaded(fn):
 
 
 class CalculateMetrics:
-    def __init__(self, original_filename):
+
+    def __init__(self, original_filename, control):
+        app.logger.info('**************************************************************************')
+        app.logger.info(f'*** Cálculo de métricas iniciado para arquivo {original_filename}')
+        app.logger.info('**************************************************************************')
         self.original_filename = original_filename
         self.lock = RLock()
         self.verify_file()
+        self.final_window = 0
+        self.count_window = 1
+        self.control = control
 
     def verify_file(self):
         # Verifica se o diretório para salvar as metricas existe
@@ -40,15 +48,16 @@ class CalculateMetrics:
         if os.path.exists(output_file):
             os.remove(output_file)
 
+    def set_final_window(self, w):
+        self.final_window = w
 
     @threaded
     def calculate_dfg_metrics(self, current_window):
-        app.logger.error(f'Iniciando cálculo de métricas para janela {current_window}...')
         map_file1 = get_dfg_filename(self.original_filename, current_window - 1)
         map_file2 = get_dfg_filename(self.original_filename, current_window)
 
-        filename1 = os.path.join(Info.data_models_path, dfg_path, map_file1)
-        filename2 = os.path.join(Info.data_models_path, dfg_path, map_file2)
+        filename1 = os.path.join(Info.data_models_path, dfg_path, self.original_filename, map_file1)
+        filename2 = os.path.join(Info.data_models_path, dfg_path, self.original_filename, map_file2)
 
         if not os.path.exists(filename1):
             app.logger.error(f'[compare_dfg]: Erro tentando acessar dfg do arquivo [{map_file1}]')
@@ -62,17 +71,11 @@ class CalculateMetrics:
         g1 = read_dot(filename1)
         g2 = read_dot(filename2)
 
-        # Recupera métricas já calculadas
-#        if os.path.exists(output_file):
-#            metrics = json.load(open(filename))
-#        else:
-#            metrics = {}
-
         metrics = {}
 
         # Calcula novas métricas e adiciona no objeto
         edit_distance = graph_edit_distance(g1, g2)
-        app.logger.info(f'Graph edit distance [{map_file1}]-[{map_file2}]: {edit_distance}')
+        app.logger.info(f'Graph edit distance entre janelas [{current_window-1}]-[{current_window}]: {edit_distance}')
         metrics[f'edit_distance[{current_window}]'] = edit_distance
 
         # Define nome do arquivo de métricas
@@ -83,13 +86,16 @@ class CalculateMetrics:
         self.lock.acquire()
         try:
             # Atualiza arquivo com métricas
-            app.logger.info(f'Salvando {output_file}')
             file = open(output_file, 'a+')
             file.write(json.dumps(metrics))
             file.write('\n')
             file.close()
         finally:
-            app.logger.info(f'Liberando arquivo {output_file}')
+            self.count_window += 1
             self.lock.release()
 
-        app.logger.error(f'Finalizando cálculo de métricas para janela {self.current_window}')
+        if self.final_window != 0 and self.count_window == self.final_window:
+            app.logger.info('**************************************************************************')
+            app.logger.info(f'*** Cálculo de métricas finalizado para arquivo {self.original_filename}')
+            app.logger.info('**************************************************************************')
+            self.control.set_metrics_finished(True)

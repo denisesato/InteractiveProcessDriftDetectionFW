@@ -2,10 +2,23 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
-import pandas as pd
 from dash.dependencies import Input, Output, State
 from app import app
 from components.apply_window import WindowUnity, WindowType, AnalyzeDrift, ModelAnalyzes
+
+
+class ControlMetrics:
+    def __init__(self):
+        self.metrics_finished = False
+
+    def set_metrics_finished(self, finished):
+        self.metrics_finished = finished
+
+    def is_metrics_finished(self):
+        return self.metrics_finished
+
+
+control = ControlMetrics()
 
 layout = html.Div([
     html.Div([
@@ -37,7 +50,8 @@ layout = html.Div([
         html.Div(id='window-size', style={'display': 'none'})
     ]),
 
-    html.Div(id='div-status', style={'display': 'inline'}),
+    html.Div(id='div-status-models'),
+    html.Div(id='div-status-similarity'),
 
     html.Div([
         dcc.Slider(
@@ -52,7 +66,13 @@ layout = html.Div([
             id="graph-with-slider", dot_source=''),
     ]),
 
-    html.Div(id='final-window', style={'display': 'none'})
+    html.Div(id='final-window', style={'display': 'none'}),
+
+    dcc.Interval(
+                id='check-similarity-finished',
+                interval=1*1000, # in milliseconds
+                n_intervals=0
+            )
 ])
 
 
@@ -67,7 +87,7 @@ def update_slider(value):
         return 0, 0, {0:{'label': '0'}}, 0
 
     app.logger.info(f'Atualiza slider {value}')
-    mark = {str(w): str(w) for w in range(1, value)}
+    mark = {str(w): str(w) for w in range(1, value+1)}
 
     return 1, value, mark, 1
 
@@ -81,8 +101,9 @@ def update_slider(value):
                State('hidden-filename', 'children')])
 def update_output(n_clicks, input_window_size, window_type, window_unity, file):
     if file and input_window_size != '0':
-        print(f'Usuário selecionou janela por {window_type}-{window_unity} de tamanho {input_window_size} - arquivo {file}')
-        models = AnalyzeDrift(window_type, window_unity, int(input_window_size), file)
+        print(f'Usuário selecionou janela {window_type}-{window_unity} de tamanho {input_window_size} - arquivo {file}')
+        control.set_metrics_finished(False)
+        models = AnalyzeDrift(window_type, window_unity, int(input_window_size), file, control)
         window_count = models.generate_models()
 
         return input_window_size, window_count
@@ -90,7 +111,7 @@ def update_output(n_clicks, input_window_size, window_type, window_unity, file):
 
 
 @app.callback([Output('graph-with-slider', 'dot_source'),
-               Output('div-status', 'children')],
+               Output('div-status-models', 'children')],
               [Input('window-slider', 'value'),
                Input('final-window', 'children')],
                [State('hidden-filename', 'children')])
@@ -107,10 +128,12 @@ def update_figure(window_value, window_size, file):
     if 'final-window' in changed_id:
         div = 'Escolha uma opção de janelamento para gerar os modelos de processo'
     elif 'window-slider' in changed_id and window_value != 0:
-        app.logger.info(f'Recuperando modelo da janela: {window_value}')
         process_map = ModelAnalyzes.get_model(file, window_value)
-        div = 'Modelos de processo gerados e analisados'
+        div = 'Modelos de processo gerados para a opção escolhida'
     return process_map, div
 
 
-
+@app.callback(Output('div-status-similarity', 'children'),
+              [Input('check-similarity-finished', 'n_intervals')])
+def update_metrics(n):
+    return f'Cálculo de métricas finalizado: {control.is_metrics_finished()}'

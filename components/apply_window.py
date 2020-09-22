@@ -24,12 +24,12 @@ class WindowUnity:
 
 
 class AnalyzeDrift:
-    def __init__(self, window_type, window_unity, window_size, original_filename):
+    def __init__(self, window_type, window_unity, window_size, original_filename, control):
         self.original_filename = original_filename
         self.window_type = window_type
         self.window_unity = window_unity
         self.window_size = window_size
-
+        self.control = control
 
     # Método que gera todos os modelos de processos para o tipo de janelamento
     # escolhido e dispara o processo para calcular as métricas entre janelas
@@ -45,18 +45,19 @@ class AnalyzeDrift:
         input = os.path.join(Info.data_input_path, self.original_filename)
         print(f'Analisando arquivo de entrada: {input}')
 
-        windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename)
-
         # faz a importação do arquivo de acordo com o seu tipo (CSV ou XES)
         # importa o log
         event_data = self.import_event_data(input)
         if event_data is not None:
+            # itera na event stream ou no log de acordo com a opção do usuário
             # caso o usuário utilize o janelamento por evento ou tempo precisamos ler como stream
             if self.window_type == WindowType.EVENT:
                 # converte para event stream, será que preciso conterter ou posso importar direto?
                 event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
 
-            # para os janelamentos por evento ou trace, itera na event stream ou no log
+            # classe que implementa as diferentes opções de janelamento
+            windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename, self.control)
+
             # verificando checkpoint de acordo com tamanho da janela
             if self.window_unity == WindowUnity.UNITY:
                 return windowing.apply_window_unit(event_data)
@@ -86,13 +87,13 @@ class AnalyzeDrift:
 
 
 class ApplyWindowing:
-    def __init__(self, window_type, window_size, original_filename):
+    def __init__(self, window_type, window_size, original_filename, control):
         self.window_type = window_type
         self.window_size = window_size
         self.original_filename = original_filename
         # instancia classe que gerencia cálculo de similaridade
         # entre janelas
-        self.metrics = CalculateMetrics(original_filename)
+        self.metrics = CalculateMetrics(original_filename, control)
 
     def apply_window_unit(self, event_data):
         w_count = 1
@@ -103,6 +104,7 @@ class ApplyWindowing:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
+                    self.metrics.set_final_window(w_count)
 
                 self.new_window(event_data, initial_index, i, w_count)
 
@@ -110,8 +112,7 @@ class ApplyWindowing:
                 w_count += 1
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-
-        return w_count
+        return w_count-1
 
     def apply_window_time(self, event_data):
         w_count = 1
@@ -139,6 +140,7 @@ class ApplyWindowing:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
+                    self.metrics.set_final_window(w_count)
 
                 self.new_window(event_data, initial_index, i, w_count)
 
@@ -149,7 +151,7 @@ class ApplyWindowing:
 
                 # Atualiza timestamp inicial da próxima janela
                 initial_timestamp = datetime.timestamp(item['time:timestamp'])
-        return w_count
+        return w_count-1
 
     def apply_window_day(self, event_data):
         w_count = 1
@@ -175,6 +177,7 @@ class ApplyWindowing:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
+                    self.metrics.set_final_window(w_count)
 
                 self.new_window(event_data, initial_index, i, w_count)
 
@@ -192,7 +195,7 @@ class ApplyWindowing:
                 else:
                     print(f'Tipo de janela informado incorretamente: {self.window_type}.')
                 initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
-        return w_count
+        return w_count-1
 
     def new_window(self, event_data, initial_index, i, w_count):
         if self.window_type == WindowType.EVENT:

@@ -11,9 +11,8 @@ from components.info import Info
 # Função que aplica o algoritmo de descoberta (DFG) para gerar
 # o modelo de processo de uma janela e salva no arquivo
 def generate_dfg(sub_log, event_data_original_name, w_count):
-    # verifica se o diretório para salvar os DFGs existe
-    # caso contrário cria
-    model_path = os.path.join(Info.data_models_path, dfg_path)
+    # verifica se o diretório para salvar os DFGs existe caso contrário cria
+    model_path = os.path.join(Info.data_models_path, dfg_path, event_data_original_name)
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
@@ -30,7 +29,7 @@ def generate_dfg(sub_log, event_data_original_name, w_count):
 def get_dfg(log_name, window):
     map_file = get_dfg_filename(log_name, window)
 
-    models_path = os.path.join(Info.data_models_path, dfg_path)
+    models_path = os.path.join(Info.data_models_path, dfg_path, log_name)
 
     if os.path.exists(os.path.join(models_path, map_file)):
         gviz = Source.from_file(filename=map_file, directory=models_path)
