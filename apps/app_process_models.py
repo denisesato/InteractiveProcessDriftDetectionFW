@@ -2,9 +2,10 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
+import pandas as pd
 from dash.dependencies import Input, Output, State
 from app import app
-from components.apply_window import WindowUnity, WindowType, generate_models, get_model
+from components.apply_window import WindowUnity, WindowType, AnalyzeDrift, ModelAnalyzes
 
 layout = html.Div([
     html.Div([
@@ -81,7 +82,8 @@ def update_slider(value):
 def update_output(n_clicks, input_window_size, window_type, window_unity, file):
     if file and input_window_size != '0':
         print(f'Usuário selecionou janela por {window_type}-{window_unity} de tamanho {input_window_size} - arquivo {file}')
-        window_count = generate_models(window_type, window_unity, int(input_window_size), file)
+        models = AnalyzeDrift(window_type, window_unity, int(input_window_size), file)
+        window_count = models.generate_models()
 
         return input_window_size, window_count
     return 0, 0
@@ -106,7 +108,7 @@ def update_figure(window_value, window_size, file):
         div = 'Escolha uma opção de janelamento para gerar os modelos de processo'
     elif 'window-slider' in changed_id and window_value != 0:
         app.logger.info(f'Recuperando modelo da janela: {window_value}')
-        process_map = get_model(file, window_value)
+        process_map = ModelAnalyzes.get_model(file, window_value)
         div = 'Modelos de processo gerados e analisados'
     return process_map, div
 

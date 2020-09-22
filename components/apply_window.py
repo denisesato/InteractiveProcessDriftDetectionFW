@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.log import EventStream
@@ -6,7 +7,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from datetime import datetime
 from datetime import timedelta
 
-from components.compare.compare_dfg import calculate_dfg_metrics
+from components.compare.compare_dfg import CalculateMetrics
 from components.info import Info
 from components.discovery.discovery_dfg import generate_dfg, get_dfg, get_dfg_filename
 
@@ -22,186 +23,198 @@ class WindowUnity:
     DAY = 'DIA'
 
 
-event_data_path = Info.data_input_path
+class AnalyzeDrift:
+    def __init__(self, window_type, window_unity, window_size, original_filename):
+        self.original_filename = original_filename
+        self.window_type = window_type
+        self.window_unity = window_unity
+        self.window_size = window_size
 
 
-def execute_processes_for_window(sub_log, original_file_name, w_count):
-    # Gera o modelo de processo e salva
-    generate_dfg(sub_log, original_file_name, w_count)
+    # Método que gera todos os modelos de processos para o tipo de janelamento
+    # escolhido e dispara o processo para calcular as métricas entre janelas
+    def generate_models(self):
+        variant = xes_importer.Variants.ITERPARSE
+        parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
 
-    # Calcula métricas de similaridade com processo da janela anterior
-    if w_count > 1:
-        calculate_dfg_metrics(w_count, original_file_name)
+        # verificar se o diretório para salvar os modelos existe
+        # caso contrário cria - ACHO QUE DEVE FICAR EM OUTRO LUGAR
+        if not os.path.exists(Info.data_models_path):
+            os.makedirs(Info.data_models_path)
 
+        input = os.path.join(Info.data_input_path, self.original_filename)
+        print(f'Analisando arquivo de entrada: {input}')
 
-def new_window(window_type, event_data, initial_index, i, original_file_name, w_count):
-    if window_type == WindowType.EVENT:
-        # Gera o sublog da janela
-        window = EventStream(event_data[initial_index:i])
-        sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
-    elif window_type == WindowType.TRACE:
-        sub_log = event_data[initial_index:i]
-    else:
-        print(f'Tipo de janela informado incorretamente: {window_type}.')
+        windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename)
 
-    execute_processes_for_window(sub_log, original_file_name, w_count)
+        # faz a importação do arquivo de acordo com o seu tipo (CSV ou XES)
+        # importa o log
+        event_data = self.import_event_data(input)
+        if event_data is not None:
+            # caso o usuário utilize o janelamento por evento ou tempo precisamos ler como stream
+            if self.window_type == WindowType.EVENT:
+                # converte para event stream, será que preciso conterter ou posso importar direto?
+                event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
 
+            # para os janelamentos por evento ou trace, itera na event stream ou no log
+            # verificando checkpoint de acordo com tamanho da janela
+            if self.window_unity == WindowUnity.UNITY:
+                return windowing.apply_window_unit(event_data)
+            elif self.window_unity == WindowUnity.HOUR:
+                return windowing.apply_window_time(event_data)
+            elif self.window_unity == WindowUnity.DAY:
+                return windowing.apply_window_day(event_data)
+            else:
+                print(f'Janelamento não implementado [{self.window_type}-{self.window_unity}].')
+                return 0
 
-def apply_window_unit(event_data, window_type, window_size, original_file_name):
-    w_count = 1
-    initial_index = 0
-    for i, item in enumerate(event_data):
-        # window checkpoint
-        if (i > 0 and i % window_size == 0) or i == len(event_data)-1:
-            # Se for o último evento ou trace incrementa o i para considerá-lo na janela
-            if i == len(event_data) - 1:
-                i += 1
-
-            new_window(window_type, event_data, initial_index, i, original_file_name, w_count)
-
-            # Incrementa janela
-            w_count += 1
-            # Atualiza índice inicial da próxima janela
-            initial_index = i
-
-    return w_count
-
-
-def apply_window_time(event_data, window_type, window_size, original_file_name):
-    w_count = 1
-    initial_index = 0
-    for i, item in enumerate(event_data):
-        # obtém o timestamp atual
-        if window_type == WindowType.EVENT:
-            timestamp_aux = datetime.timestamp(item['time:timestamp'])
-        elif window_type == WindowType.TRACE:
-            # utiliza a data do primeiro evento do trace
-            timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
-        else:
-            print(f'Tipo de janela informado incorretamente: {window_type}.')
-
-        # inicializa o timestamp inicial da primeira janela
-        if initial_index == 0:
-            initial_timestamp = timestamp_aux
-
-        # window checkpoint
-        actual_timestamp = timestamp_aux
-        time_difference = actual_timestamp - initial_timestamp
-        # converte para horas
-        time_difference = time_difference / 1000 / 60 / 60
-        if time_difference > window_size or i == len(event_data)-1:
-            # Se for o último evento ou trace incrementa o i para considerá-lo na janela
-            if i == len(event_data) - 1:
-                i += 1
-
-            new_window(window_type, event_data, initial_index, i, original_file_name, w_count)
-
-            # Incrementa janela
-            w_count += 1
-            # Atualiza índice inicial da próxima janela
-            initial_index = i
-
-            # Atualiza timestamp inicial da próxima janela
-            initial_timestamp = datetime.timestamp(item['time:timestamp'])
-    return w_count
+    # Função que importa os dados de evento de acordo com o tipo
+    # do arquivo (CSV ou XES)
+    def import_event_data(self, filename):
+        event_data = None
+        try:
+            if 'csv' in filename:
+                log_csv = pd.read_csv(filename, sep=';')
+                event_data = log_converter.apply(log_csv)
+            elif 'xes' in filename:
+                # Assume that the user uploaded an excel file
+                event_data = xes_importer.apply(filename)
+        except Exception as e:
+            print(e)
+            print(f'Problemas ao carregar o arquivo {filename}')
+        return event_data
 
 
-def apply_window_day(event_data, window_type, window_size, original_file_name):
-    w_count = 1
-    initial_index = 0
-    for i, item in enumerate(event_data):
-        if window_type == WindowType.EVENT:
-            date_aux = item['time:timestamp']
-        elif window_type == WindowType.TRACE:
-            # utiliza a data do primeiro evento do trace
-            date_aux = item[0]['time:timestamp']
-        else:
-            print(f'Tipo de janela informado incorretamente: {window_type}.')
+class ApplyWindowing:
+    def __init__(self, window_type, window_size, original_filename):
+        self.window_type = window_type
+        self.window_size = window_size
+        self.original_filename = original_filename
+        # instancia classe que gerencia cálculo de similaridade
+        # entre janelas
+        self.metrics = CalculateMetrics(original_filename)
 
-        # inicializa o dia inicial da primeira janela
-        if initial_index == 0:
-            initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
+    def apply_window_unit(self, event_data):
+        w_count = 1
+        initial_index = 0
+        for i, item in enumerate(event_data):
+            # window checkpoint
+            if (i > 0 and i % self.window_size == 0) or i == len(event_data) - 1:
+                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+                if i == len(event_data) - 1:
+                    i += 1
 
-        # window checkpoint
-        actual_day = datetime(date_aux.year, date_aux.month, date_aux.day)
-        day_difference = actual_day - initial_day
+                self.new_window(event_data, initial_index, i, w_count)
 
-        if day_difference > timedelta(days=window_size) or i == len(event_data)-1:
-            # Se for o último evento ou trace incrementa o i para considerá-lo na janela
-            if i == len(event_data) - 1:
-                i += 1
+                # Incrementa janela
+                w_count += 1
+                # Atualiza índice inicial da próxima janela
+                initial_index = i
 
-            new_window(window_type, event_data, initial_index, i, original_file_name, w_count)
+        return w_count
 
-            # Incrementa janela
-            w_count += 1
-            # Atualiza índice inicial da próxima janela
-            initial_index = i
+    def apply_window_time(self, event_data):
+        w_count = 1
+        initial_index = 0
+        for i, item in enumerate(event_data):
+            # obtém o timestamp atual
+            if self.window_type == WindowType.EVENT:
+                timestamp_aux = datetime.timestamp(item['time:timestamp'])
+            elif self.window_type == WindowType.TRACE:
+                # utiliza a data do primeiro evento do trace
+                timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
+            else:
+                print(f'Tipo de janela informado incorretamente: {self.window_type}.')
 
-            # Atualiza dia inicial da próxima janela
-            if window_type == WindowType.EVENT:
+            # inicializa o timestamp inicial da primeira janela
+            if initial_index == 0:
+                initial_timestamp = timestamp_aux
+
+            # window checkpoint
+            actual_timestamp = timestamp_aux
+            time_difference = actual_timestamp - initial_timestamp
+            # converte para horas
+            time_difference = time_difference / 1000 / 60 / 60
+            if time_difference > self.window_size or i == len(event_data) - 1:
+                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+                if i == len(event_data) - 1:
+                    i += 1
+
+                self.new_window(event_data, initial_index, i, w_count)
+
+                # Incrementa janela
+                w_count += 1
+                # Atualiza índice inicial da próxima janela
+                initial_index = i
+
+                # Atualiza timestamp inicial da próxima janela
+                initial_timestamp = datetime.timestamp(item['time:timestamp'])
+        return w_count
+
+    def apply_window_day(self, event_data):
+        w_count = 1
+        initial_index = 0
+        for i, item in enumerate(event_data):
+            if self.window_type == WindowType.EVENT:
                 date_aux = item['time:timestamp']
-            elif window_type == WindowType.TRACE:
+            elif self.window_type == WindowType.TRACE:
                 # utiliza a data do primeiro evento do trace
                 date_aux = item[0]['time:timestamp']
             else:
-                print(f'Tipo de janela informado incorretamente: {window_type}.')
-            initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
-    return w_count
+                print(f'Tipo de janela informado incorretamente: {self.window_type}.')
 
+            # inicializa o dia inicial da primeira janela
+            if initial_index == 0:
+                initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
 
-# Função que importa os dados de evento de acordo com o tipo
-# do arquivo (CSV ou XES)
-def import_event_data(filename):
-    event_data = None
-    try:
-        if 'csv' in filename:
-            log_csv = pd.read_csv(filename, sep=';')
-            event_data = log_converter.apply(log_csv)
-        elif 'xes' in filename:
-            # Assume that the user uploaded an excel file
-            event_data = xes_importer.apply(filename)
-    except Exception as e:
-        print(e)
-        print(f'Problemas ao carregar o arquivo {filename}')
-    return event_data
+            # window checkpoint
+            actual_day = datetime(date_aux.year, date_aux.month, date_aux.day)
+            day_difference = actual_day - initial_day
 
+            if day_difference > timedelta(days=self.window_size) or i == len(event_data) - 1:
+                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+                if i == len(event_data) - 1:
+                    i += 1
 
-# Função que gera todos os modelos de processos para o tipo de janelamento
-# escolhido
-def generate_models(window_type, window_unity, window_size, event_data_original_name):
-    variant = xes_importer.Variants.ITERPARSE
-    parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
+                self.new_window(event_data, initial_index, i, w_count)
 
-    # verificar se o diretório para salvar os modelos existe
-    # caso contrário cria - ACHO QUE DEVE FICAR EM OUTRO LUGAR
-    if not os.path.exists(Info.data_models_path):
-        os.makedirs(Info.data_models_path)
+                # Incrementa janela
+                w_count += 1
+                # Atualiza índice inicial da próxima janela
+                initial_index = i
 
-    input = os.path.join(Info.data_input_path, event_data_original_name)
-    print(f'Analisando arquivo de entrada: {input}')
+                # Atualiza dia inicial da próxima janela
+                if self.window_type == WindowType.EVENT:
+                    date_aux = item['time:timestamp']
+                elif self.window_type == WindowType.TRACE:
+                    # utiliza a data do primeiro evento do trace
+                    date_aux = item[0]['time:timestamp']
+                else:
+                    print(f'Tipo de janela informado incorretamente: {self.window_type}.')
+                initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
+        return w_count
 
-    # faz a importação do arquivo de acordo com o seu tipo (CSV ou XES)
-    # importa o log
-    event_data = import_event_data(input)
-    if event_data is not None:
-        # caso o usuário utilize o janelamento por evento ou tempo precisamos ler como stream
-        if window_type == WindowType.EVENT:
-            # converte para event stream, será que preciso conterter ou posso importar direto?
-            event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
-
-        # para os janelamentos por evento ou trace, itera na event stream ou no log
-        # verificando checkpoint de acordo com tamanho da janela
-        if window_unity == WindowUnity.UNITY:
-            return apply_window_unit(event_data, window_type, window_size, event_data_original_name)
-        elif window_unity == WindowUnity.HOUR:
-            return apply_window_time(event_data, window_type, window_size, event_data_original_name)
-        elif window_unity == WindowUnity.DAY:
-            return apply_window_day(event_data, window_type, window_size, event_data_original_name)
+    def new_window(self, event_data, initial_index, i, w_count):
+        if self.window_type == WindowType.EVENT:
+            # Gera o sublog da janela
+            window = EventStream(event_data[initial_index:i])
+            sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+        elif self.window_type == WindowType.TRACE:
+            sub_log = event_data[initial_index:i]
         else:
-            print(f'Janelamento não implementado [{window_type}-{window_unity}].')
-            return 0
+            print(f'Tipo de janela informado incorretamente: {self.window_type}.')
+        self.execute_processes_for_window(sub_log, w_count)
+
+    def execute_processes_for_window(self, sub_log, w_count):
+        # Gera o modelo de processo e salva
+        generate_dfg(sub_log, self.original_filename, w_count)
+
+        # Calcula métricas de similaridade com processo da janela anterior
+        if w_count > 1:
+            self.metrics.calculate_dfg_metrics(w_count)
 
 
-def get_model(file, window):
-    return get_dfg(file, window)
+class ModelAnalyzes:
+    @staticmethod
+    def get_model(original_filename, window):
+        return get_dfg(original_filename, window)
