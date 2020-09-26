@@ -7,7 +7,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from datetime import datetime
 from datetime import timedelta
 
-from components.compare.compare_dfg import CalculateMetrics
+from components.compare.compare_dfg import CalculateMetrics, RecoverMetrics
 from components.info import Info
 from components.discovery.discovery_dfg import generate_dfg, get_dfg, get_dfg_filename
 
@@ -34,9 +34,6 @@ class AnalyzeDrift:
     # Método que gera todos os modelos de processos para o tipo de janelamento
     # escolhido e dispara o processo para calcular as métricas entre janelas
     def generate_models(self):
-        variant = xes_importer.Variants.ITERPARSE
-        parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
-
         # verificar se o diretório para salvar os modelos existe
         # caso contrário cria - ACHO QUE DEVE FICAR EM OUTRO LUGAR
         if not os.path.exists(Info.data_models_path):
@@ -221,3 +218,7 @@ class ModelAnalyzes:
     @staticmethod
     def get_model(original_filename, window):
         return get_dfg(original_filename, window)
+
+    @staticmethod
+    def get_diff(original_filename, window):
+        return get_diff(original_filename, window)

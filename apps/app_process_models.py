@@ -3,19 +3,34 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
+from json_tricks import dumps, loads
+
 from app import app
 from components.apply_window import WindowUnity, WindowType, AnalyzeDrift, ModelAnalyzes
+from components.compare.compare_dfg import RecoverMetrics
+
+
+class MetricsStatus:
+    PAUSED = 'PAUSED'
+    STARTED = 'STARTED'
+    FINISHED = 'FINISHED'
 
 
 class ControlMetrics:
     def __init__(self):
-        self.metrics_finished = False
+        self.metrics_status = MetricsStatus.PAUSED
 
-    def set_metrics_finished(self, finished):
-        self.metrics_finished = finished
+    def finish_metrics_calculation(self):
+        self.metrics_status = MetricsStatus.FINISHED
 
-    def is_metrics_finished(self):
-        return self.metrics_finished
+    def start_metrics_calculation(self):
+        self.metrics_status = MetricsStatus.STARTED
+
+    def reset_metrics_calculation(self):
+        self.metrics_status = MetricsStatus.PAUSED
+
+    def get_metrics_status(self):
+        return self.metrics_status
 
 
 control = ControlMetrics()
@@ -47,26 +62,30 @@ layout = html.Div([
 
         dcc.Input(id='input-window-size', type='number', value='0'),
         html.Button(id='submit-button-state', n_clicks=0, children='Gerar processos'),
-        html.Div(id='window-size', style={'display': 'none'})
+        html.Div(id='window-size', style={'display': 'none'}),
+
+        html.Div(id='div-status-models'),
+        html.Div(id='div-status-similarity'),
     ]),
 
-    html.Div(id='div-status-models'),
-    html.Div(id='div-status-similarity'),
+    html.Div([html.Div([
+                dcc.Slider(
+                    id='window-slider',
+                    min=0,
+                    step=None,
+                    included=False
+                ),
+            ]),
 
-    html.Div([
-        dcc.Slider(
-            id='window-slider',
-            min=0,
-            step=None
-        ),
+            html.Div([
+                dash_interactive_graphviz.DashInteractiveGraphviz(
+                    id="graph-with-slider", dot_source=''),
+            ]),
     ]),
 
-    html.Div([
-        dash_interactive_graphviz.DashInteractiveGraphviz(
-            id="graph-with-slider", dot_source=''),
-    ]),
 
     html.Div(id='final-window', style={'display': 'none'}),
+    html.Div(id='diff'),
 
     dcc.Interval(
                 id='check-similarity-finished',
@@ -78,18 +97,15 @@ layout = html.Div([
 
 @app.callback([Output('window-slider', 'min'),
                Output('window-slider', 'max'),
-               Output('window-slider', 'marks'),
                Output('window-slider', 'value')],
               [Input('final-window', 'children')])
-def update_slider(value):
-    if not value:
-        app.logger.error('Problema na geração dos modelos, não foi possível obter final-window')
-        return 0, 0, {0:{'label': '0'}}, 0
+def update_slider(final_window):
+    if not final_window:
+        app.logger.error('Final-window ainda não definida')
+        return 0, 0, 0
 
-    app.logger.info(f'Atualiza slider {value}')
-    mark = {str(w): str(w) for w in range(1, value+1)}
-
-    return 1, value, mark, 1
+    app.logger.info(f'Atualiza slider {final_window}')
+    return 1, final_window, 1
 
 
 @app.callback([Output('window-size', 'children'),
@@ -102,7 +118,7 @@ def update_slider(value):
 def update_output(n_clicks, input_window_size, window_type, window_unity, file):
     if file and input_window_size != '0':
         print(f'Usuário selecionou janela {window_type}-{window_unity} de tamanho {input_window_size} - arquivo {file}')
-        control.set_metrics_finished(False)
+        control.start_metrics_calculation()
         models = AnalyzeDrift(window_type, window_unity, int(input_window_size), file, control)
         window_count = models.generate_models()
 
@@ -129,11 +145,40 @@ def update_figure(window_value, window_size, file):
         div = 'Escolha uma opção de janelamento para gerar os modelos de processo'
     elif 'window-slider' in changed_id and window_value != 0:
         process_map = ModelAnalyzes.get_model(file, window_value)
-        div = 'Modelos de processo gerados para a opção escolhida'
+        recover = RecoverMetrics(file)
+        diff = recover.get_diff(window_value)
+        div = f'Modelos de processo gerados para a opção escolhida.'
+        if diff != '':
+            div += f' Diferenças: {diff}'
     return process_map, div
 
 
-@app.callback(Output('div-status-similarity', 'children'),
-              [Input('check-similarity-finished', 'n_intervals')])
-def update_metrics(n):
-    return f'Cálculo de métricas finalizado: {control.is_metrics_finished()}'
+@app.callback([Output('div-status-similarity', 'children'),
+               Output('window-slider', 'marks')],
+              Input('check-similarity-finished', 'n_intervals'),
+              [State('div-status-similarity', 'children'),
+               State('hidden-filename', 'children'),
+               State('final-window', 'children'),
+               State('window-slider', 'marks')])
+def update_metrics(n, value, file, final_window, mark):
+    if control.get_metrics_status() == MetricsStatus.FINISHED:
+        recover = RecoverMetrics(file)
+        windows = recover.get_window_candidates()
+        control.reset_metrics_calculation()
+        div = f'Cálculo de métricas finalizado.'
+        if windows is not None and len(windows) > 0:
+            for w in range(1, final_window + 1):
+                if w in windows:
+                    mark[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
+                else:
+                    mark[str(w)] = {'label': str(w)}
+    elif control.get_metrics_status() == MetricsStatus.STARTED:
+        div = 'Cálculo de métricas em andamento...'
+        mark = {str(w): str(w) for w in range(1, final_window + 1)}
+    else:
+        div = value
+
+    if mark is None:
+        mark = {0: {'label': '0'}}
+
+    return div, mark

@@ -1,4 +1,6 @@
 import os
+from threading import Thread
+
 from graphviz import Source
 from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
 from pm4py.visualization.dfg import visualizer as dfg_visualization

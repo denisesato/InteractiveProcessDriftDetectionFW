@@ -26,7 +26,7 @@ layout = [
 
 
 def show_file(filename):
-    max_lines = 200
+    max_lines = 50
     try:
         if '.csv' in filename:
             # Assume que é um arquivo CSV
