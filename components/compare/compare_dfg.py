@@ -150,7 +150,6 @@ class SimilarityMetrics:
         labels_g1 = [l.partition('(')[0] for l in nodes_g1]
         nodes_g2 = [n[1]['label'] for n in g2.nodes.data()]
         labels_g2 = [l.partition('(')[0] for l in nodes_g2]
-
         diff = set(labels_g1).symmetric_difference(set(labels_g2))
         inter = set(labels_g1).intersection(set(labels_g2))
         sim_metric = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
@@ -238,18 +237,23 @@ class RecoverMetrics:
             self.locks[m].release()
         candidates = set()
         for metric in self.metrics_info:
-            candidates.add(metric.window)
+            if metric.metric_value < 1:
+                candidates.add(metric.window)
         return candidates
 
-    def get_diff(self, window):
+    def get_metric_and_diff(self, window):
         for m in self.metrics:
             self.locks[m].acquire()
             file = open(self.filenames[m], "r")
             for line in file:
                 self.metrics_info.append(loads(line, ignore_comments=True))
             self.locks[m].release()
-        diff = ''
+        diff = set()
+        metric_mean = 0
         for metric in self.metrics_info:
             if metric.window == window:
-                diff += str(metric.diff) + ''
-        return diff
+                diff = diff.union(metric.diff)
+                metric_mean += metric.metric_value
+        # aqui depois vou ter que dividir pela quantidade de métricas escolhidas
+        metric_mean = metric_mean
+        return metric_mean, diff

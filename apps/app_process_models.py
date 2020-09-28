@@ -146,10 +146,10 @@ def update_figure(window_value, window_size, file):
     elif 'window-slider' in changed_id and window_value != 0:
         process_map = ModelAnalyzes.get_model(file, window_value)
         recover = RecoverMetrics(file)
-        diff = recover.get_diff(window_value)
+        metric_mean, diff = recover.get_metric_and_diff(window_value)
         div = f'Modelos de processo gerados para a opção escolhida.'
-        if diff != '':
-            div += f' Diferenças: {diff}'
+        if len(diff) > 0:
+            div += f' Métrica: {metric_mean} - Diferenças: {diff}'
     return process_map, div
 
 
@@ -166,12 +166,11 @@ def update_metrics(n, value, file, final_window, mark):
         windows = recover.get_window_candidates()
         control.reset_metrics_calculation()
         div = f'Cálculo de métricas finalizado.'
-        if windows is not None and len(windows) > 0:
-            for w in range(1, final_window + 1):
-                if w in windows:
-                    mark[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
-                else:
-                    mark[str(w)] = {'label': str(w)}
+        for w in range(1, final_window + 1):
+            if w in windows:
+                mark[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
+            else:
+                mark[str(w)] = {'label': str(w)}
     elif control.get_metrics_status() == MetricsStatus.STARTED:
         div = 'Cálculo de métricas em andamento...'
         mark = {str(w): str(w) for w in range(1, final_window + 1)}
