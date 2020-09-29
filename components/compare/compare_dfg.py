@@ -34,7 +34,7 @@ class ManageSimilarityMetrics:
         self.g2 = None
 
         # Aqui deve ser atualizado sempre que incluir métrica
-        self.metrics = ['nodes_similarity', 'edit_distance']
+        self.metrics = ['nodes_similarity', 'edges_similarity', 'edit_distance']
 
         # Para cada métrics deve ser criado um locker gerenciar acesso ao arquivo
         self.locks = {}
@@ -50,7 +50,7 @@ class ManageSimilarityMetrics:
         self.verify_files()
 
         # para gerenciar timeout de métrica
-        self.timeout = 60 # em segundos
+        self.timeout = 60  # em segundos
         self.time_started = time.time()
         self.running = True
         self.check_metrics_timeout()
@@ -103,6 +103,7 @@ class ManageSimilarityMetrics:
         # Calcula as métricas escolhidas e salva no arquivo
         # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics
         self.calculate_nodes_similarity(current_window)
+        self.calculate_edges_similarity(current_window)
         self.calculate_edit_distance(current_window)
 
     @threaded
@@ -115,7 +116,6 @@ class ManageSimilarityMetrics:
                 self.running = False
                 self.control.time_out_metrics_calculation()
         app.logger.error(f'Encerrando thread que monitora timeout so cálculo de métricas')
-
 
     @threaded
     def calculate_edit_distance(self, current_window):
@@ -131,18 +131,10 @@ class ManageSimilarityMetrics:
 
     @threaded
     def calculate_edges_similarity(self, current_window):
-        # rever
-        metric, diff = SimilarityMetrics.edges_similarity(self.g1, self.g2)
-        metrics_info = Metric(current_window, metric, diff)
+        metrics_info = EdgesSimilarityMetric(current_window, 'edges_similarity')
+        metrics_info.calculate(self.g1, self.g2)
         self.save_metrics(metrics_info, self.filenames['edges_similarity'], self.locks['edges_similarity'])
 
-    @threaded
-    def calculate_nodes_with_frequency_similarity(self, current_window):
-        # rever
-        metric, diff = SimilarityMetrics.nodes_with_frequency_similarity(self.g1, self.g2)
-        metrics_info = Metric(current_window, 'nodes_with_frequency_similarity', metric, diff)
-        self.save_metrics(metrics_info, self.filenames['nodes_with_frequency_similarity'],
-                          self.locks['nodes_with_frequency_similarity'])
 
     @threaded
     def save_metrics(self, metric, filename, lock):
@@ -202,61 +194,6 @@ class ManageSimilarityMetrics:
         return metrics
 
 
-class SimilarityMetrics:
-    @staticmethod
-    def nodes_similarity(g1, g2):
-        nodes_g1 = [n[1]['label'] for n in g1.nodes.data()]
-        labels_g1 = [l.partition('(')[0] for l in nodes_g1]
-        nodes_g2 = [n[1]['label'] for n in g2.nodes.data()]
-        labels_g2 = [l.partition('(')[0] for l in nodes_g2]
-        diff = set(labels_g1).symmetric_difference(set(labels_g2))
-        inter = set(labels_g1).intersection(set(labels_g2))
-        sim_metric = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
-        return sim_metric, diff
-
-    @staticmethod
-    def nodes_with_frequency_similarity(g1, g2):
-        nodes_g1 = [n[1]['label'] for n in g1.nodes.data()]
-        nodes_g2 = [n[1]['label'] for n in g2.nodes.data()]
-        diff = set(nodes_g1).symmetric_difference(set(nodes_g2))
-        inter = set(nodes_g1).intersection(set(nodes_g2))
-        sim_metric = 2 * len(inter) / (len(nodes_g1) + len(nodes_g2))
-        return sim_metric, diff
-
-    @staticmethod
-    def edges_similarity(g1, g2):
-        new_g1 = SimilarityMetrics.remove_frequencies_from_labels(g1)
-        new_g2 = SimilarityMetrics.remove_frequencies_from_labels(g2)
-
-        new_g1, new_g2 = SimilarityMetrics.remove_different_nodes(new_g1, new_g2)
-
-        diff = nx.difference(new_g1, new_g2)
-        for edge in diff.edges:
-            print(edge)
-        return 0
-
-    @staticmethod
-    def remove_frequencies_from_labels(g):
-        # Remove as frequências dos nós dos grafos
-        mapping = {}
-        for node in g.nodes.data():
-            old_label = node[1]['label']
-            new_label = old_label.partition('(')[0]
-            mapping[node[0]] = new_label
-        g_new = nx.relabel_nodes(g, mapping)
-        return g_new
-
-    @staticmethod
-    def remove_different_nodes(g1, g2):
-        metric, diff = SimilarityMetrics.nodes_similarity(g1, g2)
-        # se não houver nós diferentes já retorna os grafos
-        if metric == 1:
-            return g1, g2
-
-        # falta terminar
-        return g1, g2
-
-
 class Metric:
     def __init__(self, window, name):
         self.window = window
@@ -267,6 +204,7 @@ class Metric:
     def serialize(self):
         return dumps(self)
 
+    # retorna o grafo com os labels sem frequencia
     def remove_frequencies_from_labels(self, g):
         # Remove as frequências dos nós dos grafos
         mapping = {}
@@ -277,6 +215,24 @@ class Metric:
         g_new = nx.relabel_nodes(g, mapping)
         return g_new
 
+    # COM PROBLEMAS, RESOLVER
+    def remove_different_nodes(self, g1, g2):
+        nodes_to_remove = []
+        for l1 in g1.nodes:
+            if l1 not in g2.nodes:
+                nodes_to_remove.append(l1)
+        for remove in nodes_to_remove:
+            g1.remove_node(remove)
+
+        for l2 in g2.nodes:
+            if l2 not in g1.nodes:
+                nodes_to_remove.append(l2)
+        for remove in nodes_to_remove:
+            g2.remove_node(remove)
+
+        return g1, g2
+
+    # retorna o conjunto de labels sem as frequências
     def get_labels(self, g):
         nodes_g = [n[1]['label'] for n in g.nodes.data()]
         labels_g = [l.partition('(')[0] for l in nodes_g]
@@ -306,26 +262,44 @@ class EditDistanceMetric(Metric):
         return self.value > 0
 
     def calculate(self, g1, g2):
-        self.value = nx.graph_edit_distance(g1, g2)
+        new_g1 = super().remove_frequencies_from_labels(g1)
+        new_g2 = super().remove_frequencies_from_labels(g2)
+
+        # usar ou não timeout
+        # self.value = nx.graph_edit_distance(g1, g2, timeout=30)
+        self.value = nx.graph_edit_distance(new_g1, new_g2)
         self.diff = set()
 
 
-class RecoverMetrics:
-    def __init__(self, original_filename):
-        # Aqui deve ser atualizado sempre que incluir métrica
-        self.metrics = ['nodes_similarity', 'edit_distance']
-        self.metrics_info = []
+class EdgesSimilarityMetric(Metric):
+    def __init__(self, window, name):
+        super().__init__(window, name)
 
-        # Para cada métrics deve ser criado um locker gerenciar acesso ao arquivo
-        self.locks = {}
-        for m in self.metrics:
-            self.locks[m] = RLock()
+    def is_dissimilar(self):
+        return self.value < 1
 
-        # Define o caminho para os arquivos de métricas
-        # Será criado um arquivo para cada métrica implementada
-        self.original_filename = original_filename
-        self.metrics_path = os.path.join(Info.data_metrics_path, dfg_path)
-        self.filenames = {}
-        for metric in self.metrics:
-            self.filenames[metric] = os.path.join(self.metrics_path,
-                                                  get_metrics_filename(self.original_filename, metric))
+    def calculate(self, g1, g2):
+        new_g1 = super().remove_frequencies_from_labels(g1)
+        new_g2 = super().remove_frequencies_from_labels(g2)
+
+        # ISSO PODERÁ SER REMOVIDO DEPOIS
+        labels_g1 = super().get_labels(g1)
+        labels_g2 = super().get_labels(g2)
+        inter = set(labels_g1).intersection(set(labels_g2))
+        nodes_similarity = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
+        if nodes_similarity == 1:
+            # descomentar depois de resolver bug
+            # por enquanto só vai calcular diferença de arestas se os nós forem iguais
+            # new_g1, new_g2 = super().remove_different_nodes(new_g1, new_g2)
+            inter = set(new_g1.edges).intersection(set(new_g2.edges))
+
+            diff_graph = nx.symmetric_difference(new_g1, new_g2)
+            self.diff = set()
+            for e in diff_graph.edges:
+                self.diff.add(e)
+            self.value = 2 * len(inter) / (len(new_g1.edges) + len(new_g2.edges))
+        else:
+            # PODE SER REMOVIDO DEPOIS
+            # ADICIONADO SÓ PARA A INTERFACE NÃO BUSCAR A MÉTRICA
+            self.diff = set()
+            self.value = 1
