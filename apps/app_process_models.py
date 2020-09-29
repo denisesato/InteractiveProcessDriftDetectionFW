@@ -11,14 +11,16 @@ from components.compare.compare_dfg import RecoverMetrics
 
 
 class MetricsStatus:
-    PAUSED = 'PAUSED'
+    NOT_STARTED = 'NOT_STARTED'
+    IDLE = 'IDLE'
     STARTED = 'STARTED'
     FINISHED = 'FINISHED'
 
 
 class ControlMetrics:
     def __init__(self):
-        self.metrics_status = MetricsStatus.PAUSED
+        self.metrics_status = MetricsStatus.NOT_STARTED
+        self.metrics_manager = None
 
     def finish_metrics_calculation(self):
         self.metrics_status = MetricsStatus.FINISHED
@@ -27,13 +29,20 @@ class ControlMetrics:
         self.metrics_status = MetricsStatus.STARTED
 
     def reset_metrics_calculation(self):
-        self.metrics_status = MetricsStatus.PAUSED
+        self.metrics_status = MetricsStatus.IDLE
 
     def get_metrics_status(self):
         return self.metrics_status
 
+    def set_metrics_manager(self, metrics_manager):
+        self.metrics_manager = metrics_manager
+
+    def get_metrics_manager(self):
+        return self.metrics_manager
+
 
 control = ControlMetrics()
+
 
 layout = html.Div([
     html.Div([
@@ -66,6 +75,7 @@ layout = html.Div([
 
         html.Div(id='div-status-models'),
         html.Div(id='div-status-similarity'),
+        html.Div(id='div-similarity-metrics'),
     ]),
 
     html.Div([html.Div([
@@ -127,7 +137,8 @@ def update_output(n_clicks, input_window_size, window_type, window_unity, file):
 
 
 @app.callback([Output('graph-with-slider', 'dot_source'),
-               Output('div-status-models', 'children')],
+               Output('div-status-models', 'children'),
+               Output('div-similarity-metrics', 'children')],
               [Input('window-slider', 'value'),
                Input('final-window', 'children')],
                [State('hidden-filename', 'children')])
@@ -140,17 +151,20 @@ def update_figure(window_value, window_size, file):
           a->c->d
         }
         """
-    div = ''
+    div_status = ''
+    div_similarity = ''
     if 'final-window' in changed_id:
-        div = 'Escolha uma opção de janelamento para gerar os modelos de processo'
+        div_status = 'Escolha uma opção de janelamento para gerar os modelos de processo'
     elif 'window-slider' in changed_id and window_value != 0:
         process_map = ModelAnalyzes.get_model(file, window_value)
-        recover = RecoverMetrics(file)
-        metric_mean, diff = recover.get_metric_and_diff(window_value)
-        div = f'Modelos de processo gerados para a opção escolhida.'
-        if len(diff) > 0:
-            div += f' Métrica: {metric_mean} - Diferenças: {diff}'
-    return process_map, div
+        div_status = f'Modelos de processo gerados para a opção escolhida.'
+        if control.get_metrics_status() == MetricsStatus.IDLE:
+            metrics = control.get_metrics_manager().get_metrics_info(window_value)
+            for metric in metrics:
+                div_similarity += f'** Métrica [{metric.name}]: {metric.value} '
+                if len(metric.diff) > 0:
+                    div_similarity += f'- Diferenças: {metric.diff} '
+    return process_map, div_status, div_similarity
 
 
 @app.callback([Output('div-status-similarity', 'children'),
@@ -162,15 +176,14 @@ def update_figure(window_value, window_size, file):
                State('window-slider', 'marks')])
 def update_metrics(n, value, file, final_window, mark):
     if control.get_metrics_status() == MetricsStatus.FINISHED:
-        recover = RecoverMetrics(file)
-        windows = recover.get_window_candidates()
-        control.reset_metrics_calculation()
         div = f'Cálculo de métricas finalizado.'
+        windows = control.get_metrics_manager().get_window_candidates()
         for w in range(1, final_window + 1):
             if w in windows:
                 mark[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
             else:
                 mark[str(w)] = {'label': str(w)}
+        control.reset_metrics_calculation()
     elif control.get_metrics_status() == MetricsStatus.STARTED:
         div = 'Cálculo de métricas em andamento...'
         mark = {str(w): str(w) for w in range(1, final_window + 1)}

@@ -7,9 +7,9 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from datetime import datetime
 from datetime import timedelta
 
-from components.compare.compare_dfg import CalculateMetrics, RecoverMetrics
+from components.compare.compare_dfg import ManageSimilarityMetrics
 from components.info import Info
-from components.discovery.discovery_dfg import generate_dfg, get_dfg, get_dfg_filename
+from components.discovery.discovery_dfg import generate_dfg, get_dfg
 
 
 class WindowType:
@@ -56,15 +56,20 @@ class AnalyzeDrift:
             windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename, self.control)
 
             # verificando checkpoint de acordo com tamanho da janela
+            window_count = 0
+            metrics_manager = None
             if self.window_unity == WindowUnity.UNITY:
-                return windowing.apply_window_unit(event_data)
+                window_count, metrics_manager = windowing.apply_window_unit(event_data)
             elif self.window_unity == WindowUnity.HOUR:
-                return windowing.apply_window_time(event_data)
+                window_count, metrics_manager = windowing.apply_window_time(event_data)
             elif self.window_unity == WindowUnity.DAY:
-                return windowing.apply_window_day(event_data)
+                window_count, metrics_manager = windowing.apply_window_day(event_data)
             else:
                 print(f'Janelamento não implementado [{self.window_type}-{self.window_unity}].')
-                return 0
+
+            # armazena instância para o gerenciador de métricas
+            self.control.set_metrics_manager(metrics_manager)
+            return window_count
 
     # Função que importa os dados de evento de acordo com o tipo
     # do arquivo (CSV ou XES)
@@ -88,9 +93,8 @@ class ApplyWindowing:
         self.window_type = window_type
         self.window_size = window_size
         self.original_filename = original_filename
-        # instancia classe que gerencia cálculo de similaridade
-        # entre janelas
-        self.metrics = CalculateMetrics(original_filename, control)
+        # instancia classe que gerencia cálculo de similaridade entre janelas
+        self.metrics = ManageSimilarityMetrics(original_filename, control)
 
     def apply_window_unit(self, event_data):
         w_count = 1
@@ -109,7 +113,7 @@ class ApplyWindowing:
                 w_count += 1
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-        return w_count-1
+        return w_count-1, self.metrics
 
     def apply_window_time(self, event_data):
         w_count = 1
@@ -148,7 +152,7 @@ class ApplyWindowing:
 
                 # Atualiza timestamp inicial da próxima janela
                 initial_timestamp = datetime.timestamp(item['time:timestamp'])
-        return w_count-1
+        return w_count-1, self.metrics
 
     def apply_window_day(self, event_data):
         w_count = 1
@@ -192,7 +196,7 @@ class ApplyWindowing:
                 else:
                     print(f'Tipo de janela informado incorretamente: {self.window_type}.')
                 initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
-        return w_count-1
+        return w_count-1, self.metrics
 
     def new_window(self, event_data, initial_index, i, w_count):
         if self.window_type == WindowType.EVENT:

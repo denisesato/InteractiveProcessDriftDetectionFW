@@ -3,7 +3,6 @@ import os
 from threading import Thread, RLock
 
 import networkx as nx
-from networkx.drawing.nx_agraph import read_dot
 
 from app import app
 from components.dfg_definitions import get_dfg_filename, dfg_path, get_metrics_filename
@@ -20,7 +19,7 @@ def threaded(fn):
     return wrapper
 
 
-class CalculateMetrics:
+class ManageSimilarityMetrics:
 
     def __init__(self, original_filename, control):
         app.logger.info('**************************************************************************')
@@ -30,11 +29,11 @@ class CalculateMetrics:
         self.final_window = 0
         self.metrics_count = 0
         self.control = control
+        self.g1 = None
+        self.g2 = None
 
         # Aqui deve ser atualizado sempre que incluir métrica
-        # self.metrics = ['edit_distance', 'nodes_similarity', 'nodes_with_frequency_similarity']
-        # self.metrics = ['nodes_similarity', 'edges_similarity']
-        self.metrics = ['nodes_similarity']
+        self.metrics = ['nodes_similarity', 'edit_distance']
 
         # Para cada métrics deve ser criado um locker gerenciar acesso ao arquivo
         self.locks = {}
@@ -44,7 +43,7 @@ class CalculateMetrics:
         # Define o caminho para os arquivos de métricas
         # Será criado um arquivo para cada métrica implementada
         self.metrics_path = os.path.join(Info.data_metrics_path, dfg_path)
-        self.output_files = {}
+        self.filenames = {}
 
         # verifica os arquivos de métricas
         self.verify_files()
@@ -57,13 +56,19 @@ class CalculateMetrics:
             os.makedirs(self.metrics_path)
 
         for metric in self.metrics:
-            self.output_files[metric] = os.path.join(self.metrics_path,
-                                                     get_metrics_filename(self.original_filename, metric))
+            self.filenames[metric] = os.path.join(self.metrics_path,
+                                                  get_metrics_filename(self.original_filename, metric))
 
             # Se o arquivo já existe apaga, para salvar as novas métricas
             # para o janelamento escolhido
-            if os.path.exists(self.output_files[metric]):
-                os.remove(self.output_files[metric])
+            if os.path.exists(self.filenames[metric]):
+                app.logger.info(f'Apagando arquivo {self.filenames[metric]}')
+                os.remove(self.filenames[metric])
+
+            # Cria o arquivo
+            with open(self.filenames[metric], 'w') as fp:
+                pass
+            fp.close()
 
     def set_final_window(self, w):
         self.final_window = w
@@ -85,62 +90,95 @@ class CalculateMetrics:
                 app.logger.error(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file2}]')
 
         # Obtem os dois dfgs
-        g1 = read_dot(filename1)
-        g2 = read_dot(filename2)
+        self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
+        self.g2 = nx.drawing.nx_agraph.read_dot(filename2)
 
-        # Calcula novas métricas e adiciona no objeto
-        # Aqui deve conter as chamadas as métricas que foram definidas
-        # em self.metrics
-        self.calculate_nodes_similarity(current_window, g1, g2)
-        # self.calculate_edges_similarity(current_window, g1, g2)
-
-    @threaded
-    def calculate_edit_distance(self, current_window, g1, g2):
-        edit_distance = nx.edit_distance(g1, g2)
-        # app.logger.info(f'Graph edit distance entre janelas [{current_window - 1}]-[{current_window}]: {edit_distance}')
-        metrics_dict = {f'window[{current_window}]': edit_distance}
-        self.save_metrics(metrics_dict, self.output_files['edit_distance'], self.locks['edit_distance'])
+        # Calcula as métricas escolhidas e salva no arquivo
+        # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics
+        self.calculate_nodes_similarity(current_window)
+        self.calculate_edit_distance(current_window)
 
     @threaded
-    def calculate_nodes_similarity(self, current_window, g1, g2):
-        metric, diff = SimilarityMetrics.nodes_similarity(g1, g2)
-        # app.logger.info(f'Nodes similarity entre janelas [{current_window - 1}]-[{current_window}]: {metric}')
+    def calculate_edit_distance(self, current_window):
+        metrics_info = EditDistanceMetric(current_window, 'edit_distance')
+        metrics_info.calculate(self.g1, self.g2)
+        self.save_metrics(metrics_info, self.filenames['edit_distance'], self.locks['edit_distance'])
+
+    @threaded
+    def calculate_nodes_similarity(self, current_window):
+        metrics_info = NodesSimilarityMetric(current_window, 'nodes_similarity')
+        metrics_info.calculate(self.g1, self.g2)
+        self.save_metrics(metrics_info, self.filenames['nodes_similarity'], self.locks['nodes_similarity'])
+
+    @threaded
+    def calculate_edges_similarity(self, current_window):
+        # rever
+        metric, diff = SimilarityMetrics.edges_similarity(self.g1, self.g2)
         metrics_info = Metric(current_window, metric, diff)
-        self.save_metrics(metrics_info, self.output_files['nodes_similarity'], self.locks['nodes_similarity'])
+        self.save_metrics(metrics_info, self.filenames['edges_similarity'], self.locks['edges_similarity'])
 
     @threaded
-    def calculate_edges_similarity(self, current_window, g1, g2):
-        metric, diff = SimilarityMetrics.edges_similarity(g1, g2)
-        # app.logger.info(f'Edges similarity entre janelas [{current_window - 1}]-[{current_window}]: {metric}')
-        metrics_info = Metric(current_window, metric, diff)
-        self.save_metrics(metrics_info, self.output_files['edges_similarity'], self.locks['edges_similarity'])
-
-    @threaded
-    def calculate_nodes_with_frequency_similarity(self, current_window, g1, g2):
-        metric, diff = SimilarityMetrics.nodes_with_frequency_similarity(g1, g2)
-        # app.logger.info(f'Nodes with_frequency_similarity entre janelas [{current_window - 1}]-[{current_window}]: {metric}')
-        metrics_info = Metric(current_window, metric, diff)
-        self.save_metrics(metrics_info, self.output_files['nodes_with_frequency_similarity'],
+    def calculate_nodes_with_frequency_similarity(self, current_window):
+        # rever
+        metric, diff = SimilarityMetrics.nodes_with_frequency_similarity(self.g1, self.g2)
+        metrics_info = Metric(current_window, 'nodes_with_frequency_similarity', metric, diff)
+        self.save_metrics(metrics_info, self.filenames['nodes_with_frequency_similarity'],
                           self.locks['nodes_with_frequency_similarity'])
 
     @threaded
-    def save_metrics(self, metric, file, lock):
-        lock.acquire()
-        try:
-            # Atualiza arquivo com métricas
-            file = open(file, 'a+')
-            file.write(metric.serialize())
-            file.write('\n')
-            file.close()
-        finally:
+    def save_metrics(self, metric, filename, lock):
+        file = None
+        if metric.is_dissimilar():
+            lock.acquire()
+            try:
+                # Atualiza arquivo com métricas
+                file = open(filename, 'a+')
+                # app.logger.info(f'Abriu arquivo: {filename} para adicionar métricas')
+                file.write(metric.serialize())
+                file.write('\n')
+            finally:
+                if file:
+                    # app.logger.info(f'Fechou arquivo: {filename} para adicionar métricas')
+                    file.close()
+                self.metrics_count += 1
+                lock.release()
+        else:
             self.metrics_count += 1
-            lock.release()
 
         if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics)):
             app.logger.info('**************************************************************************')
             app.logger.info(f'*** Cálculo de métricas finalizado para arquivo {self.original_filename}')
             app.logger.info('**************************************************************************')
             self.control.finish_metrics_calculation()
+
+    def get_window_candidates(self):
+        candidates = set()
+        file = None
+        for m in self.metrics:
+            self.locks[m].acquire()
+            try:
+                file = open(self.filenames[m], "r")
+                for line in file:
+                    metrics_info = loads(line, ignore_comments=True)
+                    candidates.add(metrics_info.window)
+            finally:
+                if file:
+                    file.close()
+                self.locks[m].release()
+        return candidates
+
+    def get_metrics_info(self, window):
+        metrics = []
+        for m in self.metrics:
+            self.locks[m].acquire()
+            file = open(self.filenames[m], "r")
+            for line in file:
+                metric_read = loads(line, ignore_comments=True)
+                if metric_read.window == window:
+                    metrics.append(metric_read)
+                    break
+            self.locks[m].release()
+        return metrics
 
 
 class SimilarityMetrics:
@@ -199,19 +237,62 @@ class SimilarityMetrics:
 
 
 class Metric:
-    def __init__(self, window, value, diff):
+    def __init__(self, window, name):
         self.window = window
-        self.metric_value = value
-        self.diff = diff
+        self.name = name
+        self.diff = set()
+        self.value = 0
 
     def serialize(self):
         return dumps(self)
+
+    def remove_frequencies_from_labels(self, g):
+        # Remove as frequências dos nós dos grafos
+        mapping = {}
+        for node in g.nodes.data():
+            old_label = node[1]['label']
+            new_label = old_label.partition('(')[0]
+            mapping[node[0]] = new_label
+        g_new = nx.relabel_nodes(g, mapping)
+        return g_new
+
+    def get_labels(self, g):
+        nodes_g = [n[1]['label'] for n in g.nodes.data()]
+        labels_g = [l.partition('(')[0] for l in nodes_g]
+        return labels_g
+
+
+class NodesSimilarityMetric(Metric):
+    def __init__(self, window, name):
+        super().__init__(window, name)
+
+    def is_dissimilar(self):
+        return self.value < 1
+
+    def calculate(self, g1, g2):
+        labels_g1 = super().get_labels(g1)
+        labels_g2 = super().get_labels(g2)
+        self.diff = set(labels_g1).symmetric_difference(set(labels_g2))
+        inter = set(labels_g1).intersection(set(labels_g2))
+        self.value = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
+
+
+class EditDistanceMetric(Metric):
+    def __init__(self, window, name):
+        super().__init__(window, name)
+
+    def is_dissimilar(self):
+        return self.value > 0
+
+    def calculate(self, g1, g2):
+        self.value = nx.graph_edit_distance(g1, g2)
+        self.diff = set()
 
 
 class RecoverMetrics:
     def __init__(self, original_filename):
         # Aqui deve ser atualizado sempre que incluir métrica
-        self.metrics = ['nodes_similarity']
+        self.metrics = ['nodes_similarity', 'edit_distance']
         self.metrics_info = []
 
         # Para cada métrics deve ser criado um locker gerenciar acesso ao arquivo
@@ -227,33 +308,3 @@ class RecoverMetrics:
         for metric in self.metrics:
             self.filenames[metric] = os.path.join(self.metrics_path,
                                                   get_metrics_filename(self.original_filename, metric))
-
-    def get_window_candidates(self):
-        for m in self.metrics:
-            self.locks[m].acquire()
-            file = open(self.filenames[m], "r")
-            for line in file:
-                self.metrics_info.append(loads(line, ignore_comments=True))
-            self.locks[m].release()
-        candidates = set()
-        for metric in self.metrics_info:
-            if metric.metric_value < 1:
-                candidates.add(metric.window)
-        return candidates
-
-    def get_metric_and_diff(self, window):
-        for m in self.metrics:
-            self.locks[m].acquire()
-            file = open(self.filenames[m], "r")
-            for line in file:
-                self.metrics_info.append(loads(line, ignore_comments=True))
-            self.locks[m].release()
-        diff = set()
-        metric_mean = 0
-        for metric in self.metrics_info:
-            if metric.window == window:
-                diff = diff.union(metric.diff)
-                metric_mean += metric.metric_value
-        # aqui depois vou ter que dividir pela quantidade de métricas escolhidas
-        metric_mean = metric_mean
-        return metric_mean, diff
