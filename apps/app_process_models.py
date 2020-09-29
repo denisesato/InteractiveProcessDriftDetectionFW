@@ -3,11 +3,9 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
-from json_tricks import dumps, loads
 
 from app import app
 from components.apply_window import WindowUnity, WindowType, AnalyzeDrift, ModelAnalyzes
-from components.compare.compare_dfg import RecoverMetrics
 
 
 class MetricsStatus:
@@ -15,6 +13,7 @@ class MetricsStatus:
     IDLE = 'IDLE'
     STARTED = 'STARTED'
     FINISHED = 'FINISHED'
+    TIMEOUT = 'TIMEOUT'
 
 
 class ControlMetrics:
@@ -30,6 +29,9 @@ class ControlMetrics:
 
     def reset_metrics_calculation(self):
         self.metrics_status = MetricsStatus.IDLE
+
+    def time_out_metrics_calculation(self):
+        self.metrics_status = MetricsStatus.TIMEOUT
 
     def get_metrics_status(self):
         return self.metrics_status
@@ -175,8 +177,11 @@ def update_figure(window_value, window_size, file):
                State('final-window', 'children'),
                State('window-slider', 'marks')])
 def update_metrics(n, value, file, final_window, mark):
-    if control.get_metrics_status() == MetricsStatus.FINISHED:
-        div = f'Cálculo de métricas finalizado.'
+    if control.get_metrics_status() == MetricsStatus.FINISHED or control.get_metrics_status() == MetricsStatus.TIMEOUT:
+        if control.get_metrics_status() == MetricsStatus.FINISHED:
+            div = f'Cálculo de métricas finalizado.'
+        elif control.get_metrics_status() == MetricsStatus.TIMEOUT:
+            div = f'Cálculo de métricas finalizado por TIMEOUT. Algumas métricas não serão apresentadas...'
         windows = control.get_metrics_manager().get_window_candidates()
         for w in range(1, final_window + 1):
             if w in windows:

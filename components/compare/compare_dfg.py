@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from threading import Thread, RLock
 
 import networkx as nx
@@ -47,6 +48,12 @@ class ManageSimilarityMetrics:
 
         # verifica os arquivos de métricas
         self.verify_files()
+
+        # para gerenciar timeout de métrica
+        self.timeout = 60 # em segundos
+        self.time_started = time.time()
+        self.running = True
+        self.check_metrics_timeout()
 
     # Organiza a estrutura de arquivos para que as métricas novas sejam armazenadas corretamente
     def verify_files(self):
@@ -99,6 +106,18 @@ class ManageSimilarityMetrics:
         self.calculate_edit_distance(current_window)
 
     @threaded
+    def check_metrics_timeout(self):
+        app.logger.error(f'Iniciando thread que monitora timeout so cálculo de métricas')
+        while self.running:
+            calculated_timeout = self.time_started + self.timeout
+            if time.time() > calculated_timeout:
+                app.logger.error(f'Timeout calculando métricas ')
+                self.running = False
+                self.control.time_out_metrics_calculation()
+        app.logger.error(f'Encerrando thread que monitora timeout so cálculo de métricas')
+
+
+    @threaded
     def calculate_edit_distance(self, current_window):
         metrics_info = EditDistanceMetric(current_window, 'edit_distance')
         metrics_info.calculate(self.g1, self.g2)
@@ -145,10 +164,12 @@ class ManageSimilarityMetrics:
         else:
             self.metrics_count += 1
 
+        app.logger.info(f'METRICS COUNT: {self.metrics_count}')
         if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics)):
             app.logger.info('**************************************************************************')
-            app.logger.info(f'*** Cálculo de métricas finalizado para arquivo {self.original_filename}')
+            app.logger.info(f'*** Cálculo da métrica finalizado para arquivo {self.original_filename}')
             app.logger.info('**************************************************************************')
+            self.running = False
             self.control.finish_metrics_calculation()
 
     def get_window_candidates(self):
