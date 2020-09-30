@@ -108,14 +108,14 @@ class ManageSimilarityMetrics:
 
     @threaded
     def check_metrics_timeout(self):
-        app.logger.error(f'Iniciando thread que monitora timeout so cálculo de métricas')
+        app.logger.error(f'Iniciando thread que monitora timeout o cálculo de métricas')
         while self.running:
             calculated_timeout = self.time_started + self.timeout
             if time.time() > calculated_timeout:
                 app.logger.error(f'Timeout calculando métricas ')
                 self.running = False
                 self.control.time_out_metrics_calculation()
-        app.logger.error(f'Encerrando thread que monitora timeout so cálculo de métricas')
+        app.logger.error(f'Encerrando thread que monitora timeout o cálculo de métricas')
 
     @threaded
     def calculate_edit_distance(self, current_window):
