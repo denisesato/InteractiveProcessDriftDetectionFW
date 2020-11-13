@@ -34,7 +34,8 @@ class ManageSimilarityMetrics:
         self.g2 = None
 
         # Aqui deve ser atualizado sempre que incluir métrica
-        self.metrics = ['nodes_similarity', 'edges_similarity', 'edit_distance']
+        #self.metrics = ['nodes_similarity', 'edges_similarity', 'edit_distance']
+        self.metrics = ['nodes_similarity', 'edges_similarity']
 
         # Para cada métrics deve ser criado um locker gerenciar acesso ao arquivo
         self.locks = {}
@@ -104,7 +105,7 @@ class ManageSimilarityMetrics:
         # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics
         self.calculate_nodes_similarity(current_window)
         self.calculate_edges_similarity(current_window)
-        self.calculate_edit_distance(current_window)
+        #self.calculate_edit_distance(current_window)
 
     @threaded
     def check_metrics_timeout(self):

@@ -1,4 +1,5 @@
 import os
+from threading import Thread
 
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
@@ -10,6 +11,15 @@ from datetime import timedelta
 from components.compare.compare_dfg import ManageSimilarityMetrics
 from components.info import Info
 from components.discovery.discovery_dfg import generate_dfg, get_dfg
+
+
+def threaded(fn):
+    def wrapper(*args, **kwargs):
+        thread = Thread(target=fn, args=args, kwargs=kwargs)
+        thread.start()
+        return thread
+
+    return wrapper
 
 
 class WindowType:
@@ -95,9 +105,9 @@ class ApplyWindowing:
         self.original_filename = original_filename
         # instancia classe que gerencia cálculo de similaridade entre janelas
         self.metrics = ManageSimilarityMetrics(original_filename, control)
+        self.window_count = 0
 
     def apply_window_unit(self, event_data):
-        w_count = 1
         initial_index = 0
         for i, item in enumerate(event_data):
             # window checkpoint
@@ -105,18 +115,15 @@ class ApplyWindowing:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
-                    self.metrics.set_final_window(w_count)
+                    self.metrics.set_final_window(self.window_count+1)
 
-                self.new_window(event_data, initial_index, i, w_count)
+                self.new_window(event_data, initial_index, i)
 
-                # Incrementa janela
-                w_count += 1
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-        return w_count-1, self.metrics
+        return self.window_count, self.metrics
 
     def apply_window_time(self, event_data):
-        w_count = 1
         initial_index = 0
         for i, item in enumerate(event_data):
             # obtém o timestamp atual
@@ -137,25 +144,23 @@ class ApplyWindowing:
             time_difference = actual_timestamp - initial_timestamp
             # converte para horas
             time_difference = time_difference / 1000 / 60 / 60
+
             if time_difference > self.window_size or i == len(event_data) - 1:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
-                    self.metrics.set_final_window(w_count)
+                    self.metrics.set_final_window(self.window_count+1)
 
-                self.new_window(event_data, initial_index, i, w_count)
+                self.new_window(event_data, initial_index, i)
 
-                # Incrementa janela
-                w_count += 1
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
 
                 # Atualiza timestamp inicial da próxima janela
                 initial_timestamp = datetime.timestamp(item['time:timestamp'])
-        return w_count-1, self.metrics
+        return self.window_count, self.metrics
 
     def apply_window_day(self, event_data):
-        w_count = 1
         initial_index = 0
         for i, item in enumerate(event_data):
             if self.window_type == WindowType.EVENT:
@@ -178,12 +183,10 @@ class ApplyWindowing:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
-                    self.metrics.set_final_window(w_count)
+                    self.metrics.set_final_window(self.window_count+1)
 
-                self.new_window(event_data, initial_index, i, w_count)
+                self.new_window(event_data, initial_index, i)
 
-                # Incrementa janela
-                w_count += 1
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
 
@@ -196,9 +199,12 @@ class ApplyWindowing:
                 else:
                     print(f'Tipo de janela informado incorretamente: {self.window_type}.')
                 initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
-        return w_count-1, self.metrics
+        return self.window_count, self.metrics
 
-    def new_window(self, event_data, initial_index, i, w_count):
+    def new_window(self, event_data, initial_index, i):
+        # Incrementa janela
+        self.window_count += 1
+
         if self.window_type == WindowType.EVENT:
             # Gera o sublog da janela
             window = EventStream(event_data[initial_index:i])
@@ -207,22 +213,18 @@ class ApplyWindowing:
             sub_log = event_data[initial_index:i]
         else:
             print(f'Tipo de janela informado incorretamente: {self.window_type}.')
-        self.execute_processes_for_window(sub_log, w_count)
+        self.execute_processes_for_window(sub_log)
 
-    def execute_processes_for_window(self, sub_log, w_count):
+    def execute_processes_for_window(self, sub_log):
         # Gera o modelo de processo e salva
-        generate_dfg(sub_log, self.original_filename, w_count)
+        generate_dfg(sub_log, self.original_filename, self.window_count)
 
         # Calcula métricas de similaridade com processo da janela anterior
-        if w_count > 1:
-            self.metrics.calculate_dfg_metrics(w_count)
+        if self.window_count > 1:
+            self.metrics.calculate_dfg_metrics(self.window_count)
 
 
 class ModelAnalyzes:
     @staticmethod
     def get_model(original_filename, window):
         return get_dfg(original_filename, window)
-
-    @staticmethod
-    def get_diff(original_filename, window):
-        return get_diff(original_filename, window)
