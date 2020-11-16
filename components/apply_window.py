@@ -10,16 +10,7 @@ from datetime import timedelta
 
 from components.compare.compare_dfg import ManageSimilarityMetrics
 from components.info import Info
-from components.discovery.discovery_dfg import generate_dfg, get_dfg
-
-
-def threaded(fn):
-    def wrapper(*args, **kwargs):
-        thread = Thread(target=fn, args=args, kwargs=kwargs)
-        thread.start()
-        return thread
-
-    return wrapper
+from components.discovery.discovery_dfg import generate_dfg
 
 
 class WindowType:
@@ -31,6 +22,15 @@ class WindowUnity:
     UNITY = 'ITEM'
     HOUR = 'HORA'
     DAY = 'DIA'
+
+
+def threaded(fn):
+    def wrapper(*args, **kwargs):
+        thread = Thread(target=fn, args=args, kwargs=kwargs)
+        thread.start()
+        return thread
+
+    return wrapper
 
 
 class AnalyzeDrift:
@@ -46,10 +46,10 @@ class AnalyzeDrift:
     def generate_models(self):
         # verificar se o diretório para salvar os modelos existe
         # caso contrário cria - ACHO QUE DEVE FICAR EM OUTRO LUGAR
-        if not os.path.exists(Info.data_models_path):
-            os.makedirs(Info.data_models_path)
+        if not os.path.exists(Info.get_data_models_path()):
+            os.makedirs(Info.get_data_models_path())
 
-        input = os.path.join(Info.data_input_path, self.original_filename)
+        input = os.path.join(Info.get_data_input_path(), self.original_filename)
         print(f'Analisando arquivo de entrada: {input}')
 
         # faz a importação do arquivo de acordo com o seu tipo (CSV ou XES)
@@ -223,8 +223,3 @@ class ApplyWindowing:
         if self.window_count > 1:
             self.metrics.calculate_dfg_metrics(self.window_count)
 
-
-class ModelAnalyzes:
-    @staticmethod
-    def get_model(original_filename, window):
-        return get_dfg(original_filename, window)

@@ -44,7 +44,7 @@ class ManageSimilarityMetrics:
 
         # Define o caminho para os arquivos de métricas
         # Será criado um arquivo para cada métrica implementada
-        self.metrics_path = os.path.join(Info.data_metrics_path, dfg_path)
+        self.metrics_path = os.path.join(Info.get_data_metrics_path(), dfg_path)
         self.filenames = {}
 
         # verifica os arquivos de métricas
@@ -85,17 +85,17 @@ class ManageSimilarityMetrics:
         map_file1 = get_dfg_filename(self.original_filename, current_window - 1)
         map_file2 = get_dfg_filename(self.original_filename, current_window)
 
-        filename1 = os.path.join(Info.data_models_path, dfg_path, self.original_filename, map_file1)
-        filename2 = os.path.join(Info.data_models_path, dfg_path, self.original_filename, map_file2)
+        filename1 = os.path.join(Info.get_data_models_path(), dfg_path, self.original_filename, map_file1)
+        filename2 = os.path.join(Info.get_data_models_path(), dfg_path, self.original_filename, map_file2)
 
         files_ok = False
         while not files_ok:
             if os.path.exists(filename1) and os.path.exists(filename2):
                 files_ok = True
             elif not os.path.exists(filename1):
-                app.logger.error(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file1}]')
+                print(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file1}]')
             if not os.path.exists(filename2):
-                app.logger.error(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file2}]')
+                print(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file2}]')
 
         # Obtem os dois dfgs
         self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
@@ -109,14 +109,14 @@ class ManageSimilarityMetrics:
 
     @threaded
     def check_metrics_timeout(self):
-        app.logger.error(f'Iniciando thread que monitora timeout o cálculo de métricas')
+        print(f'Iniciando thread que monitora timeout o cálculo de métricas')
         while self.running:
             calculated_timeout = self.time_started + self.timeout
             if time.time() > calculated_timeout:
-                app.logger.error(f'Timeout calculando métricas ')
+                print(f'Timeout calculando métricas ')
                 self.running = False
                 self.control.time_out_metrics_calculation()
-        app.logger.error(f'Encerrando thread que monitora timeout o cálculo de métricas')
+        print(f'Encerrando thread que monitora timeout o cálculo de métricas')
 
     @threaded
     def calculate_edit_distance(self, current_window):
@@ -135,7 +135,6 @@ class ManageSimilarityMetrics:
         metrics_info = EdgesSimilarityMetric(current_window, 'edges_similarity')
         metrics_info.calculate(self.g1, self.g2)
         self.save_metrics(metrics_info, self.filenames['edges_similarity'], self.locks['edges_similarity'])
-
 
     @threaded
     def save_metrics(self, metric, filename, lock):
@@ -157,11 +156,11 @@ class ManageSimilarityMetrics:
         else:
             self.metrics_count += 1
 
-        app.logger.info(f'METRICS COUNT: {self.metrics_count}')
+        #print(f'METRICS COUNT: {self.metrics_count}')
         if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics)):
-            app.logger.info('**************************************************************************')
-            app.logger.info(f'*** Cálculo da métrica finalizado para arquivo {self.original_filename}')
-            app.logger.info('**************************************************************************')
+            print('**************************************************************************')
+            print(f'*** Cálculo da métrica finalizado para arquivo {self.original_filename}')
+            print('**************************************************************************')
             self.running = False
             self.control.finish_metrics_calculation()
 

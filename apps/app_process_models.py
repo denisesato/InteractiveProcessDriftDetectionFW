@@ -5,58 +5,11 @@ import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
 
 from app import app
-from components.apply_window import WindowUnity, WindowType, AnalyzeDrift, ModelAnalyzes
+from components.apply_window import WindowUnity, WindowType
+from components.ippd_fw import ProcessingStatus
+from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
-
-class ProcessingStatus:
-    NOT_STARTED = 'NOT_STARTED'
-    IDLE = 'IDLE'
-    STARTED = 'STARTED'
-    FINISHED = 'FINISHED'
-    TIMEOUT = 'TIMEOUT'
-
-
-class Control:
-    def __init__(self):
-        self.metrics_status = ProcessingStatus.NOT_STARTED
-        self.mining_status = ProcessingStatus.NOT_STARTED
-        self.metrics_manager = None
-
-    def finish_mining_calculation(self):
-        self.mining_status = ProcessingStatus.FINISHED
-
-    def start_mining_calculation(self):
-        self.mining_status = ProcessingStatus.STARTED
-
-    def reset_mining_calculation(self):
-        self.mining_status = ProcessingStatus.IDLE
-
-    def get_mining_status(self):
-        return self.mining_status
-
-    def finish_metrics_calculation(self):
-        self.metrics_status = ProcessingStatus.FINISHED
-
-    def start_metrics_calculation(self):
-        self.metrics_status = ProcessingStatus.STARTED
-
-    def reset_metrics_calculation(self):
-        self.metrics_status = ProcessingStatus.IDLE
-
-    def time_out_metrics_calculation(self):
-        self.metrics_status = ProcessingStatus.TIMEOUT
-
-    def get_metrics_status(self):
-        return self.metrics_status
-
-    def set_metrics_manager(self, metrics_manager):
-        self.metrics_manager = metrics_manager
-
-    def get_metrics_manager(self):
-        return self.metrics_manager
-
-
-control = Control()
+framework = InteractiveProcessDriftDetectionFW()
 
 layout = html.Div([
     html.Div([
@@ -146,13 +99,7 @@ def update_slider(final_window):
                State('hidden-filename', 'children')])
 def update_output(n_clicks, input_window_size, window_type, window_unity, file):
     if file != '' and input_window_size != '0':
-        print(f'Usuário selecionou janela {window_type}-{window_unity} de tamanho {input_window_size} - arquivo {file}')
-        control.start_metrics_calculation()
-        control.start_mining_calculation()
-        models = AnalyzeDrift(window_type, window_unity, int(input_window_size), file, control)
-        window_count = models.generate_models()
-        control.finish_mining_calculation()
-        print(f'Retornando final-window [{window_count}]')
+        window_count = framework.run(file, window_type, window_unity, int(input_window_size))
         return input_window_size, window_count
     return 0, 0
 
@@ -171,13 +118,12 @@ def update_figure(window_value, file):
           a->c->d
         }
         """
-    div_status = ''
     div_similarity = ''
     div_differences = ''
     if 'window-slider' in changed_id and window_value != 0:
-        process_map = ModelAnalyzes.get_model(file, window_value)
-        if control.get_metrics_status() == ProcessingStatus.IDLE:
-            metrics = control.get_metrics_manager().get_metrics_info(window_value)
+        process_map = InteractiveProcessDriftDetectionFW.get_model(file, window_value)
+        if framework.get_metrics_status() == ProcessingStatus.IDLE:
+            metrics = framework.get_metrics_manager().get_metrics_info(window_value)
             for metric in metrics:
                 div_similarity += f'Similarity metric [{metric.name}]: {metric.value}'
                 if len(metric.diff) > 0:
@@ -189,42 +135,21 @@ def update_figure(window_value, file):
                Output('div-status-mining', 'children'),
                Output('window-slider', 'marks')],
               Input('check-similarity-finished', 'n_intervals'),
-              [State('div-status-similarity', 'children'),
-               State('div-status-mining', 'children'),
-               State('final-window', 'children'),
-               State('window-slider', 'marks')])
-def update_metrics(n, div_similarity_status, div_status_mining, final_window, marks):
+              State('window-slider', 'marks'))
+def update_metrics(n, marks):
     ###################################################################
     # ATUALIZA INTERFACE EM RELAÇÃO A MINERAÇÃO DE PROCESSOS
     ###################################################################
-    if control.get_mining_status() == ProcessingStatus.FINISHED:
-        control.reset_mining_calculation()
-        div_status_mining = f'Finished to mine the process models.'
-    elif control.get_mining_status() == ProcessingStatus.STARTED:
-        div_status_mining = f'Mining process models...'
+    div_status_mining = framework.check_status_mining()
 
     ###################################################################
     # ATUALIZA INTERFACE EM RELAÇÃO AO CÁLCULO DE MÉTRICAS
     ###################################################################
-
-    # verifica se o cálculo de métricas terminou normalmente ou por timeout
-    # e também verifica se a mineração de processos já atualizou o final-window
-    # para evitar que as marcas do slider fiquem sem marcações (final-window = 0)
-    if (control.get_metrics_status() == ProcessingStatus.FINISHED or control.get_metrics_status() == ProcessingStatus.TIMEOUT) \
-            and final_window:
-        if control.get_metrics_status() == ProcessingStatus.FINISHED:
-            div_similarity_status = f'Similarity metrics calculated.'
-        elif control.get_metrics_status() == ProcessingStatus.TIMEOUT:
-            div_similarity_status = f'TIMEOUT in the similarity metrics calculation. Some metrics will not be presented...'
-        windows = control.get_metrics_manager().get_window_candidates()
-        for w in range(1, final_window + 1):
-            if w in windows:
-                marks[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
-            else:
-                marks[str(w)] = {'label': str(w)}
-        control.reset_metrics_calculation()
-    elif control.get_metrics_status() == ProcessingStatus.STARTED:
-        div_similarity_status = 'Calculating similarity metrics...'
-        marks = {str(w): str(w) for w in range(1, final_window + 1)}
+    div_similarity_status, windows, windows_with_drifts = framework.check_status_similarity_metrics()
+    for w in range(1, framework.get_windows() + 1):
+        if windows_with_drifts and w in windows_with_drifts:
+            marks[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
+        else:
+            marks[str(w)] = {'label': str(w)}
 
     return div_similarity_status, div_status_mining, marks

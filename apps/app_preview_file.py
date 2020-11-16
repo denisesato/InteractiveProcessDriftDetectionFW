@@ -64,5 +64,5 @@ def show_file(filename):
               [Input('hidden-filename', 'children')])
 def display_page(file):
     if file:
-        filename = os.path.join(Info.data_input_path, file)
+        filename = os.path.join(Info.get_data_input_path(), file)
         return f'/apps/app_process_models?filename={file}', show_file(filename)

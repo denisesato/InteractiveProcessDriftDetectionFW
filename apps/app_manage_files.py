@@ -35,7 +35,7 @@ layout = html.Div([
 
 def save_file(content, filename):
     # Salva arquivo carregado
-    uploaded_file = os.path.join(Info.data_input_path,
+    uploaded_file = os.path.join(Info.get_data_input_path(),
                                  f'{filename}')
     print(f'Salvando arquivo: {uploaded_file}')
 
@@ -46,8 +46,8 @@ def save_file(content, filename):
 
 def list_uploaded_files():
     files = []
-    for filename in os.listdir(Info.data_input_path):
-        path = os.path.join(Info.data_input_path, filename)
+    for filename in os.listdir(Info.get_data_input_path()):
+        path = os.path.join(Info.get_data_input_path(), filename)
         if os.path.isfile(path):
             files.append(filename)
     return files
