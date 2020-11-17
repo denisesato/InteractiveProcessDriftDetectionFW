@@ -44,13 +44,16 @@ def main():
     print(f'Event log: {event_log}')
     print('----------------------------------------------')
 
-    framework = InteractiveProcessDriftDetectionFW(pathname=pathname)
+    framework = InteractiveProcessDriftDetectionFW(script=True)
     window_count = framework.run(event_log, win_type, win_unity, win_size)
     print(f'Mined [{window_count}] process models')
 
     while framework.get_status_running():
-        print('Waiting for IPDD finish similarity metrics...')
+        print(f'Waiting for IPDD finish similarity metrics...')
         time.sleep(1000)
+
+    window_candidates = framework.get_windows_candidates()
+    print(f'IPDD detect drift in windows {window_candidates}')
 
     return
 

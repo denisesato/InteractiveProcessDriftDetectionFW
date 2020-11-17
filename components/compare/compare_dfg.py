@@ -1,4 +1,3 @@
-import json
 import os
 import time
 from threading import Thread, RLock
@@ -7,7 +6,6 @@ import networkx as nx
 
 from app import app
 from components.dfg_definitions import get_dfg_filename, dfg_path, get_metrics_filename
-from components.info import Info
 from json_tricks import dumps, loads
 
 
@@ -21,15 +19,16 @@ def threaded(fn):
 
 
 class ManageSimilarityMetrics:
-
-    def __init__(self, original_filename, control):
-        app.logger.info('**************************************************************************')
-        app.logger.info(f'*** Cálculo de métricas iniciado para arquivo {original_filename}')
-        app.logger.info('**************************************************************************')
+    def __init__(self, original_filename, control, models_path, metrics_path):
+        app.logger.info(f'**************************************************************************')
+        app.logger.info(f'*** Similarity metrics calculation started for the file {original_filename}')
+        app.logger.info(f'**************************************************************************')
         self.original_filename = original_filename
         self.final_window = 0
         self.metrics_count = 0
         self.control = control
+        self.metrics_path = metrics_path
+        self.models_path = models_path
         self.g1 = None
         self.g2 = None
 
@@ -44,7 +43,11 @@ class ManageSimilarityMetrics:
 
         # Define o caminho para os arquivos de métricas
         # Será criado um arquivo para cada métrica implementada
-        self.metrics_path = os.path.join(Info.get_data_metrics_path(), dfg_path)
+        self.metrics_path = os.path.join(self.metrics_path, dfg_path)
+        # Verifica se o diretório existe, caso contrário cria
+        if not os.path.exists(self.metrics_path):
+            os.makedirs(self.metrics_path)
+
         self.filenames = {}
 
         # verifica os arquivos de métricas
@@ -58,11 +61,6 @@ class ManageSimilarityMetrics:
 
     # Organiza a estrutura de arquivos para que as métricas novas sejam armazenadas corretamente
     def verify_files(self):
-        # Verifica se o diretório para salvar as metricas existe
-        # caso contrário cria
-        if not os.path.exists(self.metrics_path):
-            os.makedirs(self.metrics_path)
-
         for metric in self.metrics:
             self.filenames[metric] = os.path.join(self.metrics_path,
                                                   get_metrics_filename(self.original_filename, metric))
@@ -70,11 +68,11 @@ class ManageSimilarityMetrics:
             # Se o arquivo já existe apaga, para salvar as novas métricas
             # para o janelamento escolhido
             if os.path.exists(self.filenames[metric]):
-                app.logger.info(f'Apagando arquivo {self.filenames[metric]}')
+                app.logger.info(f'Deleting file {self.filenames[metric]}')
                 os.remove(self.filenames[metric])
 
             # Cria o arquivo
-            with open(self.filenames[metric], 'w') as fp:
+            with open(self.filenames[metric], 'w+') as fp:
                 pass
             fp.close()
 
@@ -85,17 +83,17 @@ class ManageSimilarityMetrics:
         map_file1 = get_dfg_filename(self.original_filename, current_window - 1)
         map_file2 = get_dfg_filename(self.original_filename, current_window)
 
-        filename1 = os.path.join(Info.get_data_models_path(), dfg_path, self.original_filename, map_file1)
-        filename2 = os.path.join(Info.get_data_models_path(), dfg_path, self.original_filename, map_file2)
+        filename1 = os.path.join(self.models_path, dfg_path, self.original_filename, map_file1)
+        filename2 = os.path.join(self.models_path, dfg_path, self.original_filename, map_file2)
 
         files_ok = False
         while not files_ok:
             if os.path.exists(filename1) and os.path.exists(filename2):
                 files_ok = True
             elif not os.path.exists(filename1):
-                print(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file1}]')
+                print(f'[compare_dfg]: Problem trying to access dfg from file [{map_file1}]')
             if not os.path.exists(filename2):
-                print(f'[compare_dfg]: Não foi possível acessar dfg do arquivo [{map_file2}]')
+                print(f'[compare_dfg]: Problem trying to access dfg from file [{map_file2}]')
 
         # Obtem os dois dfgs
         self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
@@ -109,14 +107,14 @@ class ManageSimilarityMetrics:
 
     @threaded
     def check_metrics_timeout(self):
-        print(f'Iniciando thread que monitora timeout o cálculo de métricas')
+        print(f'\nStarting monitoring thread for similarity metrics calculation')
         while self.running:
             calculated_timeout = self.time_started + self.timeout
             if time.time() > calculated_timeout:
-                print(f'Timeout calculando métricas ')
+                print(f'Timeout reached')
                 self.running = False
                 self.control.time_out_metrics_calculation()
-        print(f'Encerrando thread que monitora timeout o cálculo de métricas')
+        print(f'\nFinishing monitoring thread for metrics calculation\n')
 
     @threaded
     def calculate_edit_distance(self, current_window):
@@ -144,12 +142,10 @@ class ManageSimilarityMetrics:
             try:
                 # Atualiza arquivo com métricas
                 file = open(filename, 'a+')
-                # app.logger.info(f'Abriu arquivo: {filename} para adicionar métricas')
                 file.write(metric.serialize())
                 file.write('\n')
             finally:
                 if file:
-                    # app.logger.info(f'Fechou arquivo: {filename} para adicionar métricas')
                     file.close()
                 self.metrics_count += 1
                 lock.release()
@@ -158,9 +154,9 @@ class ManageSimilarityMetrics:
 
         #print(f'METRICS COUNT: {self.metrics_count}')
         if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics)):
-            print('**************************************************************************')
-            print(f'*** Cálculo da métrica finalizado para arquivo {self.original_filename}')
-            print('**************************************************************************')
+            print(f'**************************************************************************')
+            print(f'*** Similarity metrics calculation finished for the file {self.original_filename}')
+            print(f'**************************************************************************')
             self.running = False
             self.control.finish_metrics_calculation()
 
@@ -178,6 +174,17 @@ class ManageSimilarityMetrics:
                 if file:
                     file.close()
                 self.locks[m].release()
+
+        filename = os.path.join(self.metrics_path, self.original_filename + '_drift_windows.txt')
+        print(f'Saving drift windows: {filename}')
+        file_drift_windows = None
+        try:
+            file_drift_windows = open(filename, 'w+')
+            file_drift_windows.write(str(candidates))
+        finally:
+            if file_drift_windows:
+                file_drift_windows.close()
+
         return candidates
 
     def get_metrics_info(self, window):

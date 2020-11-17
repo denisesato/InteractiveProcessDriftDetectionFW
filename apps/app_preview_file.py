@@ -8,8 +8,9 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 from app import app
-from components.info import Info
+from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
+framework = InteractiveProcessDriftDetectionFW()
 
 layout = [
         html.Div([
@@ -64,5 +65,5 @@ def show_file(filename):
               [Input('hidden-filename', 'children')])
 def display_page(file):
     if file:
-        filename = os.path.join(Info.get_data_input_path(), file)
+        filename = os.path.join(framework.get_input_path(), file)
         return f'/apps/app_process_models?filename={file}', show_file(filename)

@@ -9,7 +9,6 @@ from datetime import datetime
 from datetime import timedelta
 
 from components.compare.compare_dfg import ManageSimilarityMetrics
-from components.info import Info
 from components.discovery.discovery_dfg import generate_dfg
 
 
@@ -34,23 +33,22 @@ def threaded(fn):
 
 
 class AnalyzeDrift:
-    def __init__(self, window_type, window_unity, window_size, original_filename, control):
+    def __init__(self, window_type, window_unity, window_size, original_filename, control, input_path,
+                 models_path, metrics_path):
         self.original_filename = original_filename
         self.window_type = window_type
         self.window_unity = window_unity
         self.window_size = window_size
         self.control = control
+        self.input_path = input_path
+        self.models_path = models_path
+        self.metrics_path = metrics_path
 
     # Método que gera todos os modelos de processos para o tipo de janelamento
     # escolhido e dispara o processo para calcular as métricas entre janelas
     def generate_models(self):
-        # verificar se o diretório para salvar os modelos existe
-        # caso contrário cria - ACHO QUE DEVE FICAR EM OUTRO LUGAR
-        if not os.path.exists(Info.get_data_models_path()):
-            os.makedirs(Info.get_data_models_path())
-
-        input = os.path.join(Info.get_data_input_path(), self.original_filename)
-        print(f'Analisando arquivo de entrada: {input}')
+        input = os.path.join(self.input_path, self.original_filename)
+        print(f'Reading input file: {input}')
 
         # faz a importação do arquivo de acordo com o seu tipo (CSV ou XES)
         # importa o log
@@ -63,7 +61,8 @@ class AnalyzeDrift:
                 event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
 
             # classe que implementa as diferentes opções de janelamento
-            windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename, self.control)
+            windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename, self.control,
+                                       self.input_path, self.models_path, self.metrics_path)
 
             # verificando checkpoint de acordo com tamanho da janela
             window_count = 0
@@ -75,7 +74,7 @@ class AnalyzeDrift:
             elif self.window_unity == WindowUnity.DAY:
                 window_count, metrics_manager = windowing.apply_window_day(event_data)
             else:
-                print(f'Janelamento não implementado [{self.window_type}-{self.window_unity}].')
+                print(f'Windowing strategy not implemented [{self.window_type}-{self.window_unity}].')
 
             # armazena instância para o gerenciador de métricas
             self.control.set_metrics_manager(metrics_manager)
@@ -94,17 +93,19 @@ class AnalyzeDrift:
                 event_data = xes_importer.apply(filename)
         except Exception as e:
             print(e)
-            print(f'Problemas ao carregar o arquivo {filename}')
+            print(f'Error trying to access the file {filename}')
         return event_data
 
 
 class ApplyWindowing:
-    def __init__(self, window_type, window_size, original_filename, control):
+    def __init__(self, window_type, window_size, original_filename, control, input_path, models_path, metrics_path):
         self.window_type = window_type
         self.window_size = window_size
         self.original_filename = original_filename
+        self.input_path = input_path
         # instancia classe que gerencia cálculo de similaridade entre janelas
-        self.metrics = ManageSimilarityMetrics(original_filename, control)
+        self.metrics = ManageSimilarityMetrics(original_filename, control, models_path, metrics_path)
+        self.models_path = models_path
         self.window_count = 0
 
     def apply_window_unit(self, event_data):
@@ -133,7 +134,7 @@ class ApplyWindowing:
                 # utiliza a data do primeiro evento do trace
                 timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
             else:
-                print(f'Tipo de janela informado incorretamente: {self.window_type}.')
+                print(f'Incorrect window type: {self.window_type}.')
 
             # inicializa o timestamp inicial da primeira janela
             if initial_index == 0:
@@ -169,7 +170,7 @@ class ApplyWindowing:
                 # utiliza a data do primeiro evento do trace
                 date_aux = item[0]['time:timestamp']
             else:
-                print(f'Tipo de janela informado incorretamente: {self.window_type}.')
+                print(f'Incorrect window type: {self.window_type}.')
 
             # inicializa o dia inicial da primeira janela
             if initial_index == 0:
@@ -197,7 +198,7 @@ class ApplyWindowing:
                     # utiliza a data do primeiro evento do trace
                     date_aux = item[0]['time:timestamp']
                 else:
-                    print(f'Tipo de janela informado incorretamente: {self.window_type}.')
+                    print(f'Incorrect window type: {self.window_type}.')
                 initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
         return self.window_count, self.metrics
 
@@ -212,12 +213,12 @@ class ApplyWindowing:
         elif self.window_type == WindowType.TRACE:
             sub_log = event_data[initial_index:i]
         else:
-            print(f'Tipo de janela informado incorretamente: {self.window_type}.')
+            print(f'Incorrect window type: {self.window_type}.')
         self.execute_processes_for_window(sub_log)
 
     def execute_processes_for_window(self, sub_log):
         # Gera o modelo de processo e salva
-        generate_dfg(sub_log, self.original_filename, self.window_count)
+        generate_dfg(sub_log, self.models_path, self.original_filename, self.window_count)
 
         # Calcula métricas de similaridade com processo da janela anterior
         if self.window_count > 1:

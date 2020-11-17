@@ -121,7 +121,7 @@ def update_figure(window_value, file):
     div_similarity = ''
     div_differences = ''
     if 'window-slider' in changed_id and window_value != 0:
-        process_map = InteractiveProcessDriftDetectionFW.get_model(file, window_value)
+        process_map = framework.get_model(file, window_value)
         if framework.get_metrics_status() == ProcessingStatus.IDLE:
             metrics = framework.get_metrics_manager().get_metrics_info(window_value)
             for metric in metrics:

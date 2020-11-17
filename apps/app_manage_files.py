@@ -5,7 +5,9 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 from app import app
-from components.info import Info
+from components.ippd_fw import InteractiveProcessDriftDetectionFW
+
+framework = InteractiveProcessDriftDetectionFW()
 
 layout = html.Div([
     html.H3('Carregue o arquivo contendo os dados de eventos:'),
@@ -35,9 +37,9 @@ layout = html.Div([
 
 def save_file(content, filename):
     # Salva arquivo carregado
-    uploaded_file = os.path.join(Info.get_data_input_path(),
+    uploaded_file = os.path.join(framework.get_input_path(),
                                  f'{filename}')
-    print(f'Salvando arquivo: {uploaded_file}')
+    print(f'Saving event log in the input data directory: {uploaded_file}')
 
     data = content.encode("utf8").split(b";base64,")[1]
     with open(uploaded_file, "wb") as fp:
@@ -46,8 +48,8 @@ def save_file(content, filename):
 
 def list_uploaded_files():
     files = []
-    for filename in os.listdir(Info.get_data_input_path()):
-        path = os.path.join(Info.get_data_input_path(), filename)
+    for filename in os.listdir(framework.get_input_path()):
+        path = os.path.join(framework.get_input_path(), filename)
         if os.path.isfile(path):
             files.append(filename)
     return files
