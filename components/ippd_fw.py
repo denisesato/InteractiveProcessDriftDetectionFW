@@ -103,6 +103,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def __init__(self, script=False) -> None:
         self.control = Control()
         self.windows = 0
+        self.initial_indexes = []
         self.windows_with_drifts = None
         self.status_mining = ''
         self.status_similarity_metrics = ''
@@ -147,9 +148,10 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.control.start_mining_calculation()
         models = AnalyzeDrift(win_type, win_unity, win_size, event_log, self.control,
                               self.input_path, self.models_path, self.metrics_path)
-        self.windows = models.generate_models()
+        self.windows, self.initial_indexes = models.generate_models()
         self.control.finish_mining_calculation()
-        print(f'Windows generated: [{self.windows}]')
+        print(f'*** Initial indexes for generated windows: {self.initial_indexes}')
+        print(f'*** Number of windows: [{self.windows}]')
         return self.windows
 
     def copy_event_log(self, event_log):
@@ -161,6 +163,9 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def get_windows(self):
         return self.windows
+
+    def get_initial_indexes(self):
+        return self.initial_indexes
 
     def get_metrics_status(self):
         return self.control.get_metrics_status()

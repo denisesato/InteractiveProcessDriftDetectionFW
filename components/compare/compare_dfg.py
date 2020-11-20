@@ -223,19 +223,12 @@ class Metric:
         return g_new
 
     # COM PROBLEMAS, RESOLVER
-    def remove_different_nodes(self, g1, g2):
-        nodes_to_remove = []
-        for l1 in g1.nodes:
-            if l1 not in g2.nodes:
-                nodes_to_remove.append(l1)
-        for remove in nodes_to_remove:
-            g1.remove_node(remove)
-
-        for l2 in g2.nodes:
-            if l2 not in g1.nodes:
-                nodes_to_remove.append(l2)
-        for remove in nodes_to_remove:
-            g2.remove_node(remove)
+    def remove_different_nodes(self, g1, g2, diff_nodes):
+        for node in diff_nodes:
+            if node in g1.nodes:
+                g1.remove_node(node)
+            if node in g2.nodes:
+                g2.remove_node(node)
 
         return g1, g2
 
@@ -249,6 +242,7 @@ class Metric:
 class NodesSimilarityMetric(Metric):
     def __init__(self, window, name):
         super().__init__(window, name)
+        self.diff_nodes = set()
 
     def is_dissimilar(self):
         return self.value < 1
@@ -257,6 +251,8 @@ class NodesSimilarityMetric(Metric):
         labels_g1 = super().get_labels(g1)
         labels_g2 = super().get_labels(g2)
         self.diff = set(labels_g1).symmetric_difference(set(labels_g2))
+        # utilizado para remover nós diferentes para poder calcular edges similarity
+        self.diff_nodes = set(g1.nodes()).symmetric_difference(set(g2.nodes()))
         inter = set(labels_g1).intersection(set(labels_g2))
         self.value = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
 
@@ -289,24 +285,20 @@ class EdgesSimilarityMetric(Metric):
         new_g1 = super().remove_frequencies_from_labels(g1)
         new_g2 = super().remove_frequencies_from_labels(g2)
 
-        # ISSO PODERÁ SER REMOVIDO DEPOIS
-        labels_g1 = super().get_labels(g1)
-        labels_g2 = super().get_labels(g2)
-        inter = set(labels_g1).intersection(set(labels_g2))
-        nodes_similarity = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
-        if nodes_similarity == 1:
-            # descomentar depois de resolver bug
-            # por enquanto só vai calcular diferença de arestas se os nós forem iguais
-            # new_g1, new_g2 = super().remove_different_nodes(new_g1, new_g2)
-            inter = set(new_g1.edges).intersection(set(new_g2.edges))
+        # calcula similaridade entre nós primeiro
+        nodes_metric = NodesSimilarityMetric(self.window, self.name)
+        nodes_metric.calculate(new_g1, new_g2)
 
-            diff_graph = nx.symmetric_difference(new_g1, new_g2)
-            self.diff = set()
-            for e in diff_graph.edges:
-                self.diff.add(e)
-            self.value = 2 * len(inter) / (len(new_g1.edges) + len(new_g2.edges))
-        else:
-            # PODE SER REMOVIDO DEPOIS
-            # ADICIONADO SÓ PARA A INTERFACE NÃO BUSCAR A MÉTRICA
-            self.diff = set()
-            self.value = 1
+        # verifica a métrica de similaridade de nós
+        # se for diferente de 1 devemos primeiro remover os nós
+        # diferentes para depois calcular a métrica de similaridade de arestas
+        if nodes_metric.value < 1:
+            new_g1, new_g2 = self.remove_different_nodes(new_g1, new_g2, nodes_metric.diff_nodes)
+
+        # calcula a métrics de similaridade entre arestas
+        inter = set(new_g1.edges).intersection(set(new_g2.edges))
+        diff_graph = nx.symmetric_difference(new_g1, new_g2)
+        self.diff = set()
+        for e in diff_graph.edges:
+            self.diff.add(e)
+        self.value = 2 * len(inter) / (len(new_g1.edges) + len(new_g2.edges))

@@ -27,8 +27,8 @@ layout = html.Div([
         dcc.RadioItems(id='window-unity',
                        options=[
                            {'label': 'Unity', 'value': WindowUnity.UNITY},
-                           {'label': 'Hours', 'value': WindowUnity.HOUR},
-                           {'label': 'Days', 'value': WindowUnity.DAY}
+                          # {'label': 'Hours', 'value': WindowUnity.HOUR},
+                          # {'label': 'Days', 'value': WindowUnity.DAY}
                        ],
                        value=WindowUnity.UNITY,
                        labelStyle={'display': 'inline-block'}
@@ -41,8 +41,8 @@ layout = html.Div([
         html.Div(dcc.Link('Back to file management', href='/apps/app_manage_files')),
 
         html.Hr(),
-        html.Div(id='div-status-mining'),
-        html.Div(id='div-status-similarity'),
+        html.Div(id='div-status-mining', children=''),
+        html.Div(id='div-status-similarity', children=''),
 
         html.Hr(),
         html.Div(id='div-similarity-metrics-value'),
@@ -127,7 +127,7 @@ def update_figure(window_value, file):
             for metric in metrics:
                 div_similarity += f'Similarity metric [{metric.name}]: {metric.value}'
                 if len(metric.diff) > 0:
-                    div_differences += f'Differences: {metric.diff} '
+                    div_differences += f'Differences [{metric.name}]: {metric.diff}'
     return process_map, div_similarity, div_differences
 
 
@@ -147,9 +147,10 @@ def update_metrics(n, marks):
     ###################################################################
     div_similarity_status, windows, windows_with_drifts = framework.check_status_similarity_metrics()
     for w in range(1, framework.get_windows() + 1):
+        label = str(w) + '|' + str(framework.get_initial_indexes()[(w-1)])
         if windows_with_drifts and w in windows_with_drifts:
-            marks[str(w)] = {'label': str(w), 'style': {'color': '#f50'}}
+            marks[str(w)] = {'label': label, 'style': {'color': '#f50'}}
         else:
-            marks[str(w)] = {'label': str(w)}
+            marks[str(w)] = {'label': label}
 
     return div_similarity_status, div_status_mining, marks

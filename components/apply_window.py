@@ -68,17 +68,17 @@ class AnalyzeDrift:
             window_count = 0
             metrics_manager = None
             if self.window_unity == WindowUnity.UNITY:
-                window_count, metrics_manager = windowing.apply_window_unit(event_data)
+                window_count, metrics_manager, initial_indexes = windowing.apply_window_unit(event_data)
             elif self.window_unity == WindowUnity.HOUR:
-                window_count, metrics_manager = windowing.apply_window_time(event_data)
+                window_count, metrics_manager, initial_indexes = windowing.apply_window_time(event_data)
             elif self.window_unity == WindowUnity.DAY:
-                window_count, metrics_manager = windowing.apply_window_day(event_data)
+                window_count, metrics_manager, initial_indexes = windowing.apply_window_day(event_data)
             else:
                 print(f'Windowing strategy not implemented [{self.window_type}-{self.window_unity}].')
 
             # armazena instância para o gerenciador de métricas
             self.control.set_metrics_manager(metrics_manager)
-            return window_count
+            return window_count, initial_indexes
 
     # Função que importa os dados de evento de acordo com o tipo
     # do arquivo (CSV ou XES)
@@ -110,6 +110,7 @@ class ApplyWindowing:
 
     def apply_window_unit(self, event_data):
         initial_index = 0
+        initial_indexes = [initial_index]
         for i, item in enumerate(event_data):
             # window checkpoint
             if (i > 0 and i % self.window_size == 0) or i == len(event_data) - 1:
@@ -122,10 +123,13 @@ class ApplyWindowing:
 
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-        return self.window_count, self.metrics
+                initial_indexes.append(initial_index)
+
+        return self.window_count, self.metrics, initial_indexes
 
     def apply_window_time(self, event_data):
         initial_index = 0
+        initial_indexes = [initial_index]
         for i, item in enumerate(event_data):
             # obtém o timestamp atual
             if self.window_type == WindowType.EVENT:
@@ -156,13 +160,15 @@ class ApplyWindowing:
 
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
+                initial_indexes.append(initial_index)
 
                 # Atualiza timestamp inicial da próxima janela
                 initial_timestamp = datetime.timestamp(item['time:timestamp'])
-        return self.window_count, self.metrics
+        return self.window_count, self.metrics, initial_indexes
 
     def apply_window_day(self, event_data):
         initial_index = 0
+        initial_indexes = [initial_index]
         for i, item in enumerate(event_data):
             if self.window_type == WindowType.EVENT:
                 date_aux = item['time:timestamp']
@@ -190,6 +196,7 @@ class ApplyWindowing:
 
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
+                initial_indexes.append(initial_index)
 
                 # Atualiza dia inicial da próxima janela
                 if self.window_type == WindowType.EVENT:
@@ -200,7 +207,7 @@ class ApplyWindowing:
                 else:
                     print(f'Incorrect window type: {self.window_type}.')
                 initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
-        return self.window_count, self.metrics
+        return self.window_count, self.metrics, initial_indexes
 
     def new_window(self, event_data, initial_index, i):
         # Incrementa janela
