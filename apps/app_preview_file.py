@@ -38,7 +38,8 @@ def show_file(filename):
         elif '.xes' in filename:
             # Assume que é um arquivo XES
             variant = xes_importer.Variants.ITERPARSE
-            parameters = {variant.value.Parameters.MAX_TRACES: max_lines}
+            parameters = {variant.value.Parameters.MAX_TRACES: max_lines,
+                          variant.value.Parameters.TIMESTAMP_SORT: True}
             log = xes_importer.apply(filename, variant=variant, parameters=parameters)
 
             df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)

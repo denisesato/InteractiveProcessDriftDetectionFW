@@ -5,6 +5,7 @@ import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.log import EventStream
 from pm4py.objects.log.importer.xes import importer as xes_importer
+from pm4py.objects.log.util import dataframe_utils
 from datetime import datetime
 from datetime import timedelta
 
@@ -87,10 +88,16 @@ class AnalyzeDrift:
         try:
             if 'csv' in filename:
                 log_csv = pd.read_csv(filename, sep=';')
+                log_csv = dataframe_utils.convert_timestamp_columns_in_df(log_csv)
+                # por enquanto considera a coluna de timestamp fixa - COM NOME timestamp
+                # TODO alterar depois permitindo que o usuário escolha
+                log_csv = log_csv.sort_values('timestamp')
                 event_data = log_converter.apply(log_csv)
             elif 'xes' in filename:
-                # Assume that the user uploaded an excel file
-                event_data = xes_importer.apply(filename)
+                variant = xes_importer.Variants.ITERPARSE
+                # para ordenar por timestamp
+                parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
+                event_data = xes_importer.apply(filename, variant=variant, parameters=parameters)
         except Exception as e:
             print(e)
             print(f'Error trying to access the file {filename}')

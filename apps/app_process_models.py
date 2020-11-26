@@ -27,8 +27,8 @@ layout = html.Div([
         dcc.RadioItems(id='window-unity',
                        options=[
                            {'label': 'Unity', 'value': WindowUnity.UNITY},
-                          # {'label': 'Hours', 'value': WindowUnity.HOUR},
-                          # {'label': 'Days', 'value': WindowUnity.DAY}
+                           {'label': 'Hours', 'value': WindowUnity.HOUR},
+                           {'label': 'Days', 'value': WindowUnity.DAY}
                        ],
                        value=WindowUnity.UNITY,
                        labelStyle={'display': 'inline-block'}
