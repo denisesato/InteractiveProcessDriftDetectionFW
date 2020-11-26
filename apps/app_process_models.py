@@ -18,7 +18,7 @@ layout = html.Div([
         dcc.RadioItems(id='window-type',
                        options=[
                            {'label': 'Stream of Traces', 'value': WindowType.TRACE},
-                           # {'label': 'Event Stream', 'value': WindowType.EVENT},
+                           {'label': 'Event Stream', 'value': WindowType.EVENT},
                        ],
                        value=WindowType.TRACE,
                        labelStyle={'display': 'inline-block'}

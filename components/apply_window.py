@@ -6,7 +6,7 @@ from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.log import EventStream
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import dataframe_utils
-from datetime import datetime
+from datetime import datetime, date
 from datetime import timedelta
 
 from components.compare.compare_dfg import ManageSimilarityMetrics
@@ -117,8 +117,21 @@ class ApplyWindowing:
 
     def apply_window_unit(self, event_data):
         initial_index = 0
-        initial_indexes = [initial_index]
+        initial_indexes = []
+        initial_trace_index = None
         for i, item in enumerate(event_data):
+            # obtém o case id atual
+            if self.window_type == WindowType.EVENT:
+                case_id = item['case:concept:name']
+            elif self.window_type == WindowType.TRACE:
+                case_id = item.attributes['concept:name']
+            else:
+                print(f'Incorrect window type: {self.window_type}.')
+
+            # inicializa o case id inicial da primeira janela
+            if i == 0:
+                initial_trace_index = case_id
+
             # window checkpoint
             if (i > 0 and i % self.window_size == 0) or i == len(event_data) - 1:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
@@ -130,26 +143,31 @@ class ApplyWindowing:
 
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-                initial_indexes.append(initial_index)
+                initial_indexes.append(initial_trace_index)
+                initial_trace_index = case_id
 
         return self.window_count, self.metrics, initial_indexes
 
     def apply_window_time(self, event_data):
         initial_index = 0
-        initial_indexes = [initial_index]
+        initial_indexes = []
+        initial_trace_index = None
         for i, item in enumerate(event_data):
             # obtém o timestamp atual
             if self.window_type == WindowType.EVENT:
                 timestamp_aux = datetime.timestamp(item['time:timestamp'])
+                case_id = item['case:concept:name']
             elif self.window_type == WindowType.TRACE:
                 # utiliza a data do primeiro evento do trace
                 timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
+                case_id = item.attributes['concept:name']
             else:
                 print(f'Incorrect window type: {self.window_type}.')
 
             # inicializa o timestamp inicial da primeira janela
-            if initial_index == 0:
+            if i == 0:
                 initial_timestamp = timestamp_aux
+                initial_trace_index = case_id
 
             # window checkpoint
             actual_timestamp = timestamp_aux
@@ -167,33 +185,39 @@ class ApplyWindowing:
 
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-                initial_indexes.append(initial_index)
+                initial_indexes.append(initial_trace_index)
 
-                # Atualiza timestamp inicial da próxima janela
-                initial_timestamp = datetime.timestamp(item['time:timestamp'])
+                # Atualiza case_id e timestamp inicial da próxima janela
+                initial_trace_index = case_id
+                initial_timestamp = timestamp_aux
         return self.window_count, self.metrics, initial_indexes
 
     def apply_window_day(self, event_data):
         initial_index = 0
-        initial_indexes = [initial_index]
+        initial_indexes = []
+        initial_trace_index = None
         for i, item in enumerate(event_data):
             if self.window_type == WindowType.EVENT:
                 date_aux = item['time:timestamp']
+                case_id = item['case:concept:name']
             elif self.window_type == WindowType.TRACE:
                 # utiliza a data do primeiro evento do trace
                 date_aux = item[0]['time:timestamp']
+                case_id = item.attributes['concept:name']
             else:
                 print(f'Incorrect window type: {self.window_type}.')
 
+
             # inicializa o dia inicial da primeira janela
-            if initial_index == 0:
-                initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
+            if i == 0:
+                initial_day = date(date_aux.year, date_aux.month, date_aux.day)
+                initial_trace_index = case_id
 
             # window checkpoint
-            actual_day = datetime(date_aux.year, date_aux.month, date_aux.day)
+            actual_day = date(date_aux.year, date_aux.month, date_aux.day)
             day_difference = actual_day - initial_day
 
-            if day_difference > timedelta(days=self.window_size) or i == len(event_data) - 1:
+            if day_difference.days > self.window_size or i == len(event_data) - 1:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
                     i += 1
@@ -203,17 +227,11 @@ class ApplyWindowing:
 
                 # Atualiza índice inicial da próxima janela
                 initial_index = i
-                initial_indexes.append(initial_index)
+                initial_indexes.append(initial_trace_index)
 
-                # Atualiza dia inicial da próxima janela
-                if self.window_type == WindowType.EVENT:
-                    date_aux = item['time:timestamp']
-                elif self.window_type == WindowType.TRACE:
-                    # utiliza a data do primeiro evento do trace
-                    date_aux = item[0]['time:timestamp']
-                else:
-                    print(f'Incorrect window type: {self.window_type}.')
-                initial_day = datetime(date_aux.year, date_aux.month, date_aux.day)
+                # Atualiza case_id e dia inicial da próxima janela
+                initial_trace_index = case_id
+                initial_day = date(date_aux.year, date_aux.month, date_aux.day)
         return self.window_count, self.metrics, initial_indexes
 
     def new_window(self, event_data, initial_index, i):
