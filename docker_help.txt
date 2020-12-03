@@ -4,11 +4,11 @@ Build the image:
 - Goto project directory
 - Execute the command (replace <version> value)
 
-docker build --tag icdd:<version> .
+docker build --tag ipdd:<version> .
 
 Run the container:
 - Execute the command
 
-docker run -d -p 8050:8050 --name icdd icdd:<version>
+docker run -d -p 8050:8050 --name ipdd ipdd:<version>
 
 

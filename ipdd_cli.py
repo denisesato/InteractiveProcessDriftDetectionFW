@@ -18,6 +18,8 @@ def main():
                         help='Window size: numeric value indicating the total of window unities for each window')
     parser.add_argument('--event_log', '-l', required=True,
                         help='Event log: path and name of the event log using XES format')
+    parser.add_argument('--real_drifts', '-rd', type=int, nargs='+',
+                        help='Real drifts: list of trace indexes from real drifts, used for evaluation')
 
     args = parser.parse_args()
     if args.win_type == 't':
@@ -34,6 +36,7 @@ def main():
 
     win_size = args.win_size
     event_log = args.event_log
+    real_drifts = args.real_drifts
 
     print('----------------------------------------------')
     print('Configuration:')
@@ -42,6 +45,8 @@ def main():
     print(f'Window unity: {win_unity}')
     print(f'Window size: {win_size}')
     print(f'Event log: {event_log}')
+    if args.real_drifts is not None:
+        print(f'Real drifts: {real_drifts}')
     print('----------------------------------------------')
 
     framework = InteractiveProcessDriftDetectionFW(script=True)
@@ -54,6 +59,10 @@ def main():
 
     window_candidates = framework.get_windows_candidates()
     print(f'IPDD detect drift in windows {window_candidates}')
+
+    if args.real_drifts is not None:
+        f_score = framework.evaluate(window_candidates, real_drifts, win_size)
+        print(f'IPDD f-score: {f_score}')
 
     return
 

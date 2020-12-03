@@ -3,10 +3,14 @@ import time
 from threading import Thread, RLock
 
 import networkx as nx
+from graphviz import Source
+from pygraphviz import AGraph
 
 from app import app
 from components.dfg_definitions import get_dfg_filename, dfg_path, get_metrics_filename
 from json_tricks import dumps, loads
+
+# import win32file as wfile
 
 
 def threaded(fn):
@@ -29,8 +33,6 @@ class ManageSimilarityMetrics:
         self.control = control
         self.metrics_path = metrics_path
         self.models_path = models_path
-        self.g1 = None
-        self.g2 = None
 
         # Aqui deve ser atualizado sempre que incluir métrica
         #self.metrics = ['nodes_similarity', 'edges_similarity', 'edit_distance']
@@ -59,6 +61,12 @@ class ManageSimilarityMetrics:
         self.running = True
         self.check_metrics_timeout()
 
+        # alterando quantidade de arquivos abertos para verificar se problema muda
+        #print("OLD max open files: {0:d}".format(wfile._getmaxstdio()))
+        # 513 is enough for your original code (170 graphs), but you can set it up to 8192
+        #wfile._setmaxstdio(5)  # !!! COMMENT this line to reproduce the crash !!!
+        #print("NEW max open files: {0:d}".format(wfile._getmaxstdio()))
+
     # Organiza a estrutura de arquivos para que as métricas novas sejam armazenadas corretamente
     def verify_files(self):
         for metric in self.metrics:
@@ -83,8 +91,9 @@ class ManageSimilarityMetrics:
         map_file1 = get_dfg_filename(self.original_filename, current_window - 1)
         map_file2 = get_dfg_filename(self.original_filename, current_window)
 
-        filename1 = os.path.join(self.models_path, dfg_path, self.original_filename, map_file1)
-        filename2 = os.path.join(self.models_path, dfg_path, self.original_filename, map_file2)
+        dfg_models_path = os.path.join(self.models_path, dfg_path, self.original_filename)
+        filename1 = os.path.join(dfg_models_path, map_file1)
+        filename2 = os.path.join(dfg_models_path, map_file2)
 
         files_ok = False
         while not files_ok:
@@ -96,13 +105,62 @@ class ManageSimilarityMetrics:
                 print(f'[compare_dfg]: Problem trying to access dfg from file [{map_file2}]')
 
         # Obtem os dois dfgs
-        self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
-        self.g2 = nx.drawing.nx_agraph.read_dot(filename2)
+        print(f'Reading file: {[filename1]} ...')
+        graph1 = nx.drawing.nx_agraph.read_dot(filename1)
+
+        # várias tentativas frustradas
+        #gviz1 = Source.from_file(filename=map_file1, directory=dfg_models_path)
+        #f = open(filename1, 'rt')
+        #graph_data = f.read()
+        #f.close()
+        #graph = pydot.graph_from_dot_data(graph_data)
+        #graphs = pydot.graph_from_dot_data(gviz1.source)
+        #G = AGraph()
+        #G.read(filename1)
+        #G.close()
+        #G.from_string(gviz1.source)
+        #G.clear()
+        #G.close()
+        #graph1 = nx.nx_agraph.from_agraph(G)
+
+        #graph1 = nx.nx_agraph.read_dot(filename1)
+        #graph1 = nx.nx_pydot.read_dot(filename1)
+        # self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
+        #G = AGraph(string=graph_data)
+        #graph1 = nx.nx_agraph.from_agraph(G)
+        #G.clear()
+        #G.close()
+        #G = None
+
+        #gviz1.close()
+        #self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
+
+        print(f'Reading file: {[filename2]} ...')
+        graph2 = nx.drawing.nx_agraph.read_dot(filename2)
+
+        # várias tentativas frustradas
+        #f = open(filename2, 'rt')
+        #graph_data = f.read()
+        #f.close()
+        #G = AGraph(string=graph_data)
+        #graph2 = nx.nx_agraph.from_agraph(G)
+        #G = AGraph(filename2)
+        #self.g2 = nx.nx_agraph.from_agraph(G)
+        #G.clear()
+        #G.close()
+        #G = None
+
+        #gviz2 = Source.from_file(filename=map_file2, directory=dfg_models_path)
+        #self.g2 = nx.nx_pydot.from_pydot(pydot.graph_from_dot_data(gviz2.source))
+        #gviz2.close()
+        #self.g2 = nx.drawing.nx_agraph.read_dot(filename2)
+
+        print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
 
         # Calcula as métricas escolhidas e salva no arquivo
         # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics
-        self.calculate_nodes_similarity(current_window)
-        self.calculate_edges_similarity(current_window)
+        self.calculate_nodes_similarity(current_window, graph1, graph2)
+        self.calculate_edges_similarity(current_window, graph1, graph2)
         #self.calculate_edit_distance(current_window)
 
     @threaded
@@ -117,21 +175,21 @@ class ManageSimilarityMetrics:
         print(f'\nFinishing monitoring thread for metrics calculation\n')
 
     @threaded
-    def calculate_edit_distance(self, current_window):
+    def calculate_edit_distance(self, current_window, g1, g2):
         metrics_info = EditDistanceMetric(current_window, 'edit_distance')
-        metrics_info.calculate(self.g1, self.g2)
+        metrics_info.calculate(g1, g2)
         self.save_metrics(metrics_info, self.filenames['edit_distance'], self.locks['edit_distance'])
 
     @threaded
-    def calculate_nodes_similarity(self, current_window):
+    def calculate_nodes_similarity(self, current_window, g1, g2):
         metrics_info = NodesSimilarityMetric(current_window, 'nodes_similarity')
-        metrics_info.calculate(self.g1, self.g2)
+        metrics_info.calculate(g1, g2)
         self.save_metrics(metrics_info, self.filenames['nodes_similarity'], self.locks['nodes_similarity'])
 
     @threaded
-    def calculate_edges_similarity(self, current_window):
+    def calculate_edges_similarity(self, current_window, g1, g2):
         metrics_info = EdgesSimilarityMetric(current_window, 'edges_similarity')
-        metrics_info.calculate(self.g1, self.g2)
+        metrics_info.calculate(g1, g2)
         self.save_metrics(metrics_info, self.filenames['edges_similarity'], self.locks['edges_similarity'])
 
     @threaded

@@ -5,8 +5,6 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get -y install graphviz-dev
 
-RUN python -m pip install --upgrade pip
-
 COPY requirements.txt /
 RUN pip install -r /requirements.txt
 

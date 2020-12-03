@@ -7,10 +7,10 @@ from pm4py.objects.log.log import EventStream
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import dataframe_utils
 from datetime import datetime, date
-from datetime import timedelta
 
 from components.compare.compare_dfg import ManageSimilarityMetrics
 from components.discovery.discovery_dfg import generate_dfg
+from components.dfg_definitions import dfg_path
 
 
 class WindowType:
@@ -136,6 +136,7 @@ class ApplyWindowing:
             if (i > 0 and i % self.window_size == 0) or i == len(event_data) - 1:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
+                    print(f'Analyzing final window...')
                     i += 1
                     self.metrics.set_final_window(self.window_count+1)
 
@@ -178,6 +179,7 @@ class ApplyWindowing:
             if time_difference > self.window_size or i == len(event_data) - 1:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
+                    print(f'Analyzing final window...')
                     i += 1
                     self.metrics.set_final_window(self.window_count+1)
 
@@ -207,7 +209,6 @@ class ApplyWindowing:
             else:
                 print(f'Incorrect window type: {self.window_type}.')
 
-
             # inicializa o dia inicial da primeira janela
             if i == 0:
                 initial_day = date(date_aux.year, date_aux.month, date_aux.day)
@@ -220,6 +221,7 @@ class ApplyWindowing:
             if day_difference.days > self.window_size or i == len(event_data) - 1:
                 # Se for o último evento ou trace incrementa o i para considerá-lo na janela
                 if i == len(event_data) - 1:
+                    print(f'Analyzing final window...')
                     i += 1
                     self.metrics.set_final_window(self.window_count+1)
 

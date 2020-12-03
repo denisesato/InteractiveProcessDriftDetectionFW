@@ -47,16 +47,36 @@ layout = html.Div([
         html.Hr(),
         html.Div(id='div-similarity-metrics-value'),
         html.Div(id='div-differences'),
+
+        dcc.Checklist(
+            id='check-to-evaluation-options',
+            options=[
+                {'label': 'Evaluate results', 'value': 'on'},
+            ],
+        ),
+
+        # Div que é apresentada se o usuário selecionar Evaluate results
+        html.Div(id='element-to-hide', children=[
+            html.Button(
+                id='submit-button-define-real-drifts',
+                n_clicks=0,
+                children='Add drift'),
+        ], style={'display': 'block'}
+        ),
+
+        html.Div(id='container-drifts', children=[html.Div()])
+
     ], className="three columns"),
 
-    html.Div([html.Div([
-        dcc.Slider(
-            id='window-slider',
-            step=None,
-            included=False,
-            marks={0: {'label': '0'}}
-        ),
-    ]),
+    html.Div([
+        html.Div([
+            dcc.Slider(
+                id='window-slider',
+                step=None,
+                included=False,
+                marks={0: {'label': '0'}}
+            ),
+        ]),
 
         html.Div([
             dash_interactive_graphviz.DashInteractiveGraphviz(
@@ -74,6 +94,31 @@ layout = html.Div([
             n_intervals=0
         )]),
 ])
+
+
+@app.callback(Output('container-drifts', 'children'),
+              [Input('submit-button-define-real-drifts', 'n_clicks')],
+              [State('container-drifts', 'children')])
+def add_new_component(n_clicks, div_children):
+    #add another compenent
+    print(f'div_children {div_children}')
+    placeholder = 'trace index'
+    new_component = dcc.Input(id="input-window-size", placeholder={placeholder})
+    if div_children is None:
+        div_children = []
+    modified_children = div_children.append(new_component)
+
+    return modified_children
+
+
+@app.callback(
+    Output(component_id='element-to-hide', component_property='style'),
+    [Input(component_id='check-to-evaluation-options', component_property='value')])
+def show_hide_element(visibility_state):
+    if visibility_state is not None and len(visibility_state) > 0 and visibility_state[0] == 'on':
+        return {'display': 'block'}
+    else:
+        return {'display': 'none'}
 
 
 @app.callback([Output('window-slider', 'min'),
@@ -147,7 +192,7 @@ def update_metrics(n, marks):
     ###################################################################
     div_similarity_status, windows, windows_with_drifts = framework.check_status_similarity_metrics()
     for w in range(1, framework.get_windows() + 1):
-        label = str(w) + '|' + str(framework.get_initial_indexes()[(w-1)])
+        label = str(w) + '|' + str(framework.get_initial_indexes()[(w - 1)])
         if windows_with_drifts and w in windows_with_drifts:
             marks[str(w)] = {'label': label, 'style': {'color': '#f50'}}
         else:

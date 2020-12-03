@@ -1,0 +1,1 @@
+python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250

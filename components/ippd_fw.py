@@ -6,6 +6,8 @@ from components.discovery.discovery_dfg import get_dfg
 from threading import Lock
 from pathlib import Path
 
+from components.evaluate.calculate_fscore import EvaluationMetric
+
 
 class ProcessingStatus:
     NOT_STARTED = 'NOT_STARTED'
@@ -160,6 +162,10 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         print(f'Copying event log to input_folder: {new_filepath}')
         shutil.copyfile(event_log, new_filepath)
         return log
+
+    def evaluate(self, windows_drifts, real_drifts, win_size):
+        metric = EvaluationMetric(real_drifts, windows_drifts, win_size)
+        return metric.calculate_fscore()
 
     def get_windows(self):
         return self.windows

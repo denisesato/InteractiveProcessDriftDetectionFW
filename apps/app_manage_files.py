@@ -10,13 +10,13 @@ from components.ippd_fw import InteractiveProcessDriftDetectionFW
 framework = InteractiveProcessDriftDetectionFW()
 
 layout = html.Div([
-    html.H3('Carregue o arquivo contendo os dados de eventos:'),
+    html.H3('Load files containing event data:'),
 
     dcc.Upload(
         id='upload-data',
         children=html.Div([
-            'Solte seu arquivo aqui ou ',
-            html.A('Selecione um arquivo')
+            'Drop your files here or ',
+            html.A('select a file')
         ]),
         style={
             'width': '100%',
@@ -69,6 +69,6 @@ def update_output(content, name):
 
     files = list_uploaded_files()
     if len(files) == 0:
-        return [html.Li("Sem arquivos carregados!")]
+        return [html.Li("No files loaded yet!")]
     else:
         return [html.Li(show_file_link(filename)) for filename in files]

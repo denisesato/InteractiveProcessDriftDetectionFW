@@ -15,12 +15,12 @@ framework = InteractiveProcessDriftDetectionFW()
 layout = [
         html.Div([
             html.Div(
-                dcc.Link('Analisar concept drift', id='link-analyze', href='/apps/app_process_models')
+                dcc.Link('Analyze process drift', id='link-analyze', href='/apps/app_process_models')
             ),
             html.Div(
-                dcc.Link('Voltar ao gerenciamento de arquivos', href='/apps/app_manage_files')
+                dcc.Link('Back to file management', href='/apps/app_manage_files')
             ),
-            html.H3('Visualização do arquivo com dados de eventos:'),
+            html.H3('Event data preview:'),
             html.Div(id='preview-event-data'),
         ])
     ]
@@ -46,7 +46,7 @@ def show_file(filename):
     except Exception as e:
         print(e)
         return html.Div([
-            f'Erro ao processar o arquivo {filename}.'
+            f'Error when processing file: {filename}.'
         ])
 
     return html.Div([
