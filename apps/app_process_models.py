@@ -127,7 +127,7 @@ def update_slider(final_window):
                State('window-type', 'value'),
                State('window-unity', 'value'),
                State('hidden-filename', 'children')])
-def update_output(n_clicks, input_window_size, window_type, window_unity, file):
+def run_framework(n_clicks, input_window_size, window_type, window_unity, file):
     if file != '' and input_window_size != '0':
         window_count = framework.run(file, window_type, window_unity, int(input_window_size))
         print(f'Setting window-size value {input_window_size}')
@@ -192,7 +192,7 @@ def update_metrics(n, marks):
               [Input('submit-evaluation', 'n_clicks')],
               [State('input-real-drifts', 'value'),
               State('window-size', 'children')])
-def update_output(n_clicks, real_drifts, win_size):
+def evaluate(n_clicks, real_drifts, win_size):
     if n_clicks and real_drifts and real_drifts != '':
         f_score = ""
         if framework.get_status_framework() == ProcessingStatus.NOT_STARTED:

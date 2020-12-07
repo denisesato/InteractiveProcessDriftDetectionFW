@@ -2,11 +2,10 @@ import os
 import shutil
 
 from components.apply_window import AnalyzeDrift
-from components.discovery.discovery_dfg import get_dfg
-from threading import Lock
-from pathlib import Path
-
+from components.discovery.discovery_dfg import DiscoveryDfg
+from components.discovery.discovery_pn import DiscoveryPn
 from components.evaluate.calculate_fscore import EvaluationMetric
+from threading import Lock
 
 
 class ProcessingStatus:
@@ -102,21 +101,28 @@ class SingletonMeta(type):
 
 
 class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
-    def __init__(self, script=False) -> None:
+    def __init__(self, script=False, model_type='dfg') -> None:
         self.control = Control()
         self.windows = 0
         self.initial_indexes = []
         self.windows_with_drifts = None
         self.status_mining = ''
         self.status_similarity_metrics = ''
-        self.script = script
         self.input_path = os.path.join('data', 'input')
         self.models_path = os.path.join('data', 'models')
         self.metrics_path = os.path.join('data', 'metrics')
         self.initialize_paths()
+        self.script = script
+
+        self.model_type = model_type
+        if self.model_type == 'dfg':
+            self.discovery = DiscoveryDfg()
+        elif self.model_type == 'pn':
+            self.discovery = DiscoveryPn()
+        print(f'Initializing IPDD Framework: model [{self.model_type}]')
 
     def initialize_paths(self):
-        print('Initializing paths used by IPDD Framework...')
+        print(f'Initializing paths used by IPDD Framework...')
         # Verifica se o diretório para salvar o event log existe, caso contrário cria
         if not os.path.exists(self.input_path):
             os.makedirs(self.input_path)
@@ -148,7 +154,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         print(f'User selected window={win_type}-{win_unity} with size={win_size} - event log={event_log}')
         self.control.start_metrics_calculation()
         self.control.start_mining_calculation()
-        models = AnalyzeDrift(win_type, win_unity, win_size, event_log, self.control,
+        models = AnalyzeDrift(self.model_type, win_type, win_unity, win_size, event_log, self.control,
                               self.input_path, self.models_path, self.metrics_path)
         self.windows, self.initial_indexes = models.generate_models()
         self.control.finish_mining_calculation()
@@ -189,7 +195,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.control.reset_metrics_calculation()
 
     def get_model(self, original_filename, window):
-        return get_dfg(self.models_path, original_filename, window)
+        return self.discovery.get_process_model(self.models_path, original_filename, window)
 
     # Método utilizado para verificar se uma execução do run encerrou
     # é utilizado somente para a interface via linha de comando

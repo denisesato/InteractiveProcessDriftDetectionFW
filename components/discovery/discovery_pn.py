@@ -1,25 +1,25 @@
 import os
 
 from graphviz import Source
-from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
-from pm4py.visualization.dfg import visualizer as dfg_visualization
+from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 
-from components.dfg_definitions import get_model_filename, dfg_path
 from components.discovery.discovery import Discovery
+from components.pn_definitions import get_model_filename, pn_path
+from pm4py.visualization.petrinet import visualizer as pn_visualizer
 
 
-class DiscoveryDfg(Discovery):
-    # Função que aplica o algoritmo de descoberta (DFG) para gerar
+class DiscoveryPn(Discovery):
+    # Função que aplica o algoritmo de descoberta para gerar
     # o modelo de processo de uma janela e salva no arquivo
     def generate_process_model(self, sub_log, models_path, event_data_original_name, w_count):
         # verifica se o diretório para salvar os DFGs existe caso contrário cria
-        dfg_models_path = os.path.join(models_path, dfg_path, event_data_original_name)
+        dfg_models_path = os.path.join(models_path, pn_path, event_data_original_name)
         if not os.path.exists(dfg_models_path):
             os.makedirs(dfg_models_path)
 
-        # Gera o dfg do sublog e o grafo correspondente (dot)
-        dfg = dfg_discovery.apply(sub_log)
-        gviz = dfg_visualization.apply(dfg, log=sub_log)
+        # Gera a petri net do sublog e o grafo correspondente (dot)
+        net, initial_marking, final_marking = inductive_miner.apply(sub_log)
+        gviz = pn_visualizer.apply(net, initial_marking, final_marking)
 
         # Salva grafo
         output_filename = get_model_filename(event_data_original_name, w_count)
@@ -29,10 +29,10 @@ class DiscoveryDfg(Discovery):
     def get_process_model(self, models_path, log_name, window):
         map_file = get_model_filename(log_name, window)
 
-        dfg_models_path = os.path.join(models_path, dfg_path, log_name)
+        pn_models_path = os.path.join(models_path, pn_path, log_name)
 
-        if os.path.exists(os.path.join(dfg_models_path, map_file)):
-            gviz = Source.from_file(filename=map_file, directory=dfg_models_path)
+        if os.path.exists(os.path.join(pn_models_path, map_file)):
+            gviz = Source.from_file(filename=map_file, directory=pn_models_path)
             return gviz.source
 
         return """

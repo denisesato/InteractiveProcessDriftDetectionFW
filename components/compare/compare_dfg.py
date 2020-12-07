@@ -7,7 +7,7 @@ from graphviz import Source
 from pygraphviz import AGraph
 
 from app import app
-from components.dfg_definitions import get_dfg_filename, dfg_path, get_metrics_filename
+from components.dfg_definitions import get_model_filename, dfg_path, get_metrics_filename
 from json_tricks import dumps, loads
 
 # import win32file as wfile
@@ -88,8 +88,8 @@ class ManageSimilarityMetrics:
         self.final_window = w
 
     def calculate_dfg_metrics(self, current_window):
-        map_file1 = get_dfg_filename(self.original_filename, current_window - 1)
-        map_file2 = get_dfg_filename(self.original_filename, current_window)
+        map_file1 = get_model_filename(self.original_filename, current_window - 1)
+        map_file2 = get_model_filename(self.original_filename, current_window)
 
         dfg_models_path = os.path.join(self.models_path, dfg_path, self.original_filename)
         filename1 = os.path.join(dfg_models_path, map_file1)

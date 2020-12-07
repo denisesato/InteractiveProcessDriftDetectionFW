@@ -7,7 +7,7 @@ from dash.dependencies import Input, Output, State
 from app import app
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
-framework = InteractiveProcessDriftDetectionFW()
+framework = InteractiveProcessDriftDetectionFW(model_type='dfg')
 
 layout = html.Div([
     html.H3('Load files containing event data:'),

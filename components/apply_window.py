@@ -9,8 +9,8 @@ from pm4py.objects.log.util import dataframe_utils
 from datetime import datetime, date
 
 from components.compare.compare_dfg import ManageSimilarityMetrics
-from components.discovery.discovery_dfg import generate_dfg
-from components.dfg_definitions import dfg_path
+from components.discovery.discovery_dfg import DiscoveryDfg
+from components.discovery.discovery_pn import DiscoveryPn
 
 
 class WindowType:
@@ -34,7 +34,7 @@ def threaded(fn):
 
 
 class AnalyzeDrift:
-    def __init__(self, window_type, window_unity, window_size, original_filename, control, input_path,
+    def __init__(self, model_type, window_type, window_unity, window_size, original_filename, control, input_path,
                  models_path, metrics_path):
         self.original_filename = original_filename
         self.window_type = window_type
@@ -44,6 +44,7 @@ class AnalyzeDrift:
         self.input_path = input_path
         self.models_path = models_path
         self.metrics_path = metrics_path
+        self.model_type = model_type
 
     # Método que gera todos os modelos de processos para o tipo de janelamento
     # escolhido e dispara o processo para calcular as métricas entre janelas
@@ -62,7 +63,7 @@ class AnalyzeDrift:
                 event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
 
             # classe que implementa as diferentes opções de janelamento
-            windowing = ApplyWindowing(self.window_type, self.window_size, self.original_filename, self.control,
+            windowing = ApplyWindowing(self.model_type, self.window_type, self.window_size, self.original_filename, self.control,
                                        self.input_path, self.models_path, self.metrics_path)
 
             # verificando checkpoint de acordo com tamanho da janela
@@ -105,7 +106,7 @@ class AnalyzeDrift:
 
 
 class ApplyWindowing:
-    def __init__(self, window_type, window_size, original_filename, control, input_path, models_path, metrics_path):
+    def __init__(self, model_type, window_type, window_size, original_filename, control, input_path, models_path, metrics_path):
         self.window_type = window_type
         self.window_size = window_size
         self.original_filename = original_filename
@@ -114,6 +115,7 @@ class ApplyWindowing:
         self.metrics = ManageSimilarityMetrics(original_filename, control, models_path, metrics_path)
         self.models_path = models_path
         self.window_count = 0
+        self.model_type = model_type
 
     def apply_window_unit(self, event_data):
         initial_index = 0
@@ -251,10 +253,18 @@ class ApplyWindowing:
         self.execute_processes_for_window(sub_log)
 
     def execute_processes_for_window(self, sub_log):
+        discovery = None
         # Gera o modelo de processo e salva
-        generate_dfg(sub_log, self.models_path, self.original_filename, self.window_count)
+        if self.model_type == 'dfg':
+            discovery = DiscoveryDfg()
+        elif self.model_type == 'pn':
+            discovery = DiscoveryPn()
+        else:
+            print(f'Model type not implemented {self.model_type}')
+
+        discovery.generate_process_model(sub_log, self.models_path, self.original_filename, self.window_count)
 
         # Calcula métricas de similaridade com processo da janela anterior
-        if self.window_count > 1:
+        if self.window_count > 1 and self.model_type == 'dfg':
             self.metrics.calculate_dfg_metrics(self.window_count)
 
