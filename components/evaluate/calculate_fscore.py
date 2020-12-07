@@ -43,6 +43,7 @@ class EvaluationMetric:
         tps = []
         fns = []
         window_detected_correctly = [False for w in self.detected_windows]
+        tp_found = False
         for drift in self.real_drifts:
             for i, window in enumerate(self.detected_windows):
                 tp_found = False

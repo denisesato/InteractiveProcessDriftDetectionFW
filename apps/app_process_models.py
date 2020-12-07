@@ -3,6 +3,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 
 from app import app
 from components.apply_window import WindowUnity, WindowType
@@ -47,6 +48,7 @@ layout = html.Div([
         html.Hr(),
         html.Div(id='div-similarity-metrics-value'),
         html.Div(id='div-differences'),
+        html.Hr(),
 
         dcc.Checklist(
             id='check-to-evaluation-options',
@@ -57,14 +59,12 @@ layout = html.Div([
 
         # Div que é apresentada se o usuário selecionar Evaluate results
         html.Div(id='element-to-hide', children=[
-            html.Button(
-                id='submit-button-define-real-drifts',
-                n_clicks=0,
-                children='Add drift'),
-        ], style={'display': 'block'}
-        ),
+            dcc.Input(id='input-real-drifts', type='text', placeholder='Fill with real drifts'),
+            html.Button(id='submit-evaluation', n_clicks=0, children='Evaluate'),
+            html.Div(id='div-fscore'),
 
-        html.Div(id='container-drifts', children=[html.Div()])
+        ], style={'display': 'none'}),
+
 
     ], className="three columns"),
 
@@ -94,21 +94,6 @@ layout = html.Div([
             n_intervals=0
         )]),
 ])
-
-
-@app.callback(Output('container-drifts', 'children'),
-              [Input('submit-button-define-real-drifts', 'n_clicks')],
-              [State('container-drifts', 'children')])
-def add_new_component(n_clicks, div_children):
-    #add another compenent
-    print(f'div_children {div_children}')
-    placeholder = 'trace index'
-    new_component = dcc.Input(id="input-window-size", placeholder={placeholder})
-    if div_children is None:
-        div_children = []
-    modified_children = div_children.append(new_component)
-
-    return modified_children
 
 
 @app.callback(
@@ -145,7 +130,9 @@ def update_slider(final_window):
 def update_output(n_clicks, input_window_size, window_type, window_unity, file):
     if file != '' and input_window_size != '0':
         window_count = framework.run(file, window_type, window_unity, int(input_window_size))
+        print(f'Setting window-size value {input_window_size}')
         return input_window_size, window_count
+    print(f'Setting window-size value 0')
     return 0, 0
 
 
@@ -199,3 +186,33 @@ def update_metrics(n, marks):
             marks[str(w)] = {'label': label}
 
     return div_similarity_status, div_status_mining, marks
+
+
+@app.callback(Output('div-fscore', 'children'),
+              [Input('submit-evaluation', 'n_clicks')],
+              [State('input-real-drifts', 'value'),
+              State('window-size', 'children')])
+def update_output(n_clicks, real_drifts, win_size):
+    if n_clicks and real_drifts and real_drifts != '':
+        f_score = ""
+        if framework.get_status_framework() == ProcessingStatus.NOT_STARTED:
+            return f'It is not possible to evaluate yet because framework was not started.'
+        if framework.get_status_framework() == ProcessingStatus.RUNNING:
+            return f'It is not possible to evaluate yet because framework is still running.'
+        if framework.get_status_framework() != ProcessingStatus.NOT_STARTED and \
+                framework.get_status_framework() == ProcessingStatus.IDLE and real_drifts:
+            drifts = real_drifts.split(" ")
+            list_real_drifts = []
+            for item in drifts:
+                if item != '':
+                    try:
+                        item_int = int(item)
+                    except ValueError:
+                        print(f'Input values must be integer - ignoring [{item}]')
+                    list_real_drifts.append(item_int)
+            print(f'Real drifts {list_real_drifts}')
+            window_candidates = framework.get_windows_candidates()
+            f_score = framework.evaluate(window_candidates, list_real_drifts, win_size)
+            print(f'IPDD f-score: {f_score}')
+        return f'F-score: {f_score}'
+    return ''

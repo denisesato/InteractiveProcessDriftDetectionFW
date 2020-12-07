@@ -105,7 +105,7 @@ class ManageSimilarityMetrics:
                 print(f'[compare_dfg]: Problem trying to access dfg from file [{map_file2}]')
 
         # Obtem os dois dfgs
-        print(f'Reading file: {[filename1]} ...')
+        #print(f'Reading file: {[filename1]} ...')
         graph1 = nx.drawing.nx_agraph.read_dot(filename1)
 
         # várias tentativas frustradas
@@ -135,7 +135,7 @@ class ManageSimilarityMetrics:
         #gviz1.close()
         #self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
 
-        print(f'Reading file: {[filename2]} ...')
+        #print(f'Reading file: {[filename2]} ...')
         graph2 = nx.drawing.nx_agraph.read_dot(filename2)
 
         # várias tentativas frustradas
@@ -155,7 +155,7 @@ class ManageSimilarityMetrics:
         #gviz2.close()
         #self.g2 = nx.drawing.nx_agraph.read_dot(filename2)
 
-        print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
+        #print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
 
         # Calcula as métricas escolhidas e salva no arquivo
         # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics

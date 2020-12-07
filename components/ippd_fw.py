@@ -10,9 +10,9 @@ from components.evaluate.calculate_fscore import EvaluationMetric
 
 
 class ProcessingStatus:
-    NOT_STARTED = 'NOT_STARTED'
-    IDLE = 'IDLE'
-    STARTED = 'STARTED'
+    NOT_STARTED = 'NOT_STARTED' # nenhuma execução realizada ainda
+    IDLE = 'IDLE' # terminou a execução
+    RUNNING = 'RUNNING' # em execução
     FINISHED = 'FINISHED'
     TIMEOUT = 'TIMEOUT'
 
@@ -35,7 +35,7 @@ class Control:
         self.tasks_completed += 1
 
     def start_mining_calculation(self):
-        self.mining_status = ProcessingStatus.STARTED
+        self.mining_status = ProcessingStatus.RUNNING
 
     def reset_mining_calculation(self):
         self.mining_status = ProcessingStatus.IDLE
@@ -48,7 +48,7 @@ class Control:
         self.tasks_completed += 1
 
     def start_metrics_calculation(self):
-        self.metrics_status = ProcessingStatus.STARTED
+        self.metrics_status = ProcessingStatus.RUNNING
 
     def reset_metrics_calculation(self):
         self.metrics_status = ProcessingStatus.IDLE
@@ -191,20 +191,32 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_model(self, original_filename, window):
         return get_dfg(self.models_path, original_filename, window)
 
+    # Método utilizado para verificar se uma execução do run encerrou
+    # é utilizado somente para a interface via linha de comando
     def get_status_running(self):
         return self.control.finished_run()
+
+    # Método utilizado para verificar o status do framework, que pode ser IDLE (após uma execução), RUNNING ou
+    # NOT_STARTED (quando nenhuma execução foi realizada ainda)
+    def get_status_framework(self):
+        if self.get_mining_status() == ProcessingStatus.NOT_STARTED and self.get_metrics_status() == ProcessingStatus.NOT_STARTED:
+            return ProcessingStatus.NOT_STARTED
+        if self.get_mining_status() == ProcessingStatus.RUNNING or self.get_metrics_status() == ProcessingStatus.RUNNING:
+            return ProcessingStatus.RUNNING
+        else:
+            return ProcessingStatus.IDLE
 
     def check_status_mining(self):
         if self.get_mining_status() == ProcessingStatus.FINISHED:
             self.reset_mining_calculation()
             self.status_mining = f'Finished to mine the process models.'
-        elif self.get_mining_status() == ProcessingStatus.STARTED:
+        elif self.get_mining_status() == ProcessingStatus.RUNNING:
             self.status_mining = f'Mining process models...'
 
         return self.status_mining
 
     def check_status_similarity_metrics(self):
-        if self.get_metrics_status() == ProcessingStatus.STARTED:
+        if self.get_metrics_status() == ProcessingStatus.RUNNING:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
         # verifica se o cálculo de métricas terminou normalmente ou por timeout
         if (self.get_metrics_status() == ProcessingStatus.FINISHED
