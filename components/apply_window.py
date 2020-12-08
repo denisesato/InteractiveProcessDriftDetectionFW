@@ -8,7 +8,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import dataframe_utils
 from datetime import datetime, date
 
-from components.compare.compare_dfg import ManageSimilarityMetrics
+from components.compare.compare import ManageSimilarityMetrics
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.discovery.discovery_pn import DiscoveryPn
 
@@ -112,7 +112,7 @@ class ApplyWindowing:
         self.original_filename = original_filename
         self.input_path = input_path
         # instancia classe que gerencia cálculo de similaridade entre janelas
-        self.metrics = ManageSimilarityMetrics(original_filename, control, models_path, metrics_path)
+        self.metrics = ManageSimilarityMetrics(model_type, original_filename, control, models_path, metrics_path)
         self.models_path = models_path
         self.window_count = 0
         self.model_type = model_type
