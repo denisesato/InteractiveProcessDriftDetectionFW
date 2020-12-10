@@ -177,7 +177,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         return self.windows
 
     def get_initial_indexes(self):
-        return self.initial_indexes
+        return list(self.initial_indexes.keys())
 
     def get_metrics_status(self):
         return self.control.get_metrics_status()

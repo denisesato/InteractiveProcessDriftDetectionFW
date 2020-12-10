@@ -63,20 +63,12 @@ class AnalyzeDrift:
                 event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
 
             # classe que implementa as diferentes opções de janelamento
-            windowing = ApplyWindowing(self.model_type, self.window_type, self.window_size, self.original_filename, self.control,
-                                       self.input_path, self.models_path, self.metrics_path)
+            windowing = ApplyWindowing(self.model_type, self.window_type, self.window_unity, self.window_size,
+                                       self.original_filename, self.control, self.input_path, self.models_path,
+                                       self.metrics_path)
 
             # verificando checkpoint de acordo com tamanho da janela
-            window_count = 0
-            metrics_manager = None
-            if self.window_unity == WindowUnity.UNITY:
-                window_count, metrics_manager, initial_indexes = windowing.apply_window_unit(event_data)
-            elif self.window_unity == WindowUnity.HOUR:
-                window_count, metrics_manager, initial_indexes = windowing.apply_window_time(event_data)
-            elif self.window_unity == WindowUnity.DAY:
-                window_count, metrics_manager, initial_indexes = windowing.apply_window_day(event_data)
-            else:
-                print(f'Windowing strategy not implemented [{self.window_type}-{self.window_unity}].')
+            window_count, metrics_manager, initial_indexes = windowing.apply_window(event_data)
 
             # armazena instância para o gerenciador de métricas
             self.control.set_metrics_manager(metrics_manager)
@@ -106,8 +98,9 @@ class AnalyzeDrift:
 
 
 class ApplyWindowing:
-    def __init__(self, model_type, window_type, window_size, original_filename, control, input_path, models_path, metrics_path):
+    def __init__(self, model_type, window_type, window_unity, window_size, original_filename, control, input_path, models_path, metrics_path):
         self.window_type = window_type
+        self.window_unity = window_unity
         self.window_size = window_size
         self.original_filename = original_filename
         self.input_path = input_path
@@ -117,9 +110,9 @@ class ApplyWindowing:
         self.window_count = 0
         self.model_type = model_type
 
-    def apply_window_unit(self, event_data):
+    def apply_window(self, event_data):
         initial_index = 0
-        initial_indexes = []
+        initial_indexes = {}
         initial_trace_index = None
         for i, item in enumerate(event_data):
             # obtém o case id atual
@@ -130,113 +123,98 @@ class ApplyWindowing:
             else:
                 print(f'Incorrect window type: {self.window_type}.')
 
+            # calcula time_difference no caso de janelamento por hora ou dia
+            time_difference = 0
+            if self.window_unity == WindowUnity.UNITY:
+                # não é necessário obter nada pois o i é suficiente
+                pass
+            elif self.window_unity == WindowUnity.HOUR:
+                current_timestamp = self.get_current_timestamp(item)
+
+                # inicializa o timestamp inicial da primeira janela
+                if i == 0:
+                    initial_timestamp = current_timestamp
+
+                time_difference = current_timestamp - initial_timestamp
+                # converte para horas
+                time_difference = time_difference / 1000 / 60 / 60
+            elif self.window_unity == WindowUnity.DAY:
+                current_date = self.get_current_date(item)
+
+                # inicializa o dia inicial da primeira janela
+                if i == 0:
+                    initial_day = date(current_date.year, current_date.month, current_date.day)
+
+                # window checkpoint
+                current_day = date(current_date.year, current_date.month, current_date.day)
+                time_difference = current_day - initial_day
+            else:
+                print(f'Windowing strategy not implemented [{self.window_type}-{self.window_unity}].')
+
             # inicializa o case id inicial da primeira janela
             if i == 0:
                 initial_trace_index = case_id
 
             # window checkpoint
+            if self.verify_window_ckeckpoint(i, event_data, time_difference):
+                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
+                if i == len(event_data) - 1:
+                    print(f'Analyzing final window...')
+                    i += 1
+                    self.metrics.set_final_window(self.window_count + 1)
+
+                self.new_window(event_data, initial_index, i)
+
+                # Atualiza índice inicial da próxima janela
+                initial_indexes[initial_index] = initial_trace_index
+                initial_index = i
+                initial_trace_index = case_id
+                # guarda o timestamp ou dia inicial da próxima janela
+                if self.window_unity == WindowUnity.HOUR:
+                    initial_timestamp = current_timestamp
+                elif self.window_unity == WindowUnity.DAY:
+                    initial_day = current_day
+        return self.window_count, self.metrics, initial_indexes
+
+    def verify_window_ckeckpoint(self, i, event_data, time_difference=0):
+        if self.window_unity == WindowUnity.UNITY:
             if (i > 0 and i % self.window_size == 0) or i == len(event_data) - 1:
-                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
-                if i == len(event_data) - 1:
-                    print(f'Analyzing final window...')
-                    i += 1
-                    self.metrics.set_final_window(self.window_count+1)
-
-                self.new_window(event_data, initial_index, i)
-
-                # Atualiza índice inicial da próxima janela
-                initial_index = i
-                initial_indexes.append(initial_trace_index)
-                initial_trace_index = case_id
-
-        return self.window_count, self.metrics, initial_indexes
-
-    def apply_window_time(self, event_data):
-        initial_index = 0
-        initial_indexes = []
-        initial_trace_index = None
-        for i, item in enumerate(event_data):
-            # obtém o timestamp atual
-            if self.window_type == WindowType.EVENT:
-                timestamp_aux = datetime.timestamp(item['time:timestamp'])
-                case_id = item['case:concept:name']
-            elif self.window_type == WindowType.TRACE:
-                # utiliza a data do primeiro evento do trace
-                timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
-                case_id = item.attributes['concept:name']
-            else:
-                print(f'Incorrect window type: {self.window_type}.')
-
-            # inicializa o timestamp inicial da primeira janela
-            if i == 0:
-                initial_timestamp = timestamp_aux
-                initial_trace_index = case_id
-
-            # window checkpoint
-            actual_timestamp = timestamp_aux
-            time_difference = actual_timestamp - initial_timestamp
-            # converte para horas
-            time_difference = time_difference / 1000 / 60 / 60
-
+                return True
+            return False
+        elif self.window_unity == WindowUnity.HOUR:
             if time_difference > self.window_size or i == len(event_data) - 1:
-                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
-                if i == len(event_data) - 1:
-                    print(f'Analyzing final window...')
-                    i += 1
-                    self.metrics.set_final_window(self.window_count+1)
+                return True
+            return False
+        elif self.window_unity == WindowUnity.DAY:
+            if time_difference.days > self.window_size or i == len(event_data) - 1:
+                return True
+            return False
+        else:
+            print(f'Incorrent windowing unity [{self.window_unity}].')
+        return False
 
-                self.new_window(event_data, initial_index, i)
+    def get_current_timestamp(self, item):
+        timestamp_aux = None
+        # obtém o timestamp atual
+        if self.window_type == WindowType.EVENT:
+            timestamp_aux = datetime.timestamp(item['time:timestamp'])
+        elif self.window_type == WindowType.TRACE:
+            # utiliza a data do primeiro evento do trace
+            timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
+        else:
+            print(f'Incorrect window type: {self.window_type}.')
+        return timestamp_aux
 
-                # Atualiza índice inicial da próxima janela
-                initial_index = i
-                initial_indexes.append(initial_trace_index)
-
-                # Atualiza case_id e timestamp inicial da próxima janela
-                initial_trace_index = case_id
-                initial_timestamp = timestamp_aux
-        return self.window_count, self.metrics, initial_indexes
-
-    def apply_window_day(self, event_data):
-        initial_index = 0
-        initial_indexes = []
-        initial_trace_index = None
-        for i, item in enumerate(event_data):
-            if self.window_type == WindowType.EVENT:
-                date_aux = item['time:timestamp']
-                case_id = item['case:concept:name']
-            elif self.window_type == WindowType.TRACE:
-                # utiliza a data do primeiro evento do trace
-                date_aux = item[0]['time:timestamp']
-                case_id = item.attributes['concept:name']
-            else:
-                print(f'Incorrect window type: {self.window_type}.')
-
-            # inicializa o dia inicial da primeira janela
-            if i == 0:
-                initial_day = date(date_aux.year, date_aux.month, date_aux.day)
-                initial_trace_index = case_id
-
-            # window checkpoint
-            actual_day = date(date_aux.year, date_aux.month, date_aux.day)
-            day_difference = actual_day - initial_day
-
-            if day_difference.days > self.window_size or i == len(event_data) - 1:
-                # Se for o último evento ou trace incrementa o i para considerá-lo na janela
-                if i == len(event_data) - 1:
-                    print(f'Analyzing final window...')
-                    i += 1
-                    self.metrics.set_final_window(self.window_count+1)
-
-                self.new_window(event_data, initial_index, i)
-
-                # Atualiza índice inicial da próxima janela
-                initial_index = i
-                initial_indexes.append(initial_trace_index)
-
-                # Atualiza case_id e dia inicial da próxima janela
-                initial_trace_index = case_id
-                initial_day = date(date_aux.year, date_aux.month, date_aux.day)
-        return self.window_count, self.metrics, initial_indexes
+    def get_current_date(self, item):
+        date_aux = None
+        if self.window_type == WindowType.EVENT:
+            date_aux = item['time:timestamp']
+        elif self.window_type == WindowType.TRACE:
+            # utiliza a data do primeiro evento do trace
+            date_aux = item[0]['time:timestamp']
+        else:
+            print(f'Incorrect window type: {self.window_type}.')
+        return date_aux
 
     def new_window(self, event_data, initial_index, i):
         # Incrementa janela
@@ -266,5 +244,5 @@ class ApplyWindowing:
 
         # Calcula métricas de similaridade com processo da janela anterior
         if self.window_count > 1 and self.model_type == 'dfg':
-            self.metrics.calculate_dfg_metrics(self.window_count)
+            self.metrics.calculate_metrics(self.window_count)
 
