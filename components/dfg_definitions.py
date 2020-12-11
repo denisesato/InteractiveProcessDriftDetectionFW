@@ -1,9 +1,16 @@
 import os
 
+from components.compare.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, DfgNodesSimilarityMetric
+
 
 class DfgDefinitions:
     def __init__(self):
         self.dfg_path = 'dfg'
+        # define quais métricas serão calculadas
+        #self.metrics = {'nodes_similarity': 'DfgNodesSimilarityMetric',
+        #                'edges_similarity': 'DfgEdgesSimilarityMetric',
+        #                'edit_distance': 'DfgEditDistanceMetric'}
+
         self.metrics = {'nodes_similarity': 'DfgNodesSimilarityMetric',
                         'edges_similarity': 'DfgEdgesSimilarityMetric'}
 
@@ -28,3 +35,13 @@ class DfgDefinitions:
 
     def get_metrics_list(self):
         return self.metrics
+
+    def metrics_factory(self, class_name, window, name, m1, m2):
+        # define todas as métricas existentes, mas só serão calculadas as definidas por tipo de
+        # modelo de processo - Acho que isso deveria ficar nas definições de cada tipo
+        classes = {
+            'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, name, m1, m2),
+            'DfgEditDistanceMetric': DfgEditDistanceMetric(window, name, m1, m2),
+            'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, name, m1, m2),
+        }
+        return classes[class_name]

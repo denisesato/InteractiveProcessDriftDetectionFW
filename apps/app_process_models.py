@@ -3,10 +3,9 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
 
 from app import app
-from components.apply_window import WindowUnity, WindowType
+from components.apply_window import WindowUnity, WindowType, WindowInitialIndex
 from components.ippd_fw import ProcessingStatus
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
@@ -35,9 +34,18 @@ layout = html.Div([
                        labelStyle={'display': 'inline-block'}
                        ),
 
-        dcc.Input(id='input-window-size', type='number', value='0'),
+        dcc.Input(id='input-window-size', type='number', value='0', min=0),
         html.Button(id='submit-button-state', n_clicks=0, children='Mine models'),
         html.Div(id='window-size', style={'display': 'none'}),
+
+        dcc.RadioItems(id='initial-index-type',
+                       options=[
+                           {'label': 'Trace index', 'value': WindowInitialIndex.TRACE_INDEX},
+                           {'label': 'Trace concept name', 'value': WindowInitialIndex.TRACE_CONCEPT_NAME},
+                       ],
+                       value=WindowInitialIndex.TRACE_INDEX,
+                       labelStyle={'display': 'inline-block'}
+                       ),
 
         html.Div(dcc.Link('Back to file management', href='/apps/app_manage_files')),
 
@@ -46,7 +54,7 @@ layout = html.Div([
         html.Div(id='div-status-similarity', children=''),
 
         html.Hr(),
-        html.Div(id='div-similarity-metrics-value'),
+        html.Div(id='div-similarity-metrics-value', children=''),
         html.Div(id='div-differences'),
         html.Hr(),
 
@@ -91,7 +99,7 @@ layout = html.Div([
         dcc.Interval(
             id='check-similarity-finished',
             interval=1 * 1000,  # in milliseconds
-            n_intervals=0
+            n_intervals=0,
         )]),
 ])
 
@@ -128,8 +136,11 @@ def update_slider(final_window):
                State('window-unity', 'value'),
                State('hidden-filename', 'children')])
 def run_framework(n_clicks, input_window_size, window_type, window_unity, file):
-    if file != '' and input_window_size != '0':
-        window_count = framework.run(file, window_type, window_unity, int(input_window_size))
+    int_input_size = 0
+    if input_window_size is not None:
+        int_input_size = int(input_window_size)
+    if file != '' and int_input_size > 0:
+        window_count = framework.run(file, window_type, window_unity, int_input_size)
         print(f'Setting window-size value {input_window_size}')
         return input_window_size, window_count
     print(f'Setting window-size value 0')
@@ -143,32 +154,27 @@ def run_framework(n_clicks, input_window_size, window_type, window_unity, file):
               State('hidden-filename', 'children'))
 def update_figure(window_value, file):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-    process_map = """
-        digraph  {
-          node[style="filled"]
-          a ->b->d
-          a->c->d
-        }
-        """
-    div_similarity = ''
-    div_differences = ''
+    process_map = ''
+    div_similarity = []
+    div_differences = []
     if 'window-slider' in changed_id and window_value != 0:
         process_map = framework.get_model(file, window_value)
         if framework.get_metrics_status() == ProcessingStatus.IDLE:
             metrics = framework.get_metrics_manager().get_metrics_info(window_value)
             for metric in metrics:
-                div_similarity += f'Similarity metric [{metric.name}]: {metric.value}'
+                div_similarity.append(html.Div(f'{metric.metric_name}: {metric.value}'))
                 if len(metric.diff) > 0:
-                    div_differences += f'Differences [{metric.name}]: {metric.diff}'
-    return process_map, div_similarity, div_differences
+                    div_differences.append(html.Div(f'{metric.metric_name} differences: {metric.diff}'))
+    return process_map, html.Div(div_similarity), div_differences
 
 
 @app.callback([Output('div-status-similarity', 'children'),
                Output('div-status-mining', 'children'),
                Output('window-slider', 'marks')],
               Input('check-similarity-finished', 'n_intervals'),
-              State('window-slider', 'marks'))
-def update_metrics(n, marks):
+              State('window-slider', 'marks'),
+              State('initial-index-type', 'value'))
+def update_metrics(n, marks, initial_index_type):
     ###################################################################
     # ATUALIZA INTERFACE EM RELAÇÃO A MINERAÇÃO DE PROCESSOS
     ###################################################################
@@ -179,7 +185,14 @@ def update_metrics(n, marks):
     ###################################################################
     div_similarity_status, windows, windows_with_drifts = framework.check_status_similarity_metrics()
     for w in range(1, framework.get_windows() + 1):
-        label = str(w) + '|' + str(framework.get_initial_indexes()[(w - 1)])
+        initial_indexes = []
+        if initial_index_type == WindowInitialIndex.TRACE_INDEX:
+            initial_indexes = framework.get_initial_trace_indexes()
+        elif initial_index_type == WindowInitialIndex.TRACE_CONCEPT_NAME:
+            initial_indexes = framework.get_initial_trace_concept_names()
+        else:
+            print(f'Incorrect initial index type [{initial_index_type}]')
+        label = str(w) + '|' + str(initial_indexes[(w - 1)])
         if windows_with_drifts and w in windows_with_drifts:
             marks[str(w)] = {'label': label, 'style': {'color': '#f50'}}
         else:

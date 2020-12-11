@@ -24,6 +24,11 @@ class WindowUnity:
     DAY = 'DIA'
 
 
+class WindowInitialIndex:
+    TRACE_INDEX = 'TRACE_INDEX'
+    TRACE_CONCEPT_NAME = 'TRACE_CONCEPT_NAME'
+
+
 def threaded(fn):
     def wrapper(*args, **kwargs):
         thread = Thread(target=fn, args=args, kwargs=kwargs)

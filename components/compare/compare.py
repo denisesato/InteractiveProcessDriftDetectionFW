@@ -4,7 +4,6 @@ from threading import RLock, Thread
 
 import networkx as nx
 from app import app
-from components.compare.compare_dfg import DfgEdgesSimilarityMetric, DfgNodesSimilarityMetric, DfgEditDistanceMetric
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
 import win32file as wfile
@@ -21,9 +20,9 @@ def threaded(fn):
 
 class ManageSimilarityMetrics:
     def __init__(self, model_type, original_filename, control, models_path, metrics_path):
-        app.logger.info(f'**************************************************************************')
-        app.logger.info(f'*** Similarity metrics calculation started for the file {original_filename}')
-        app.logger.info(f'**************************************************************************')
+        print(f'**************************************************************************')
+        print(f'*** Similarity metrics calculation started for the file {original_filename}')
+        print(f'**************************************************************************')
         self.original_filename = original_filename
         self.final_window = 0
         self.metrics_count = 0
@@ -68,7 +67,7 @@ class ManageSimilarityMetrics:
         # print("OLD max open files: {0:d}".format(wfile._getmaxstdio()))
         # 513 is enough for your original code (170 graphs), but you can set it up to 8192
         wfile._setmaxstdio(8192)  # !!! COMMENT this line to reproduce the crash !!!
-        print("NEW max open files: {0:d}".format(wfile._getmaxstdio()))
+        print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
     # Organiza a estrutura de arquivos para que as métricas novas sejam armazenadas corretamente
     def verify_files(self):
@@ -104,9 +103,9 @@ class ManageSimilarityMetrics:
             if os.path.exists(filename1) and os.path.exists(filename2):
                 files_ok = True
             elif not os.path.exists(filename1):
-                print(f'[compare_dfg]: Problem trying to access dfg from file [{map_file1}]')
+                print(f'[compare]: Problem trying to access dfg from file [{map_file1}]')
             if not os.path.exists(filename2):
-                print(f'[compare_dfg]: Problem trying to access dfg from file [{map_file2}]')
+                print(f'[compare]: Problem trying to access dfg from file [{map_file2}]')
 
         # Obtem os dois dfgs
         # print(f'Reading file: {[filename1]} ...')
@@ -147,53 +146,40 @@ class ManageSimilarityMetrics:
         # Calcula as métricas escolhidas e salva no arquivo
         # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics
         self.calculate_configured_similarity_metrics(current_window, model1, model2)
-        # self.calculate_nodes_similarity(current_window, model1, model2)
-        # self.calculate_edges_similarity(current_window, model1, model2)
-        # self.calculate_edit_distance(current_window)
 
     def calculate_configured_similarity_metrics(self, current_window, m1, m2):
         for metric_name in self.metrics_list:
-            # metrics_info = DfgNodesSimilarityMetric(current_window, 'nodes_similarity')
-            # metrics_info = globals()[self.metrics_list[metric_name]]
-            metrics_info = metrics_factory(self.metrics_list[metric_name], current_window, metric_name)
-            metrics_info.calculate(m1, m2)
-            self.save_metrics(metrics_info, self.filenames[metric_name], self.locks[metric_name])
+            #print(f'Starting [{metric_name}] calculation between windows [{current_window}-{current_window-1}]')
+            metric = self.model_type_definitions.metrics_factory(self.metrics_list[metric_name], current_window, metric_name, m1, m2)
+            metric.set_saving_definitions(self.filenames[metric_name], self.locks[metric_name], self)
+            metric.start()
 
-    @threaded
-    def check_metrics_timeout(self):
-        print(f'\nStarting monitoring thread for similarity metrics calculation')
-        while self.running:
-            calculated_timeout = self.time_started + self.timeout
-            if time.time() > calculated_timeout:
-                print(f'Timeout reached')
-                self.running = False
-                self.control.time_out_metrics_calculation()
-        print(f'\nFinishing monitoring thread for metrics calculation\n')
+    def increment_metrics_count(self):
+        self.metrics_count += 1
 
-    @threaded
-    def save_metrics(self, metric, filename, lock):
-        file = None
-        if metric.is_dissimilar():
-            lock.acquire()
-            try:
-                # Atualiza arquivo com métricas
-                file = open(filename, 'a+')
-                file.write(metric.serialize())
-                file.write('\n')
-            finally:
-                if file:
-                    file.close()
-                self.metrics_count += 1
-                lock.release()
-        else:
-            self.metrics_count += 1
-
-        # print(f'METRICS COUNT: {self.metrics_count}')
+    def check_finish(self):
+        #print(f'Checking if similarity metrics calculation finished: metrics_count [{self.metrics_count}] - '
+        #      f'total of calculated metrics [{((self.final_window - 1) * len(self.metrics_list))}]')
         if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics_list)):
             self.finish()
 
-    def finish(self):
+    @threaded
+    def check_metrics_timeout(self):
         print(f'**************************************************************************')
+        print(f'Starting monitoring thread for similarity metrics calculation')
+        print(f'**************************************************************************')
+        while self.running:
+            calculated_timeout = self.time_started + self.timeout
+            if time.time() > calculated_timeout:
+                print(f'******* Timeout reached ********')
+                self.running = False
+                self.control.time_out_metrics_calculation()
+        print(f'**************************************************************************')
+        print(f'Finishing monitoring thread for metrics calculation')
+        print(f'**************************************************************************')
+
+    def finish(self):
+        print(f'\n**************************************************************************')
         print(f'*** Similarity metrics calculation finished for the file {self.original_filename}')
         print(f'**************************************************************************')
         self.running = False
@@ -240,12 +226,3 @@ class ManageSimilarityMetrics:
                         break
                 self.locks[m].release()
         return metrics
-
-
-def metrics_factory(class_name, window, name):
-    classes = {
-        'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, name),
-        'DfgEditDistanceMetric': DfgEditDistanceMetric(window, name),
-        'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, name),
-    }
-    return classes[class_name]
