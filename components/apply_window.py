@@ -142,7 +142,7 @@ class ApplyWindowing:
 
                 time_difference = current_timestamp - initial_timestamp
                 # converte para horas
-                time_difference = time_difference / 1000 / 60 / 60
+                time_difference = time_difference / 60 / 60
             elif self.window_unity == WindowUnity.DAY:
                 current_date = self.get_current_date(item)
 

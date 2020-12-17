@@ -145,7 +145,7 @@ class DfgEdgesSimilarityMetric(DfgMetric):
         # se for diferente de 1 devemos primeiro remover os nós
         # diferentes para depois calcular a métrica de similaridade de arestas
         if nodes_metric.value < 1:
-            new_g1, new_g2 = self.remove_different_nodes(new_g1, new_g2, nodes_metric.diff_nodes)
+            new_g1, new_g2 = self.remove_different_nodes(new_g1, new_g2, nodes_metric.diff)
 
         # calcula a métrica de similaridade entre arestas
         inter = set(new_g1.edges).intersection(set(new_g2.edges))
