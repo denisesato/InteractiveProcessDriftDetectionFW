@@ -6,6 +6,7 @@ import networkx as nx
 from app import app
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
+# comentar para executar no linux
 import win32file as wfile
 
 
@@ -63,9 +64,11 @@ class ManageSimilarityMetrics:
         self.running = True
         self.check_metrics_timeout()
 
-        # alterando quantidade de arquivos abertos para verificar se problema muda
         # print("OLD max open files: {0:d}".format(wfile._getmaxstdio()))
         # 513 is enough for your original code (170 graphs), but you can set it up to 8192
+
+        # alterando quantidade permotida de arquivos abertos
+        # comentar para executar no linux
         wfile._setmaxstdio(8192)  # !!! COMMENT this line to reproduce the crash !!!
         print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 

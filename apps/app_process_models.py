@@ -163,8 +163,10 @@ def update_figure(window_value, file):
             metrics = framework.get_metrics_manager().get_metrics_info(window_value)
             for metric in metrics:
                 div_similarity.append(html.Div(f'{metric.metric_name}: {metric.value}'))
-                if len(metric.diff) > 0:
-                    div_differences.append(html.Div(f'{metric.metric_name} differences: {metric.diff}'))
+                if len(metric.diff_added) > 0:
+                    div_differences.append(html.Div(f'{metric.metric_name} Added: {metric.diff_added}'))
+                if len(metric.diff_removed) > 0:
+                    div_differences.append(html.Div(f'{metric.metric_name} Removed: {metric.diff_removed}'))
     return process_map, html.Div(div_similarity), div_differences
 
 
