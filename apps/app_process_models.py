@@ -148,15 +148,13 @@ def run_framework(n_clicks, input_window_size, window_type, window_unity, file):
 
 
 @app.callback([Output('graph-with-slider', 'dot_source'),
-               Output('div-similarity-metrics-value', 'children'),
-               Output('div-differences', 'children')],
+               Output('div-similarity-metrics-value', 'children')],
               Input('window-slider', 'value'),
               State('hidden-filename', 'children'))
 def update_figure(window_value, file):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     process_map = ''
     div_similarity = []
-    div_differences = []
     if 'window-slider' in changed_id and window_value != 0:
         process_map = framework.get_model(file, window_value)
         if framework.get_metrics_status() == ProcessingStatus.IDLE:
@@ -164,10 +162,10 @@ def update_figure(window_value, file):
             for metric in metrics:
                 div_similarity.append(html.Div(f'{metric.metric_name}: {metric.value}'))
                 if len(metric.diff_added) > 0:
-                    div_differences.append(html.Div(f'{metric.metric_name} Added: {metric.diff_added}'))
+                    div_similarity.append(html.Div(f'{metric.metric_name}: Added: {metric.diff_added}'))
                 if len(metric.diff_removed) > 0:
-                    div_differences.append(html.Div(f'{metric.metric_name} Removed: {metric.diff_removed}'))
-    return process_map, html.Div(div_similarity), div_differences
+                    div_similarity.append(html.Div(f'{metric.metric_name}: Removed: {metric.diff_removed}'))
+    return process_map, html.Div(div_similarity)
 
 
 @app.callback([Output('div-status-similarity', 'children'),
