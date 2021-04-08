@@ -1,7 +1,19 @@
+"""
+    This file is part of Interactive Process Drift (IPDD) Framework.
+    IPDD is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    IPDD is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with IPDD. If not, see <https://www.gnu.org/licenses/>.
+"""
 import threading
 
 from components.compare.metric_info import MetricInfo
-
 
 class Metric(threading.Thread):
     def __init__(self, window, metric_name, model1, model2):
@@ -27,19 +39,14 @@ class Metric(threading.Thread):
         return self.metric_info
 
     def save_metrics(self):
-        file = None
         if self.is_dissimilar():
             self.lock.acquire()
-            try:
-                # Atualiza arquivo com métricas
-                file = open(self.filename, 'a+')
+            # update the file containing the metrics' values
+            with open(self.filename, 'a+') as file:
                 file.write(self.get_info().serialize())
                 file.write('\n')
-            finally:
-                if file:
-                    file.close()
-                self.manager_similarity_metrics.increment_metrics_count()
-                self.lock.release()
+            self.manager_similarity_metrics.increment_metrics_count()
+            self.lock.release()
         else:
             self.manager_similarity_metrics.increment_metrics_count()
         print(f'Saving [{self.metric_name}] for windows [{self.window}-{self.window - 1}]')

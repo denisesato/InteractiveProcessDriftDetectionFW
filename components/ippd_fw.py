@@ -1,3 +1,16 @@
+"""
+    This file is part of Interactive Process Drift (IPDD) Framework.
+    IPDD is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    IPDD is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with IPDD. If not, see <https://www.gnu.org/licenses/>.
+"""
 import os
 import shutil
 
@@ -9,9 +22,9 @@ from threading import Lock
 
 
 class ProcessingStatus:
-    NOT_STARTED = 'NOT_STARTED' # nenhuma execução realizada ainda
-    IDLE = 'IDLE' # terminou a execução
-    RUNNING = 'RUNNING' # em execução
+    NOT_STARTED = 'NOT_STARTED' # nothing started yet
+    IDLE = 'IDLE' # finished executing
+    RUNNING = 'RUNNING'
     FINISHED = 'FINISHED'
     TIMEOUT = 'TIMEOUT'
 
@@ -123,15 +136,15 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def initialize_paths(self):
         print(f'Initializing paths used by IPDD Framework...')
-        # Verifica se o diretório para salvar o event log existe, caso contrário cria
+        # verify if the folder for saving the events logs exist, if not create it
         if not os.path.exists(self.input_path):
             os.makedirs(self.input_path)
 
-        # Verificar se o diretório para salvar os modelos existe, caso contrário cria
+        # verify if the folder for saving the procces models exist, if not create it
         if not os.path.exists(self.models_path):
             os.makedirs(self.models_path)
 
-        # Verifica se o diretório para salvar as metricas existe, caso contrário cria
+        # verify if the folder for saving the metrics exist, if not create it
         if not os.path.exists(self.metrics_path):
             os.makedirs(self.metrics_path)
 
@@ -145,8 +158,9 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         return self.metrics_path
 
     def run(self, event_log, win_type, win_unity, win_size):
-        # se o usuário estiver rodando via linha de comando devemos primeiro copiar o event log
-        # para o diretório de data\input e depois retirar o caminho original
+        # if the user is running from command line
+        # first IPDD needs to copy the event log into the folder data\input
+        # then, remove the original path
         if self.script:
             event_log = self.copy_event_log(event_log)
 
@@ -200,13 +214,13 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_model(self, original_filename, window):
         return self.discovery.get_process_model(self.models_path, original_filename, window)
 
-    # Método utilizado para verificar se uma execução do run encerrou
-    # é utilizado somente para a interface via linha de comando
+    # method that verify if the execution of IPDD finished running
+    # used by the command line interfave
     def get_status_running(self):
         return self.control.finished_run()
 
-    # Método utilizado para verificar o status do framework, que pode ser IDLE (após uma execução), RUNNING ou
-    # NOT_STARTED (quando nenhuma execução foi realizada ainda)
+    # method that returns the status of IPDD
+    # used by the web interface
     def get_status_framework(self):
         if self.get_mining_status() == ProcessingStatus.NOT_STARTED and self.get_metrics_status() == ProcessingStatus.NOT_STARTED:
             return ProcessingStatus.NOT_STARTED
@@ -227,7 +241,8 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def check_status_similarity_metrics(self):
         if self.get_metrics_status() == ProcessingStatus.RUNNING:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
-        # verifica se o cálculo de métricas terminou normalmente ou por timeout
+        # check if the metrics' calculation finished by timeout
+        # and correctly define the status message for the web interface
         if (self.get_metrics_status() == ProcessingStatus.FINISHED
                 or self.get_metrics_status() == ProcessingStatus.TIMEOUT)\
                 and self.windows > 0:

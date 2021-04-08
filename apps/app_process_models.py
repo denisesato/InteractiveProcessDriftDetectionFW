@@ -1,3 +1,16 @@
+"""
+    This file is part of Interactive Process Drift (IPDD) Framework.
+    IPDD is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    IPDD is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with IPDD. If not, see <https://www.gnu.org/licenses/>.
+"""
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -65,7 +78,6 @@ layout = html.Div([
             ],
         ),
 
-        # Div que é apresentada se o usuário selecionar Evaluate results
         html.Div(id='element-to-hide', children=[
             dcc.Input(id='input-real-drifts', type='text', placeholder='Fill with real drifts'),
             html.Button(id='submit-evaluation', n_clicks=0, children='Evaluate'),
@@ -176,12 +188,12 @@ def update_figure(window_value, file):
               State('initial-index-type', 'value'))
 def update_metrics(n, marks, initial_index_type):
     ###################################################################
-    # ATUALIZA INTERFACE EM RELAÇÃO A MINERAÇÃO DE PROCESSOS
+    # UPDATE THE USER INTERFACE ABOUT MINING THE MODELS
     ###################################################################
     div_status_mining = framework.check_status_mining()
 
     ###################################################################
-    # ATUALIZA INTERFACE EM RELAÇÃO AO CÁLCULO DE MÉTRICAS
+    # UPDATE THE USER INTERFACE ABOUT THE METRIC'S CALCULATION
     ###################################################################
     div_similarity_status, windows, windows_with_drifts = framework.check_status_similarity_metrics()
     for w in range(1, framework.get_windows() + 1):

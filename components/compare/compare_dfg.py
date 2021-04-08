@@ -1,8 +1,20 @@
+"""
+    This file is part of Interactive Process Drift (IPDD) Framework.
+    IPDD is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    IPDD is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with IPDD. If not, see <https://www.gnu.org/licenses/>.
+"""
 import threading
 import networkx as nx
 
 from components.compare.metric import Metric
-
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -14,10 +26,10 @@ def threaded(fn):
 
 
 class DfgMetricUtil:
-    # retorna o grafo com os labels sem frequencia
+    # remove frequency information from activity name, returning a new process map
     @staticmethod
     def remove_frequencies_from_labels(g):
-        # Remove as frequências dos nós dos grafos
+        # remove frequency information from labels
         mapping = {}
         for node in g.nodes.data():
             old_label = node[1]['label']
@@ -26,7 +38,7 @@ class DfgMetricUtil:
         g_new = nx.relabel_nodes(g, mapping)
         return g_new
 
-    # remove nós diferentes entre os grafos
+    # remove nodes not existent in both process maps
     @staticmethod
     def remove_different_nodes(g1, g2, diff_nodes):
         for node in diff_nodes:
@@ -36,7 +48,7 @@ class DfgMetricUtil:
                 g2.remove_node(node)
         return g1, g2
 
-    # retorna o conjunto de labels sem as frequências
+    # return the set of labels (activity names) without frequency
     @staticmethod
     def get_labels(g):
         nodes_g = [n[1]['label'] for n in g.nodes.data()]
@@ -74,7 +86,7 @@ class DfgEditDistanceMetric(Metric):
         new_g1 = DfgMetricUtil.remove_frequencies_from_labels(self.model1)
         new_g2 = DfgMetricUtil.remove_frequencies_from_labels(self.model2)
 
-        # usar ou não timeout
+        # option for setting the timeout in the nx library
         # self.value = nx.graph_edit_distance(g1, g2, timeout=30)
         self.value = nx.graph_edit_distance(new_g1, new_g2)
         self.diff_added = set()
@@ -93,18 +105,18 @@ class DfgEdgesSimilarityMetric(Metric):
         new_g1 = DfgMetricUtil.remove_frequencies_from_labels(self.model1)
         new_g2 = DfgMetricUtil.remove_frequencies_from_labels(self.model2)
 
-        # calcula similaridade entre nós primeiro
+        # calulate the nodes similarity first
         nodes_metric = DfgNodesSimilarityMetric(self.window, self.metric_name, self.model1, self.model2)
         nodes_metric.calculate()
 
-        # verifica a métrica de similaridade de nós
-        # se for diferente de 1 devemos primeiro remover os nós
-        # diferentes para depois calcular a métrica de similaridade de arestas
+        # if the nodes similarity is different than 1
+        # IPDD removes the different nodes
+        # then it calculated the edges similarity metric
         if nodes_metric.value < 1:
             new_g1, new_g2 = DfgMetricUtil.remove_different_nodes(new_g1, new_g2,
                                                                   set.union(nodes_metric.diff_added,
                                                                             nodes_metric.diff_removed))
-        # obtem as diferenças de arestas entre grafos
+        # get the different edges
         self.diff_removed = set()
         diff_removed = nx.difference(new_g1, new_g2)
         for e in diff_removed.edges:
@@ -115,7 +127,7 @@ class DfgEdgesSimilarityMetric(Metric):
         for e in diff_added.edges:
             self.diff_added.add(e)
 
-        # calcula a métrica de similaridade entre arestas
+        # calculate the edges similarity metric
         inter = set(new_g1.edges).intersection(set(new_g2.edges))
         self.value = 2 * len(inter) / (len(new_g1.edges) + len(new_g2.edges))
         return self.value, self.diff_added, self.diff_removed

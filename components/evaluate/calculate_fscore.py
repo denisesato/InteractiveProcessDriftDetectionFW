@@ -1,3 +1,18 @@
+"""
+    This file is part of Interactive Process Drift (IPDD) Framework.
+    IPDD is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    IPDD is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with IPDD. If not, see <https://www.gnu.org/licenses/>.
+"""
+
+
 class EvaluationMetric:
     def __init__(self, window_size):
         self.real_drifts = []
@@ -38,7 +53,7 @@ class EvaluationMetric:
         if self.tp + self.fn > 0:
             self.recall = self.tp / (self.tp + self.fn)
 
-    # contabiliza as métricas básicas TP, FP, FN
+    # count the basic metrics TP, FP, and FN
     def calculate_basic_metrics(self):
         tps = []
         fns = []
@@ -48,7 +63,7 @@ class EvaluationMetric:
             for i, window in enumerate(self.detected_windows):
                 tp_found = False
                 if ((window - 1) * self.window_size) <= drift < (window * self.window_size):
-                    # drift real está contido em uma das janelas detectadas
+                    # actual drift is within a detected window
                     tps.append(drift)
                     tp_found = True
                     window_detected_correctly[i] = True

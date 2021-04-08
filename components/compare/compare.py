@@ -1,13 +1,25 @@
+"""
+    This file is part of Interactive Process Drift (IPDD) Framework.
+    IPDD is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    IPDD is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with IPDD. If not, see <https://www.gnu.org/licenses/>.
+"""
 import os
 import time
 from threading import RLock, Thread
 
-import networkx as nx
 from app import app
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
-# comentar para executar no linux
-import win32file as wfile
+# workaround for graphviz problem to release file handlers in windows
+# import win32file as wfile
 
 
 def threaded(fn):
@@ -41,113 +53,77 @@ class ManageSimilarityMetrics:
 
         self.metrics_list = self.model_type_definitions.get_metrics()
 
-        # Para cada métrics deve ser criado um locker gerenciar acesso ao arquivo
+        # Create a locker for each metric to manage the access to the file where the information is saved
         self.locks = {}
         for m in self.metrics_list:
             self.locks[m] = RLock()
 
-        # Define o caminho para os arquivos de métricas
-        # Será criado um arquivo para cada métrica implementada
+        # Define the path for the metrics's file
+        # IPDD creates one file by each implemented metric
         self.metrics_path = self.model_type_definitions.get_metrics_path(metrics_path)
-        # Verifica se o diretório existe, caso contrário cria
+        # Check if the folder already exists, and create it if not
         if not os.path.exists(self.metrics_path):
             os.makedirs(self.metrics_path)
 
         self.filenames = {}
 
-        # verifica os arquivos de métricas
         self.verify_files()
 
-        # para gerenciar timeout de métrica
-        self.timeout = 60  # em segundos
+        # for managing metrics' timeout
+        self.timeout = 60  # in seconds
         self.time_started = time.time()
         self.running = True
         self.check_metrics_timeout()
 
-        # print("OLD max open files: {0:d}".format(wfile._getmaxstdio()))
-        # 513 is enough for your original code (170 graphs), but you can set it up to 8192
+        # workaround for graphviz problem - the library do not release file handlers
+        # in windows - this should be verified again
+        # change the maximum number of open files
+        # wfile._setmaxstdio(8192)  # !!! COMMENT this line to reproduce the crash !!!
+        # print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
-        # alterando quantidade permotida de arquivos abertos
-        # comentar para executar no linux
-        wfile._setmaxstdio(8192)  # !!! COMMENT this line to reproduce the crash !!!
-        print(f'NEW max open files: {[wfile._getmaxstdio()]}')
-
-    # Organiza a estrutura de arquivos para que as métricas novas sejam armazenadas corretamente
+    # organize the file's structure for storing information about the
+    # calculated metrics
     def verify_files(self):
         for metric in self.metrics_list:
             self.filenames[metric] = os.path.join(self.metrics_path,
                                                   self.model_type_definitions.get_metrics_filename(
                                                       self.original_filename, metric))
 
-            # Se o arquivo já existe apaga, para salvar as novas métricas
-            # para o janelamento escolhido
+            # if the file already exists, IPDD deletes it
             if os.path.exists(self.filenames[metric]):
                 app.logger.info(f'Deleting file {self.filenames[metric]}')
                 os.remove(self.filenames[metric])
 
-            # Cria o arquivo
+            # create the file
             with open(self.filenames[metric], 'w+') as fp:
                 pass
-            fp.close()
 
     def set_final_window(self, w):
         self.final_window = w
 
     def calculate_metrics(self, current_window):
-        map_file1 = self.model_type_definitions.get_model_filename(self.original_filename, current_window - 1)
-        map_file2 = self.model_type_definitions.get_model_filename(self.original_filename, current_window)
+        process_model1 = self.model_type_definitions.get_model_filename(self.original_filename, current_window - 1)
+        process_model2 = self.model_type_definitions.get_model_filename(self.original_filename, current_window)
 
-        dfg_models_path = self.model_type_definitions.get_models_path(self.models_path, self.original_filename)
-        filename1 = os.path.join(dfg_models_path, map_file1)
-        filename2 = os.path.join(dfg_models_path, map_file2)
+        models_path = self.model_type_definitions.get_models_path(self.models_path, self.original_filename)
+        filename1 = os.path.join(models_path, process_model1)
+        filename2 = os.path.join(models_path, process_model2)
 
         files_ok = False
         while not files_ok:
             if os.path.exists(filename1) and os.path.exists(filename2):
                 files_ok = True
             elif not os.path.exists(filename1):
-                print(f'[compare]: Problem trying to access dfg from file [{map_file1}]')
+                print(f'[compare]: Problem trying to access process model from file [{process_model1}]')
             if not os.path.exists(filename2):
-                print(f'[compare]: Problem trying to access dfg from file [{map_file2}]')
+                print(f'[compare]: Problem trying to access process model from file [{process_model2}]')
 
-        # Obtem os dois dfgs
-        # print(f'Reading file: {[filename1]} ...')
-        model1 = nx.drawing.nx_agraph.read_dot(filename1)
-
-        # várias tentativas frustradas
-        # gviz1 = Source.from_file(filename=map_file1, directory=dfg_models_path)
-        # f = open(filename1, 'rt')
-        # graph_data = f.read()
-        # f.close()
-        # graph = pydot.graph_from_dot_data(graph_data)
-        # graphs = pydot.graph_from_dot_data(gviz1.source)
-        # G = AGraph()
-        # G.read(filename1)
-        # G.close()
-        # G.from_string(gviz1.source)
-        # G.clear()
-        # G.close()
-        # graph1 = nx.nx_agraph.from_agraph(G)
-
-        # graph1 = nx.nx_agraph.read_dot(filename1)
-        # graph1 = nx.nx_pydot.read_dot(filename1)
-        # self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
-        # G = AGraph(string=graph_data)
-        # graph1 = nx.nx_agraph.from_agraph(G)
-        # G.clear()
-        # G.close()
-        # G = None
-
-        # gviz1.close()
-        # self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
-
-        # print(f'Reading file: {[filename2]} ...')
-        model2 = nx.drawing.nx_agraph.read_dot(filename2)
+        model1 = self.model_type_definitions.get_model_from_file(filename1, process_model1, models_path)
+        model2 = self.model_type_definitions.get_model_from_file(filename2, process_model2, models_path)
 
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
 
-        # Calcula as métricas escolhidas e salva no arquivo
-        # Aqui deve conter as chamadas as métricas que foram definidas em self.metrics
+        # calculate the chosen metrics and save the values on the file
         self.calculate_configured_similarity_metrics(current_window, model1, model2)
 
     def calculate_configured_similarity_metrics(self, current_window, m1, m2):
@@ -161,7 +137,7 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
-        #print(f'Checking if similarity metrics calculation finished: metrics_count [{self.metrics_count}] - '
+        # print(f'Checking if similarity metrics calculation finished: metrics_count [{self.metrics_count}] - '
         #      f'total of calculated metrics [{((self.final_window - 1) * len(self.metrics_list))}]')
         if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics_list)):
             self.finish()
@@ -190,42 +166,32 @@ class ManageSimilarityMetrics:
 
     def get_window_candidates(self):
         candidates = set()
-        file = None
-        if self.metrics_list: # para evitar erros quando modelo ainda não tem métricas implementadas
+        # avoiding errors when the process model does not have any similarity metric implemented yet
+        if self.metrics_list:
             for m in self.metrics_list:
                 self.locks[m].acquire()
-                try:
-                    file = open(self.filenames[m], "r")
+                with open(self.filenames[m], "r") as file:
                     for line in file:
                         metrics_info = loads(line, ignore_comments=True)
                         candidates.add(metrics_info.window)
-                finally:
-                    if file:
-                        file.close()
-                    self.locks[m].release()
-
+                self.locks[m].release()
             filename = os.path.join(self.metrics_path, self.original_filename + '_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
-            file_drift_windows = None
-            try:
-                file_drift_windows = open(filename, 'w+')
+            with open(filename, 'w+') as file_drift_windows:
                 file_drift_windows.write(str(candidates))
-            finally:
-                if file_drift_windows:
-                    file_drift_windows.close()
-
         return candidates
 
     def get_metrics_info(self, window):
         metrics = []
-        if self.metrics_list: # para evitar erros quando modelo ainda não tem métricas implementadas
+        # avoiding errors when the process model does not have any similarity metric implemented yet
+        if self.metrics_list:
             for m in self.metrics_list:
                 self.locks[m].acquire()
-                file = open(self.filenames[m], "r")
-                for line in file:
-                    metric_read = loads(line, ignore_comments=True)
-                    if metric_read.window == window:
-                        metrics.append(metric_read)
-                        break
+                with open(self.filenames[m], "r") as file:
+                    for line in file:
+                        metric_read = loads(line, ignore_comments=True)
+                        if metric_read.window == window:
+                            metrics.append(metric_read)
+                            break
                 self.locks[m].release()
         return metrics
