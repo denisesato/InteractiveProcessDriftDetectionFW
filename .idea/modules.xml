@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/InteractiveConceptDriftDetectionFW.iml" filepath="$PROJECT_DIR$/.idea/InteractiveConceptDriftDetectionFW.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/InteractiveProcessDriftDetectionFW.iml" filepath="$PROJECT_DIR$/.idea/InteractiveProcessDriftDetectionFW.iml" />
     </modules>
   </component>
 </project>
