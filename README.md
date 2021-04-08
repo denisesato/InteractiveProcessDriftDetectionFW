@@ -1,13 +1,22 @@
 # InteractiveProcessDriftDetectionFW
 This is a public repository for Interactive Process Drift Detection (IPDD) Framework, a tool for detecting process drifts in process models. 
 
-# Running the web interface
-After you cloned the git repository, you can install the dependencies using the requirements.txt file.
+# Installation from source-code repository
+This installation process was tested on a Windows 10 machine.
 
+After you cloned the git repository, you can install the dependencies using the requirements.txt file (using pip):
+pip install -r requirements.txt
+
+Pygraphviz library do not install using pip in windows machines. Because of this the line for pygraphviz (in requirements.txt) is commented and there is a file named pygraphviz_windows.txt to help you with the installation.
+
+# Docker installation
+It is possible to install IPP via docker using the Dockerfile. If you need any help there is also a file named docker_help.txt
+
+# Running the web interface
 You can start the IPDD web interface by running the file index.py.
 
 The application will be accessible by any browser using the URL http://localhost:8050/.
-Some event logs from the Business Process Drift dataset (https://data.4tu.nl/articles/dataset/Business_Process_Drift/12712436 - Reference http://eprints.qut.edu.au/83013/) are available, but the user can upload any XES file. 
+72 event logs containing drifts are available for download at Business Process Drift dataset (https://data.4tu.nl/articles/dataset/Business_Process_Drift/12712436 - Reference http://eprints.qut.edu.au/83013/). 
 
 Steps for analyzing drifts using IPDD:
 1) Check if the event log is listed. If not, the user can drop an XES file, then IPDD will include it on the list.
