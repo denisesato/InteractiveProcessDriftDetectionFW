@@ -7,10 +7,10 @@ This installation process was tested on a Windows 10 machine.
 After you cloned the git repository, you can install the dependencies using the requirements.txt file (using pip):
 pip install -r requirements.txt
 
-Pygraphviz library do not install using pip in windows machines. Because of this the line for pygraphviz (in requirements.txt) is commented and there is a file named pygraphviz_windows.txt to help you with the installation.
+Pip cannot install pygraphviz library in a windows machine (raises an error). Because of this the line for pygraphviz (in requirements.txt) is commented and there is a file named pygraphviz_windows.txt to help you with the installation.
 
 # Docker installation
-It is possible to install IPP via docker using the Dockerfile. If you need any help there is also a file named docker_help.txt
+It is possible to install IPDD via docker using the Dockerfile. If you need any help there is also a file named docker_help.txt
 
 # Running the web interface
 You can start the IPDD web interface by running the file index.py.
