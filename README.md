@@ -10,7 +10,7 @@ pip install -r requirements.txt
 Pip cannot install pygraphviz library in a windows machine (raises an error). Because of this the line for pygraphviz (in requirements.txt) is commented and there is a file named pygraphviz_windows.txt to help you with the installation.
 
 # Docker installation
-It is possible to install IPDD via docker using the Dockerfile. If you need any help there is also a file named docker_help.txt
+It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt.
 
 # Running the web interface
 You can start the IPDD web interface by running the file index.py.
