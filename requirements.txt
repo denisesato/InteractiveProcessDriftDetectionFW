@@ -17,5 +17,5 @@ pandas==1.1.4
 plotly==4.13.0
 pm4py==2.1.0.1
 pm4pycvxopt==0.0.10
-pygraphviz==1.5
+#pygraphviz==1.5
 gunicorn==20.1.0
