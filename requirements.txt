@@ -8,7 +8,7 @@ dash-table==4.11.0
 dash-table-experiments==0.6.0
 Flask==1.1.2
 Flask-Compress==1.8.0
-#graphviz==0.15
+graphviz==0.15
 json-tricks==3.15.4
 matplotlib==3.3.3
 networkx==2.5
