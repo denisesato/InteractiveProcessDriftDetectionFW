@@ -16,6 +16,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
 from app import app
+from app import server
 from apps import app_manage_files, app_process_models, app_preview_file
 
 app.layout = html.Div([
