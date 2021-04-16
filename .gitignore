@@ -1,3 +1,6 @@
-/venv2/
 /data/
 /.idea/
+/venv/
+*.pyc
+.DS_Store
+.env
