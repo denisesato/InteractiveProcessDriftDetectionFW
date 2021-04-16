@@ -3,6 +3,9 @@ LABEL maintainer "Denise Sato <denise.vecino@gmail.com>"
 WORKDIR /app
 
 RUN apt-get update \
+    && apt-get -y install graphviz
+
+RUN apt-get update \
     && apt-get -y install graphviz-dev
 
 COPY requirements.txt /
