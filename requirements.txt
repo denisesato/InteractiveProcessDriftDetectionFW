@@ -1,4 +1,4 @@
-cvxopt==1.2.5
+cvxopt==1.2.6
 dash==1.17.0
 dash-core-components==1.13.0
 dash-html-components==1.1.1
@@ -17,5 +17,5 @@ pandas==1.1.4
 plotly==4.13.0
 pm4py==2.1.0.1
 pm4pycvxopt==0.0.10
-pygraphviz==1.6
+#pygraphviz==1.7
 gunicorn==20.1.0
