@@ -11,12 +11,26 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import dash
-import dash_bootstrap_components as dbc
+from components.compare_time.time_metric_info import TimeMetricInfo
+from components.metric import Metric
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY],
-                meta_tags=[{'name': 'viewport',
-                            'content': 'width=device-width, initial-scale=1.0'}],
-                suppress_callback_exceptions=True)
-app.title = 'IPDD Framework'
-server = app.server
+
+class TimeMetric(Metric):
+    def __init__(self, window, trace, metric_name, sublog1, sublog2):
+        super().__init__(window, metric_name)
+        self.sublog1 = sublog1
+        self.sublog2 = sublog2
+        self.initial_trace = trace
+        self.metric_info = TimeMetricInfo(window, trace, metric_name)
+
+    def get_info(self):
+        return self.metric_info
+
+    def is_dissimilar(self):
+        pass
+
+    def run(self):
+        value = self.calculate()
+        self.metric_info.set_value(value)
+        self.save_metrics()
+

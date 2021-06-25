@@ -15,38 +15,42 @@ import os
 
 from graphviz import Source
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
-
 from components.discovery.discovery import Discovery
-from components.pn_definitions import get_model_filename, pn_path
-from pm4py.visualization.petrinet import visualizer as pn_visualizer
+from components.pn_definitions import PnDefinitions, PNModel
+from pm4py.visualization.petri_net import visualizer as pn_visualizer
 
 
 class DiscoveryPn(Discovery):
+    def __init__(self):
+        self.model_type_definitions = PnDefinitions()
+
+    def set_current_parameters(self, current_parameters):
+        self.model_type_definitions.set_current_parameters(current_parameters)
 
     # mine the Petri Net from the sub-log
     # defined by the windowing strategy
     def generate_process_model(self, sub_log, models_path, event_data_original_name, w_count):
         # create the folder for saving the process map if does not exist
-        dfg_models_path = os.path.join(models_path, pn_path, event_data_original_name)
-        if not os.path.exists(dfg_models_path):
-            os.makedirs(dfg_models_path)
+        models_path = self.model_type_definitions.get_models_path(models_path, event_data_original_name)
+        if not os.path.exists(models_path):
+            os.makedirs(models_path)
 
         # mine the petri net (using Pm4Py - Inductive Miner)
         net, initial_marking, final_marking = inductive_miner.apply(sub_log)
         gviz = pn_visualizer.apply(net, initial_marking, final_marking)
 
         # save the process model
-        output_filename = get_model_filename(event_data_original_name, w_count)
-        print(f'Saving {dfg_models_path} - {output_filename}')
-        Source.save(gviz, filename=output_filename, directory=dfg_models_path)
+        output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)
+        print(f'Saving {models_path} - {output_filename}')
+        Source.save(gviz, filename=output_filename, directory=models_path)
+        return PNModel(net, initial_marking, final_marking)
 
     def get_process_model(self, models_path, log_name, window):
-        map_file = get_model_filename(log_name, window)
+        map_file = self.model_type_definitions.get_model_filename(log_name, window)
+        models_path = self.model_type_definitions.get_models_path(models_path, log_name)
 
-        pn_models_path = os.path.join(models_path, pn_path, log_name)
-
-        if os.path.exists(os.path.join(pn_models_path, map_file)):
-            gviz = Source.from_file(filename=map_file, directory=pn_models_path)
+        if os.path.exists(os.path.join(models_path, map_file)):
+            gviz = Source.from_file(filename=map_file, directory=models_path)
             return gviz.source
 
         return """

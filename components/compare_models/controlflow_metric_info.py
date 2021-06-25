@@ -13,26 +13,20 @@
 """
 from json_tricks import dumps
 
-class MetricInfo:
-    def __init__(self, window, metric_name):
-        self.diff_added = set()
-        self.diff_removed = set()
-        self.value = 0
-        self.window = window
-        self.metric_name = metric_name
+from components.metric_info import MetricInfo, AdditionalInfo
 
-    def serialize(self):
-        result = dumps(self)
-        return result
 
-    def set_value(self, value):
-        self.value = value
+class ControlFlowMetricInfo(MetricInfo):
+    def __init__(self, window, trace, metric_name):
+        super().__init__(window, trace, metric_name)
 
     def set_diff_added(self, diff):
-        self.diff_added = diff
+        if len(diff) > 0:
+            self.add_additional_info(AdditionalInfo('Added', diff))
 
     def set_diff_removed(self, diff):
-        self.diff_removed = diff
+        if len(diff) > 0:
+            self.add_additional_info(AdditionalInfo('Removed', diff))
 
     def serialize(self):
         result = dumps(self)

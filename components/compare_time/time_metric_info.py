@@ -11,12 +11,21 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import dash
-import dash_bootstrap_components as dbc
+from json_tricks import dumps
+from components.metric_info import MetricInfo
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY],
-                meta_tags=[{'name': 'viewport',
-                            'content': 'width=device-width, initial-scale=1.0'}],
-                suppress_callback_exceptions=True)
-app.title = 'IPDD Framework'
-server = app.server
+
+class TimeMetricInfo(MetricInfo):
+    def __init__(self, window, trace, metric_name):
+        super().__init__(window, trace, metric_name)
+
+    def serialize(self):
+        result = dumps(self)
+        return result
+
+    def set_value(self, value):
+        self.value = value
+
+    def serialize(self):
+        result = dumps(self)
+        return result

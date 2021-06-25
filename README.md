@@ -21,24 +21,50 @@ The application will be accessible by any browser using the URL http://localhost
 Steps for analyzing drifts using IPDD:
 1) Check if the event log is listed. If not, the user can drop an XES file, then IPDD will include it on the list.
 2) Select an XES file from the list. IPDD shows a preview of the event log. 
-3) Click on "Analyze process drift" to access the main page for drift analysis.
+3) Click on "Process Drift Analysis" to access the main page for drift analysis.
 3) On the main page, the user must define:
-  a. Windowing strategy: 
+  a. Windowing strategy - the log can be read as: 
      - Stream of traces: log is read trace by trace, sorting the traces based on the timestamp of the first event
      - Event stream: log is read event by event, based on their timestamps
-  b. Window type: define how the windowing strategy will split the log 
-     - Unity: number of traces or events (depending on the windowing strategy's choice)
-     - Days: number of days
+  b. Window type - define how the windowing strategy will split the log 
+     - Traces/events: number of traces or events (depending on the windowing strategy's choice)
+     - Days: number of days 
      - Hours: number of hours
-  c. Window size: a numeric value indicating the size of the window
-  d. Option for visualizing the windows on the interface: this parameter changes the windows' visualization after IPDD mines the process. For each window, IPDD shows the number of the window and the start trace considered. The user can select the trace index or trace name for this visualization. 
-4) Click on "Mine Models" to start the drift analysis. IPDD will inform the user when finished to mine the models and calculate the similarity metrics.
+  c. Window size - a numeric value indicating the size of the window
+4) Click on "Analyze Process Drifts" to start the drift analysis. 
 
-IPDD shows the models for each window and marks windows with drifts in red. The user can then navigate between the models generated for each window, identifying the drifts.
+IPDD will inform the user when it finishes to mine the models and calculate the similarity metrics.
 
-Optionally the user can evaluate the detected drifts:
+After analyzing the process drifts, the user can navigate between windows to check the process models and the similarity metrics, visualing the drifts. The windows are named using the number of the window and the trace index of the first trace considered inside the window.
+
+The user can change the visualization to identify the windows by the trace concept name, as well.  
+
+Windows marked as read indicates a process drift. 
+
+Optionally the user can evaluate the detected drifts. This is possible when the event log is artificial and the position of the drifts is a priori known.
 1) Select "Evaluate results"
 2) Inform all the actual drifts, using the trace/event indexes, separated by a space.
 3) Click on "Evaluate"
 
 IPDD shows the F-score metric calculated using the informed actual drifts. 
+
+# Running the command line interface
+
+It is also possible to execute IPDD by the command line. In this case, IPDD saves the process models for each window and the similarity metrics into the “data” folder. 
+The process models are stored using the DOT format. IPDD saves the similarity metrics for the windows identified as drifts using the JSON format. 
+
+To run IPDD via command line (“wz” indicates the window size and “l” refers to the event log):
+
+python ipdd_cli.py -wz 250 -l "C: \logs\cb2.5k.xes" 
+
+For IPDD also calculates the F-score, inform the real drifts in the “rd” parameter:
+
+python ipdd_cli.py -wz 250 -l "C: \logs\cb2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250
+
+Parameters:
+-wt: Window type: t - stream of traces or e - event stream (default t)
+-wu: Window unity: u - amount of traces or events, h - hours, or d – days (default u)
+-wz: Window size: numeric value indicating the total of window unities for each window
+-l: Event log: path and name of the event log using XES format
+-rd: Real drifts: list of trace indexes from actual drifts (separated by a space), used for evaluation
+

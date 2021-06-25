@@ -1,0 +1,6 @@
+# Install graphviz using
+# 2.47.1 EXE installer for Windows 10 (64-bit)
+
+
+# Execute pip commmand
+pip install --global-option=build_ext --global-option="-IC:\Program Files\Graphviz\include" --global-option="-LC:\Program Files\Graphviz\lib" pygraphviz

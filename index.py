@@ -12,18 +12,36 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 import dash_core_components as dcc
+import dash_bootstrap_components as dbc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
 from app import app
-from app import server
+from app import server # needed for gunicorn
 from apps import app_manage_files, app_process_models, app_preview_file
 
-app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content'),
-    html.Div(id='hidden-filename', hidden=True),
-])
+# configuring a navbar
+navbar = dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("Back to Manage Files", href="/apps/app_manage_files")),
+    ],
+    brand="IPDD Framework",
+    color="primary",
+    dark=True,
+)
+
+app.layout = dbc.Container([
+    dbc.Row([
+      dbc.Col(navbar, width=12)
+    ]),
+    dbc.Row([
+        dbc.Col([
+            dcc.Location(id='url', refresh=False),
+            html.Div(id='page-content'),
+            html.Div(id='hidden-filename', hidden=True),
+        ], width=12)
+    ]),
+], fluid=True)
 
 
 @app.callback([Output('page-content', 'children'), Output('hidden-filename', 'children')],
@@ -37,7 +55,7 @@ def display_page(pathname, search):
     if pathname == '/':
         return app_manage_files.layout, filename
     if pathname == '/apps/app_manage_files':
-        return app_manage_files.layout, filename
+        return app_manage_files.layout, ''
     elif pathname == '/apps/app_process_models':
         return app_process_models.layout, filename
     elif pathname == '/apps/app_preview_file':
@@ -47,5 +65,5 @@ def display_page(pathname, search):
 
 
 if __name__ == '__main__':
-    #app.run_server(debug=True, host='0.0.0.0', port=8050, threaded=True)
-    app.run_server(debug=True)
+    app.run_server(host='0.0.0.0', port=8050, threaded=True)
+    #app.run_server(debug=True)

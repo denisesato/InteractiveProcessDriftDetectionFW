@@ -32,20 +32,21 @@ def main():
     parser.add_argument('--event_log', '-l', required=True,
                         help='Event log: path and name of the event log using XES format')
     parser.add_argument('--real_drifts', '-rd', type=int, nargs='+',
-                        help='Real drifts: list of trace indexes from real drifts, used for evaluation')
+                        help='Real drifts: list of trace indexes from actual drifts (separated by a space), used for '
+                             'evaluation')
 
     args = parser.parse_args()
     if args.win_type == 't':
-        win_type = WindowType.TRACE
+        win_type = WindowType.TRACE.name
     elif args.win_type == 'e':
-        win_type = WindowType.EVENT
+        win_type = WindowType.EVENT.name
 
     if args.win_unity == 'u':
-        win_unity = WindowUnity.UNITY
+        win_unity = WindowUnity.UNITY.name
     elif args.win_unity == 'h':
-        win_unity = WindowUnity.HOUR
+        win_unity = WindowUnity.HOUR.name
     elif args.win_unity == 'd':
-        win_unity = WindowUnity.DAY
+        win_unity = WindowUnity.DAY.name
 
     win_size = args.win_size
     event_log = args.event_log
@@ -63,12 +64,15 @@ def main():
     print('----------------------------------------------')
 
     framework = InteractiveProcessDriftDetectionFW(script=True)
-    window_count = framework.run(event_log, win_type, win_unity, win_size)
-    print(f'Mined [{window_count}] process models')
+    print(f'Starting analyzing process drifts ...')
+    framework.run(event_log, win_type, win_unity, win_size)
 
-    while framework.get_status_running():
-        print(f'Waiting for IPDD finish similarity metrics...')
-        time.sleep(1000)
+    running = framework.get_status_running()
+    while running:
+        print(f'Waiting for IPDD finishes ... Status running: {running}')
+        time.sleep(60)  # in seconds
+        running = framework.get_status_running()
+    print(f'IPDD finished drift analysis')
 
     window_candidates = framework.get_windows_candidates()
     print(f'IPDD detect drift in windows {window_candidates}')
@@ -76,8 +80,6 @@ def main():
     if args.real_drifts is not None:
         f_score = framework.evaluate(window_candidates, real_drifts, win_size)
         print(f'IPDD f-score: {f_score}')
-
-    return
 
 
 if __name__ == '__main__':

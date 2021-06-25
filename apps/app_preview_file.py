@@ -13,10 +13,8 @@
 """
 import os
 
-from pm4py.objects.conversion.log import converter as log_converter
-import pandas as pd
-from pm4py.objects.log.importer.xes import importer as xes_importer
 import dash_table
+import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
@@ -25,52 +23,49 @@ from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
 framework = InteractiveProcessDriftDetectionFW()
 
+# main layout of the page
 layout = [
-        html.Div([
-            html.Div(
-                dcc.Link('Analyze process drift', id='link-analyze', href='/apps/app_process_models')
-            ),
-            html.Div(
-                dcc.Link('Back to file management', href='/apps/app_manage_files')
-            ),
-            html.H3('Event data preview:'),
-            html.Div(id='preview-event-data'),
+    dbc.Row(
+        dbc.Col(html.H3('Preview Selected File'), className='text-primary mt-2')
+    ),
+
+    dbc.Row(
+        dbc.Col([html.H5(['If the file is ok click on ',
+                          dbc.CardLink(children='Process Drift Analysis', id='link-analyze', href='#')])
+                 ], className='mt-2')),
+
+    dbc.Row(
+        dbc.Col([
+            dbc.Spinner(html.Div(id='preview-event-data', className='mt-2'))
         ])
-    ]
+    )
+]
 
 
-def show_file(filename):
-    max_lines = 50
+def show_file(complete_filename, filename):
     try:
-        if '.csv' in filename:
-            # Assume que é um arquivo CSV
-            df = pd.read_csv(filename, ';', nrows=max_lines)
-        elif '.xls' in filename:
-            # Assume que é um arquivo excel
-            df = pd.read_excel(filename, nrows=max_lines)
-        elif '.xes' in filename:
-            # Assume que é um arquivo XES
-            variant = xes_importer.Variants.ITERPARSE
-            parameters = {variant.value.Parameters.MAX_TRACES: max_lines,
-                          variant.value.Parameters.TIMESTAMP_SORT: True}
-            log = xes_importer.apply(filename, variant=variant, parameters=parameters)
-
-            df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
+        framework.import_log(complete_filename, filename)
     except Exception as e:
         print(e)
         return html.Div([
-            f'Error when processing file: {filename}.'
+            f'Error when processing file: {complete_filename}.'
         ])
 
     return html.Div([
-        html.H5(filename),
-
+        html.H5(f'First {framework.MAX_TRACES} traces of the file: {filename}'),
+        html.H5(f'Total of cases: {framework.current_log.total_of_cases} and Median case duration: '
+                f'{round(framework.current_log.median_case_duration_in_hours, 2)} hrs'),
         dash_table.DataTable(
-            data=df.to_dict('records'),
-            columns=[{'name': i, 'id': i} for i in df.columns]
+            data=framework.current_log.first_traces.to_dict('records'),
+            columns=[{'name': i, 'id': i} for i in framework.current_log.first_traces.columns],
+            style_cell={'textAlign': 'left'},
+            style_as_list_view=True,
+            sort_action="native",
+            sort_mode='multi',
+            page_action="native",
+            page_current=0,
+            page_size=20,
         ),
-
-        html.Hr(),  # horizontal line
     ])
 
 
@@ -80,4 +75,4 @@ def show_file(filename):
 def display_page(file):
     if file:
         filename = os.path.join(framework.get_input_path(), file)
-        return f'/apps/app_process_models?filename={file}', show_file(filename)
+        return f'/apps/app_process_models?filename={file}', show_file(filename, file)

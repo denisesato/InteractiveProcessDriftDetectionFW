@@ -13,8 +13,9 @@
 """
 import threading
 import networkx as nx
+from components.compare_models.controlflow_metric import ControlFlowMetric
+import pygraphviz as pgv
 
-from components.compare.metric import Metric
 
 def threaded(fn):
     def wrapper(*args, **kwargs):
@@ -26,6 +27,14 @@ def threaded(fn):
 
 
 class DfgMetricUtil:
+    # convert the graphviz object (model generated using Pm4Py DFG) into pygraphviz Agraph
+    # then conver to networkx agraph for using network functions
+    @staticmethod
+    def get_nxgraph_from_gviz(gviz):
+        graph = pgv.AGraph(gviz.source)
+        nxgraph = nx.nx_agraph.from_agraph(graph)
+        return nxgraph
+
     # remove frequency information from activity name, returning a new process map
     @staticmethod
     def remove_frequencies_from_labels(g):
@@ -56,9 +65,13 @@ class DfgMetricUtil:
         return labels_g
 
 
-class DfgNodesSimilarityMetric(Metric):
-    def __init__(self, window, metric_name, model1, model2):
-        super().__init__(window, metric_name, model1, model2)
+class DfgNodesSimilarityMetric(ControlFlowMetric):
+    def __init__(self, window, trace, metric_name, model1, model2, convert=True):
+        if convert: # converting the graphviz object to networkx agraph
+            super().__init__(window, trace, metric_name, DfgMetricUtil.get_nxgraph_from_gviz(model1),
+                             DfgMetricUtil.get_nxgraph_from_gviz(model2))
+        else:
+            super().__init__(window, trace, metric_name, model1, model2)
 
     def is_dissimilar(self):
         return self.value < 1
@@ -75,9 +88,10 @@ class DfgNodesSimilarityMetric(Metric):
         return self.value, self.diff_added, self.diff_removed
 
 
-class DfgEditDistanceMetric(Metric):
-    def __init__(self, window, metric_name, model1, model2):
-        super().__init__(window, metric_name, model1, model2)
+class DfgEditDistanceMetric(ControlFlowMetric):
+    def __init__(self, window, trace, metric_name, model1, model2):
+        super().__init__(window, trace, metric_name, DfgMetricUtil.get_nxgraph_from_gviz(model1),
+                         DfgMetricUtil.get_nxgraph_from_gviz(model2))
 
     def is_dissimilar(self):
         return self.value > 0
@@ -94,9 +108,10 @@ class DfgEditDistanceMetric(Metric):
         return self.value, self.diff_added, self.diff_removed
 
 
-class DfgEdgesSimilarityMetric(Metric):
-    def __init__(self, window, metric_name, model1, model2):
-        super().__init__(window, metric_name, model1, model2)
+class DfgEdgesSimilarityMetric(ControlFlowMetric):
+    def __init__(self, window, trace, metric_name, model1, model2):
+        super().__init__(window, trace, metric_name, DfgMetricUtil.get_nxgraph_from_gviz(model1),
+                         DfgMetricUtil.get_nxgraph_from_gviz(model2))
 
     def is_dissimilar(self):
         return self.value < 1
@@ -106,7 +121,8 @@ class DfgEdgesSimilarityMetric(Metric):
         new_g2 = DfgMetricUtil.remove_frequencies_from_labels(self.model2)
 
         # calulate the nodes similarity first
-        nodes_metric = DfgNodesSimilarityMetric(self.window, self.metric_name, self.model1, self.model2)
+        nodes_metric = DfgNodesSimilarityMetric(self.window, self.initial_trace, self.metric_name, self.model1,
+                                                self.model2, convert=False)
         nodes_metric.calculate()
 
         # if the nodes similarity is different than 1
@@ -131,3 +147,6 @@ class DfgEdgesSimilarityMetric(Metric):
         inter = set(new_g1.edges).intersection(set(new_g2.edges))
         self.value = 2 * len(inter) / (len(new_g1.edges) + len(new_g2.edges))
         return self.value, self.diff_added, self.diff_removed
+
+
+

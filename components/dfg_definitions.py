@@ -13,92 +13,71 @@
 """
 import os
 
-import networkx
+from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, \
+    DfgNodesSimilarityMetric
+from components.compare_time.compare_cycletime import CycleTimeSimilarityMetric
+from enum import Enum
 
-from components.compare.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, DfgNodesSimilarityMetric
+
+class Metric(str, Enum):
+    NODES = 'Nodes similarity'
+    EDGES = 'Edges similarity'
+    EDIT_DISTANCE = 'Edit distance similarity'
+    CYCLE_TIME = 'Cycle time similarity'
 
 
 class DfgDefinitions:
     def __init__(self):
-        self.dfg_path = 'dfg'
-        # define quais métricas serão calculadas
-        #self.metrics = {'nodes_similarity': 'DfgNodesSimilarityMetric',
-        #                'edges_similarity': 'DfgEdgesSimilarityMetric',
-        #                'edit_distance': 'DfgEditDistanceMetric'}
+        self.models_path = 'dfg'
+        self.current_parameters = None
+        self.metrics = None
 
-        self.metrics = {'nodes_similarity': 'DfgNodesSimilarityMetric',
-                        'edges_similarity': 'DfgEdgesSimilarityMetric'}
+        # aqui define as métrics disponíveis para o modelo de processo
+        # chave é o nome utilizado na interface, e o valor é o nome da classe
+        # todas obrigatoriamente devem ser instanciadas no método metrics_factory
+        self.all_metrics = {Metric.NODES: 'DfgNodesSimilarityMetric',
+                            Metric.EDGES: 'DfgEdgesSimilarityMetric',
+                            Metric.EDIT_DISTANCE: 'DfgEditDistanceMetric',
+                            Metric.CYCLE_TIME: 'CycleTimeSimilarityMetric'}
 
-    def get_metrics(self):
-        return self.metrics
+    def set_current_parameters(self, current_parameters):
+        self.current_parameters = current_parameters
+        self.metrics = current_parameters.metrics
+
+    def get_implemented_metrics(self):
+        return Metric
+
+    def get_default_metrics(self):
+        return [Metric.NODES, Metric.EDGES]
 
     def get_model_filename(self, log_name, window):
-        map_file = f'{self.dfg_path}_w{window}.gv'
+        map_file = f'{self.models_path}_w{window}.gv'
         return map_file
 
-    def get_metrics_filename(self, log_name, metric_name):
-        filename = f'{self.dfg_path}_metrics_{metric_name}.txt'
+    def get_metrics_filename(self, current_parameters, metric_name):
+        filename = f'{metric_name}_winsize_{current_parameters.winsize}.txt'
         return filename
 
-    def get_metrics_path(self, generic_metrics_path):
-        path = os.path.join(generic_metrics_path, self.dfg_path)
+    def get_metrics_path(self, generic_metrics_path, original_filename):
+        path = os.path.join(generic_metrics_path, self.models_path, original_filename)
         return path
 
     def get_models_path(self, generic_models_path, original_filename):
-        dfg_models_path = os.path.join(generic_models_path, self.dfg_path, original_filename)
+        dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
+                                       f'winsize_{self.current_parameters.winsize}')
         return dfg_models_path
 
     def get_metrics_list(self):
         return self.metrics
 
-    @staticmethod
-    def metrics_factory(class_name, window, name, m1, m2):
-        # define todas as métricas existentes, mas só serão calculadas as definidas por tipo de
-        # modelo de processo - Acho que isso deveria ficar nas definições de cada tipo
+    def metrics_factory(self, metric_name, window, initial_trace, name, m1, m2, l1, l2):
+        # define todas as métricas existentes para o tipo de modelo de processo
+        # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, name, m1, m2),
-            'DfgEditDistanceMetric': DfgEditDistanceMetric(window, name, m1, m2),
-            'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, name, m1, m2),
+            'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2),
+            'DfgEditDistanceMetric': DfgEditDistanceMetric(window, initial_trace, name, m1, m2),
+            'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
+            'CycleTimeSimilarityMetric': CycleTimeSimilarityMetric(window, initial_trace, name, l1, l2),
         }
-        return classes[class_name]
+        return classes[self.all_metrics[metric_name]]
 
-    @staticmethod
-    def get_model_from_file(complete_filename, filename, filepath):
-        model = networkx.drawing.nx_agraph.read_dot(complete_filename)
-        return model
-
-        #with open(complete_filename, 'rt') as f:
-        #    model = nx.drawing.nx_agraph.read_dot(f)
-        #gviz = Source.from_file(filename=filename, directory=filepath)
-        #return gviz
-        #print(f'Try to read [{complete_filename}]')
-        #g = networkx.drawing.nx_pydot.read_dot(complete_filename)
-        #return g
-
-        # várias tentativas frustradas
-        #gviz = Source.from_file(filename=filename, directory=filepath)
-        #f = open(complete_filename, 'rt')
-        #graph_data = f.read()
-        #f.close()
-        #graph = agraph.graph_from_dot_data(graph_data)
-        #G = pgv.AGraph(complete_filename)
-        #graphs = agraph.graph_from_dot_data(gviz.source)
-        # G = AGraph()
-        # G.read(filename1)
-        # G.close()
-        # G.from_string(gviz1.source)
-        # G.clear()
-        # G.close()
-        # graph1 = nx.nx_agraph.from_agraph(G)
-
-        # graph1 = nx.nx_agraph.read_dot(filename1)
-        # graph1 = nx.nx_pydot.read_dot(filename1)
-        # self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
-        # G = AGraph(string=graph_data)
-        # graph1 = nx.nx_agraph.from_agraph(G)
-        # G.clear()
-        # G.close()
-        # G = None
-
-        # gviz1.close()
-        # self.g1 = nx.drawing.nx_agraph.read_dot(filename1)
