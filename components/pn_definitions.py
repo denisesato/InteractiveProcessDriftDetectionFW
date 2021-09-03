@@ -15,12 +15,12 @@ import os
 from enum import Enum
 
 from components.compare_conformance.compare_conformance_pn import ConformanceSimilarityMetric
-from components.compare_time.compare_cycletime import CycleTimeSimilarityMetric
+from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric
 
 
 class Metric(str, Enum):
     CONFORMANCE = 'Conformance'
-    CYCLE_TIME = 'Cycle time similarity'
+    SOJOURN_TIME = 'Sojourn time similarity'
 
 
 class PnDefinitions:
@@ -31,7 +31,7 @@ class PnDefinitions:
         # aqui define as métrics disponíveis para o modelo de processo
         # chave é o nome utilizado na interface, e o valor é o nome da classe
         # todas obrigatoriamente devem ser instanciadas no método metrics_factory
-        self.all_metrics = {Metric.CYCLE_TIME: 'CycleTimeSimilarityMetric',
+        self.all_metrics = {Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric',
                             Metric.CONFORMANCE: 'ConformanceSimilarityMetric'}
 
     def set_current_parameters(self, current_parameters):
@@ -64,7 +64,7 @@ class PnDefinitions:
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            'CycleTimeSimilarityMetric': CycleTimeSimilarityMetric(window, initial_trace, name, l1, l2),
+            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
             'ConformanceSimilarityMetric': ConformanceSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
         }
         return classes[self.all_metrics[metric_name]]

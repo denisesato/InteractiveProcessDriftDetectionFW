@@ -11,29 +11,19 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
+import uuid
+
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
+from flask import session
 
 from app import app
-from app import server # needed for gunicorn
-from apps import app_manage_files, app_process_models, app_preview_file
-
-# configuring a navbar
-navbar = dbc.NavbarSimple(
-    children=[
-        dbc.NavItem(dbc.NavLink("Back to Manage Files", href="/apps/app_manage_files")),
-    ],
-    brand="IPDD Framework",
-    color="primary",
-    dark=True,
-)
+# from app import server  # needed for gunicorn
+from apps import app_manage_files, app_process_models, app_preview_file, app_initial
 
 app.layout = dbc.Container([
-    dbc.Row([
-      dbc.Col(navbar, width=12)
-    ]),
     dbc.Row([
         dbc.Col([
             dcc.Location(id='url', refresh=False),
@@ -41,7 +31,7 @@ app.layout = dbc.Container([
             html.Div(id='hidden-filename', hidden=True),
         ], width=12)
     ]),
-], fluid=True)
+])
 
 
 @app.callback([Output('page-content', 'children'), Output('hidden-filename', 'children')],
@@ -53,17 +43,17 @@ def display_page(pathname, search):
         filename = search.partition('?filename=')[2]
 
     if pathname == '/':
-        return app_manage_files.layout, filename
+        return app_initial.get_layout(), ''
     if pathname == '/apps/app_manage_files':
-        return app_manage_files.layout, ''
+        return app_manage_files.get_layout(), ''
     elif pathname == '/apps/app_process_models':
-        return app_process_models.layout, filename
+        return app_process_models.get_layout(), filename
     elif pathname == '/apps/app_preview_file':
-        return app_preview_file.layout, filename
+        return app_preview_file.get_layout(), filename
     else:
         return '404'
 
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050, threaded=True)
-    #app.run_server(debug=True)
+    # app.run_server(host='0.0.0.0', port=8050, threaded=True)
+    app.run_server(debug=True)

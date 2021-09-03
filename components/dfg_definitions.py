@@ -15,7 +15,7 @@ import os
 
 from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, \
     DfgNodesSimilarityMetric
-from components.compare_time.compare_cycletime import CycleTimeSimilarityMetric
+from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric
 from enum import Enum
 
 
@@ -23,7 +23,7 @@ class Metric(str, Enum):
     NODES = 'Nodes similarity'
     EDGES = 'Edges similarity'
     EDIT_DISTANCE = 'Edit distance similarity'
-    CYCLE_TIME = 'Cycle time similarity'
+    SOJOURN_TIME = 'Sojourn time similarity'
 
 
 class DfgDefinitions:
@@ -38,7 +38,7 @@ class DfgDefinitions:
         self.all_metrics = {Metric.NODES: 'DfgNodesSimilarityMetric',
                             Metric.EDGES: 'DfgEdgesSimilarityMetric',
                             Metric.EDIT_DISTANCE: 'DfgEditDistanceMetric',
-                            Metric.CYCLE_TIME: 'CycleTimeSimilarityMetric'}
+                            Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric'}
 
     def set_current_parameters(self, current_parameters):
         self.current_parameters = current_parameters
@@ -77,7 +77,7 @@ class DfgDefinitions:
             'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2),
             'DfgEditDistanceMetric': DfgEditDistanceMetric(window, initial_trace, name, m1, m2),
             'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
-            'CycleTimeSimilarityMetric': CycleTimeSimilarityMetric(window, initial_trace, name, l1, l2),
+            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
         }
         return classes[self.all_metrics[metric_name]]
 

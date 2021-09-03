@@ -14,7 +14,6 @@
 import os
 import time
 from threading import RLock, Thread
-from app import app
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
 
@@ -92,7 +91,7 @@ class ManageSimilarityMetrics:
 
             # if the file already exists, IPDD deletes it
             if os.path.exists(self.filenames[metric]):
-                app.logger.info(f'Deleting file {self.filenames[metric]}')
+                print(f'Deleting file {self.filenames[metric]}')
                 os.remove(self.filenames[metric])
 
             # create the file
@@ -100,11 +99,11 @@ class ManageSimilarityMetrics:
                 pass
 
     def set_final_window(self, w):
+        print(f'Setting final window value {w}')
         self.final_window = w
 
     def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
-
         # calculate the chosen metrics and save the values on the file
         initial_trace = (current_window - 1) * self.current_parameters.winsize
         self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2)
@@ -124,7 +123,7 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
-        if self.final_window != 0 and self.metrics_count == ((self.final_window - 1) * len(self.metrics_list)):
+        if self.final_window != 0 and self.metrics_count == (self.final_window * len(self.metrics_list)):
             self.finish()
 
     @threaded
@@ -164,7 +163,8 @@ class ManageSimilarityMetrics:
                 with open(self.filenames[m], "r") as file:
                     for line in file:
                         metrics_info = loads(line, ignore_comments=True)
-                        candidates.add(metrics_info.window)
+                        if metrics_info.is_dissimilar():
+                            candidates.add(metrics_info.window)
                 self.locks[m].release()
             filename = os.path.join(self.metrics_path, f'winsize_{self.current_parameters.winsize}_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
@@ -181,7 +181,7 @@ class ManageSimilarityMetrics:
                 with open(self.filenames[m], "r") as file:
                     for line in file:
                         metric_read = loads(line, ignore_comments=True)
-                        if metric_read.window == window:
+                        if metric_read.window == window and metric_read.is_dissimilar():
                             metrics.append(metric_read)
                             break
                 self.locks[m].release()

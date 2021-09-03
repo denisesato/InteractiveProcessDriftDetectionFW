@@ -23,14 +23,14 @@ class TimeMetric(Metric):
         self.initial_trace = trace
         self.metric_info = TimeMetricInfo(window, trace, metric_name)
 
-    def get_info(self):
-        return self.metric_info
-
     def is_dissimilar(self):
         pass
 
     def run(self):
-        value = self.calculate()
+        value, diff, activities = self.calculate()
         self.metric_info.set_value(value)
+        self.metric_info.set_significant_difference(diff)
+        self.metric_info.set_activities(activities)
+        self.metric_info.set_dissimilar(self.is_dissimilar())
         self.save_metrics()
 

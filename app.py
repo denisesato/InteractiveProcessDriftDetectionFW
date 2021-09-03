@@ -13,10 +13,24 @@
 """
 import dash
 import dash_bootstrap_components as dbc
+from flask import session
+
+from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY],
                 meta_tags=[{'name': 'viewport',
                             'content': 'width=device-width, initial-scale=1.0'}],
                 suppress_callback_exceptions=True)
+
 app.title = 'IPDD Framework'
 server = app.server
+server.secret_key = b'e\x19\xf5\xcaZ\x89\xff\xf4\xbf\x15\x14S.\x931\xbd'
+framework = InteractiveProcessDriftDetectionFW(model_type='dfg')
+
+
+def get_user_id():
+    # recover the user from session
+    user = 'unknown'
+    if session.get('user'):
+        user = session['user']
+    return user

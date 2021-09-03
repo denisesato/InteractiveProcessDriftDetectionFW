@@ -55,7 +55,7 @@ The process models are stored using the DOT format. IPDD saves the similarity me
 
 To run IPDD via command line (“wz” indicates the window size and “l” refers to the event log):
 
-python ipdd_cli.py -wz 250 -l "C: \logs\cb2.5k.xes" 
+python ipdd_cli.py -wz 250 -l "C:\logs\cb2.5k.xes" 
 
 For IPDD also calculates the F-score, inform the real drifts in the “rd” parameter:
 

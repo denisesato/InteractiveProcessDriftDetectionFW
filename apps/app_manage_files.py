@@ -13,21 +13,28 @@
 """
 import base64
 import os
-
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-from app import app
-from components.ippd_fw import InteractiveProcessDriftDetectionFW
+from app import app, get_user_id
+from app import framework
 
-framework = InteractiveProcessDriftDetectionFW(model_type='dfg')
+# configuring a navbar
+navbar = dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("About IPDD", href="/")),
+    ],
+    brand="IPDD Framework - Manage Event Logs",
+    color="primary",
+    dark=True,
+)
 
 div_instructions = html.H5('Start by loading and selecting the event log (XES format) to be analyzed.')
 
 load_files_div = html.Div([
     html.P(
-        'Here you can load the event logs for analyzing concept drifts. If the log is already '
+        'Here you can load the event logs for analyzing process drifts. If the log is already '
         'loaded, just click on its name to continue.'),
 
     dcc.Upload(
@@ -50,36 +57,49 @@ load_files_div = html.Div([
         multiple=False
     )])
 
+alert_error = dbc.Alert(
+    "The event log must be a XES file.",
+    id="alert-error",
+    dismissable=True,
+    color="danger"
+)
+
 show_files_div = html.Div([
-    html.H4('Loaded event logs:'),
-    html.Div(id='alerts'),
+    html.H4('Loaded event logs.'),
+    html.H5('Select the file you want to analyze:'),
+    html.Div(id='div-alerts', children=[]),
     html.Div(id='list-files'),
-])
+], className='mt-2')
 
-# main layout of the page
-layout = [
-    dbc.Row([
-        dbc.Col(html.H3('Manage Event Logs'), className='text-primary mt-2')
-    ]),
-
-    dbc.Row([
-        dbc.Col(div_instructions, className='mt-2')
-    ]),
-
-    dbc.Row([
-        dbc.Col(load_files_div, className='mt-2')
-    ]),
-
-    dbc.Row([
-        dbc.Col(show_files_div, className='mt-3', width=7)
-    ]),
+main_card = [
+    dbc.CardBody(
+        [
+            div_instructions,
+            load_files_div,
+            show_files_div
+        ]),
 ]
+
+def get_layout():
+    # main layout of the page
+    layout = [
+        dbc.Row([
+            dbc.Col(navbar, width=12)
+        ]),
+        dbc.Row([
+            dbc.Col(main_card, className='mt-2', width=12)
+        ]),
+    ]
+
+    return layout
 
 
 def save_file(content, filename):
     if '.xes' in filename:
+        user = get_user_id()
+
         # Save the loaded file in the input path
-        uploaded_file = os.path.join(framework.get_input_path(),
+        uploaded_file = os.path.join(framework.get_input_path(user_id=user),
                                      f'{filename}')
         print(f'Saving event log in the input data directory: {uploaded_file}')
 
@@ -93,9 +113,10 @@ def save_file(content, filename):
 
 
 def list_uploaded_files():
+    user = get_user_id()
     files = []
-    for filename in os.listdir(framework.get_input_path()):
-        path = os.path.join(framework.get_input_path(), filename)
+    for filename in os.listdir(framework.get_input_path(user_id=user)):
+        path = os.path.join(framework.get_input_path(user_id=user), filename)
         if os.path.isfile(path):
             files.append(filename)
     return files
@@ -107,54 +128,17 @@ def show_file_link(filename):
 
 
 @app.callback([Output('list-files', 'children'),
-               Output('alerts', 'children')],
+               Output('div-alerts', 'children')],
               [Input('upload-data', 'contents')],
               [State('upload-data', 'filename')])
 def update_output(content, name):
-    alerts = []
+    status = None
     if content is not None:
-        if save_file(content, name):
-            alerts = dbc.Alert(
-                "The event log is loaded. You can now verify the log by clicking on its name.",
-                id="alert-ok",
-                dismissable=True,
-                is_open=True,
-                duration=5000,
-            )
-        else:
-            alerts = dbc.Alert(
-                "The event log must be a XES file.",
-                id="alert-error",
-                dismissable=True,
-                is_open=True,
-                duration=5000,
-                color="danger"
-            )
+        if not save_file(content, name):
+            status = alert_error
 
     files = list_uploaded_files()
     if len(files) == 0:
-        return [html.Li("No event logs loaded yet!")], alerts
+        return [html.Li("No event logs loaded yet!")], status
     else:
-        return [html.Li(show_file_link(filename)) for filename in files], alerts
-
-
-@app.callback(
-    Output("alert-ok", "is_open"),
-    [Input("alert-ok", "n_clicks")],
-    [State("alert-ok", "is_open")],
-)
-def toggle_alert(n, is_open):
-    if n:
-        return not is_open
-    return is_open
-
-
-@app.callback(
-    Output("alert-error", "is_open"),
-    [Input("alert-error", "n_clicks")],
-    [State("alert-error", "is_open")],
-)
-def toggle_alert(n, is_open):
-    if n:
-        return not is_open
-    return is_open
+        return [html.Li(show_file_link(filename)) for filename in files], status

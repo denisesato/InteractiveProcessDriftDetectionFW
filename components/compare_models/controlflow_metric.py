@@ -26,9 +26,6 @@ class ControlFlowMetric(Metric):
         self.initial_trace = trace
         self.metric_info = ControlFlowMetricInfo(window, trace, metric_name)
 
-    def get_info(self):
-        return self.metric_info
-
     def is_dissimilar(self):
         pass
 
@@ -37,4 +34,5 @@ class ControlFlowMetric(Metric):
         self.metric_info.set_value(value)
         self.metric_info.set_diff_added(diff_added)
         self.metric_info.set_diff_removed(diff_removed)
+        self.metric_info.set_dissimilar(self.is_dissimilar())
         self.save_metrics()

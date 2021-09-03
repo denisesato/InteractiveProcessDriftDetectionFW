@@ -148,18 +148,12 @@ class ApplyWindowing:
 
             # window checkpoint
             if self.verify_window_ckeckpoint(i, event_data, time_difference):
-                # if it is the last trace/event, increments the i to consider it within the window
-                if i == len(event_data) - 1:
-                    print(f'Analyzing final window...')
-                    i += 1
-                    if self.window_count > 1:  # if it is only one window IPDD do not calculates any similarity metric
-                        self.metrics.set_final_window(self.window_count + 1)
-
                 # process new window
                 self.new_window(event_data, initial_index, i)
+                # save information about the initial of the processed window
+                initial_indexes[initial_index] = initial_trace_index
 
                 # update the beginning of the next window
-                initial_indexes[initial_index] = initial_trace_index
                 initial_index = i
                 initial_trace_index = case_id
                 # store the initial timestamp or day of the next window
@@ -167,19 +161,31 @@ class ApplyWindowing:
                     initial_timestamp = current_timestamp
                 elif self.current_parameters.winunity == WindowUnity.DAY.name:
                     initial_day = current_day
+        # process remaining traces as last window
+        if initial_index < len(event_data):
+            size = len(event_data) - initial_index
+            print(f'Analyzing final window... size {size} window_count {self.window_count}')
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            if self.window_count > 1:  # if it is only one window IPDD do not calculates any similarity metric
+                self.metrics.set_final_window(self.window_count)
+            # process final window
+            self.new_window(event_data, initial_index, len(event_data))
+            # save information about the initial of the processed window
+            initial_indexes[initial_index] = initial_trace_index
+
         return self.window_count, self.metrics, initial_indexes
 
     def verify_window_ckeckpoint(self, i, event_data, time_difference=0):
         if self.current_parameters.winunity == WindowUnity.UNITY.name:
-            if (i > 0 and i % self.current_parameters.winsize == 0) or i == len(event_data) - 1:
+            if i > 0 and i % self.current_parameters.winsize == 0:
                 return True
             return False
         elif self.current_parameters.winunity == WindowUnity.HOUR.name:
-            if time_difference > self.current_parameters.winsize or i == len(event_data) - 1:
+            if time_difference > self.current_parameters.winsize:
                 return True
             return False
         elif self.current_parameters.winunity == WindowUnity.DAY.name:
-            if time_difference.days > self.current_parameters.winsize or i == len(event_data) - 1:
+            if time_difference.days > self.current_parameters.winsize:
                 return True
             return False
         else:

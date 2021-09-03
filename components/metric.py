@@ -30,7 +30,10 @@ class Metric(threading.Thread):
         self.manager_similarity_metrics = manager_similarity_metrics
 
     def get_info(self):
-        pass
+        return self.metric_info
+
+    def get_complete_info(self):
+        return self.metric_info.get_complete_info()
 
     def is_dissimilar(self):
         pass
@@ -39,17 +42,17 @@ class Metric(threading.Thread):
         pass
 
     def save_metrics(self):
-        if self.is_dissimilar():
+        # save the metric when it is dissimilar or if the metric calculate p-values for each activitu (complete_info)
+        if self.is_dissimilar() or self.get_complete_info():
             self.lock.acquire()
             # update the file containing the metrics' values
             with open(self.filename, 'a+') as file:
+                #print(f'---------------------- Vai salvar dados sobre métrica \n{str(self.get_info())}')
                 file.write(self.get_info().serialize())
                 file.write('\n')
-            self.manager_similarity_metrics.increment_metrics_count()
             self.lock.release()
             print(f'Saving [{self.metric_name}] for windows [{self.window}-{self.window - 1}]')
-        else:
-            self.manager_similarity_metrics.increment_metrics_count()
+        self.manager_similarity_metrics.increment_metrics_count()
         self.manager_similarity_metrics.check_finish()
 
     def run(self):

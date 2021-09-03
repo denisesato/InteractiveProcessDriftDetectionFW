@@ -17,161 +17,238 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
-
-from app import app
+from app import app, get_user_id
+from app import framework
 from components.apply_window import WindowUnity, WindowType, WindowInitialIndex
 from components.ippd_fw import IPDDProcessingStatus
-from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
-framework = InteractiveProcessDriftDetectionFW()
+navbar = dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("Manage Files", href="/apps/app_manage_files")),
+        dbc.NavItem(dbc.NavLink("About IPDD", href="/")),
+    ],
+    brand="IPDD Framework - Analyzing Process Drifts",
+    color="primary",
+    dark=True,
+)
 
-# main layout of the page
-layout = [
-    dbc.Row([
-        dbc.Col([
-            html.H3('Analyzing Process Drifts', className='text-primary mt-2'),
-            html.H6('Insert the parameters and click on Analyze Process Drifts to start. '
-                    'Then, you can visualize the process models over time by clicking on the window and evaluate the '
-                    'results calculating the F-score.')
-        ]),
-    ]),
+evaluation_card = html.Div([
+    dbc.Collapse([
+        dbc.CardHeader(['Calculate F-score metric']),
+        # html.Hr(),
+        # html.H6(['Calculate F-score metric']),
+        # html.Hr(),
+        dbc.CardBody([
+            dbc.Row([
+                dbc.Col(html.Span('Real drifts: '), width=2),
+                dbc.Col(dbc.Input(id='input-real-drifts', type='text',
+                                  placeholder='Fill with real drifts separated by space'), width=4),
+                dbc.Col(dbc.Button(id='submit-evaluation',
+                                   n_clicks=0, children='Evaluate',
+                                   className='btn btn-primary', block=True), width=2)
+            ]),
+            dbc.Row([
+                dbc.Col(html.H4(id='div-fscore', className='mt-2')),
+            ])
+        ])
+    ], id='collapse-evaluation', is_open=False)
+], id='evaluation-card', className='mt-1', style={'display': 'none'})
 
-    dbc.Row([
-        dbc.Col([
-            dbc.Container([
-                dbc.Row([
-                    dbc.Col([html.H5('Parameter configuration')]),
-                ]),
+status_panel = [
+            html.Div([html.H5('Status: ', style={'display': 'inline'})], id='div-status',
+                     style={'display': 'inline'}),
+            html.Div(id='div-status-mining', children='Not started',
+                     style={'display': 'inline'}),
+            html.Div(id='div-status-similarity', children='', style={'display': 'inline'})
+]
 
-                dbc.Row([
-                    dbc.Col([
-                        html.Span('Read the log as'),
-                        dcc.Dropdown(id='window-type',
-                                     options=[{'label': item.value, 'value': item.name}
-                                              for item in WindowType],
-                                     )
-                    ], width=12),
-                ]),
+parameters_panel = [
+    dbc.CardHeader([
+        dbc.Row(
+            [
+                dbc.Col(
+                    dbc.Button(
+                        "Show/Hide Parameters",
+                        #color="link",
+                        id="button-parameters",
+                    ), width=8
+                ),
 
-                dbc.Row([
-                    dbc.Col([
-                        html.Span('Split sub-logs based on'),
-                        dcc.Dropdown(id='window-unity',
-                                     options=[],
-                                     disabled=True
-                                     ),
-                    ])
-                ]),
+                dbc.Col([
+                    dbc.Button("Evaluate results", id="button-evaluation", color="link", block=True,
+                               style={'display': 'none'}),
+                ], width=2),
 
-                dbc.Row([
-                    dbc.Col([
-                        html.Span('Window size'),
-                        dbc.Input(id='input-window-size', type='number', min=1,
-                                  placeholder='Size', disabled=True),
-                        html.Div(id='window-size', children='', style={'display': 'none'}),
-                        html.Span('Similarity metrics', style={'display': 'none'}),
-                        dcc.Checklist(id='metrics',
-                                      options=[{'label': item.value, 'value': item.value}
-                                               for item in framework.get_implemented_metrics()],
-                                      value=[item.value for item in framework.get_default_metrics()],
-                                      labelStyle=dict(display='block'),
-                                      style={'display': 'none'}
-                                      ),
-                        dbc.Button(children=['Analyze Process Drifts'],
-                                   id='mine_models_btn', n_clicks=0, disabled=True,
-                                   className='btn btn-primary btn-block mt-2')
-                    ])
-                ]),
+                dbc.Col([
+                    dbc.Button("How to analyze", id="popover-bottom-target", color="link", block=True),
+                    dbc.Popover(
+                        [
+                            dbc.PopoverHeader("Analyzing Process Drifts using IPDD Framework"),
+                            dbc.PopoverBody(
+                                'Insert the parameters and click on Analyze Process Drifts to start. '
+                                'IPDD will show the process models over time and you can navigate between the '
+                                'models by clicking on the window. IPDD shows the similarity metrics calculated '
+                                'between the current model and the previous one. '
+                                'You can also evaluate the detected drifts using the F-score metric, which is '
+                                'calculate using the the actual drifts informed by the user. '),
+                        ],
+                        id="popover",
+                        target="popover-bottom-target",  # needs to be the same as dbc.Button id
+                        placement="bottom",
+                        is_open=False,
+                    )], width=2)
+            ]),
+    ], className='mt-1'),
 
-                dbc.Row([
-                    dbc.Col([
-                        html.Hr(),
-                        html.H5('Status'),
-                        html.Div(id='div-status-mining', children='Not started'),
-                        html.Div(id='div-status-similarity', children=''),
-                        html.Hr(),
-                    ], width=12)
-                ]),
-
-            ], style={'backgroundColor': 'rgba(211,211,211,0.5)'}),
-
-            dbc.Container([
-                dbc.Row([
-                    dbc.Col([
-                        html.Div(id='evaluation-div', children=[
-                            html.H5('Evaluate results'),
-                            html.Span('Real drifts: '),
-                            dbc.Input(id='input-real-drifts', type='text',
-                                      placeholder='Fill with real drifts separated by space', ),
-                            dbc.Button(id='submit-evaluation',
-                                       n_clicks=0, children='Evaluate',
-                                       className='btn btn-primary btn-block mt-2'),
-                            html.P(id='div-fscore', className='mt-2'),
-                            html.Span('    ')
-                        ], style={'display': 'none'})
-                    ])
-                ])
-            ], style={'backgroundColor': 'rgba(211,211,211,0.5)'}, className='mt-2')
-        ], width=3, style={'height': '80vh'}),
-
-        dbc.Col([
-            # dbc.Container([
+    dbc.Collapse(
+        dbc.CardBody([
             dbc.Row([
                 dbc.Col([
-                    html.H5('Similarity Information'),
-                ])
-            ], style={'backgroundColor': 'rgba(232, 236, 241, 1)'}),
-            dbc.Row([
+                    html.Span('Read the log as'),
+                    dcc.Dropdown(id='window-type',
+                                 options=[{'label': item.value, 'value': item.name}
+                                          for item in WindowType],
+                                 ),
+                ]),
                 dbc.Col([
-                    html.Div(id='div-similarity-metrics-value', children=''),
-                    html.Div(id='div-differences', children=''),
-                    html.Hr()
-                ])
-            ], style={'backgroundColor': 'rgba(232, 236, 241, 1)'}),
-            # ]),
-
-            dbc.Row([
+                    html.Span('Split sub-logs based on'),
+                    dcc.Dropdown(id='window-unity',
+                                 options=[],
+                                 disabled=True,
+                                 ),
+                ]),
                 dbc.Col([
-                    dcc.RadioItems(id='initial-index-type',
-                                   options=[{'label': item.value, 'value': item.name}
-                                            for item in WindowInitialIndex],
-                                   value=WindowInitialIndex.TRACE_INDEX.name,
-                                   )
-                ], width={"size": 6, "offset": 3})
-            ], style={'display': 'none'}),
-
-            dbc.Row([
+                    html.Span('Window size'),
+                    dbc.Input(id='input-window-size', type='number', min=1,
+                              placeholder='Size', disabled=True),
+                    html.Div(id='window-size', style={'display': 'none'}),
+                ]),
                 dbc.Col([
-                    dcc.Slider(
-                        id='window-slider',
-                        step=None,
-                        included=False,
-                        min=0,
-                        max=0,
-                        value=0,
-                        marks={})
-                ])
-            ], className='mt-2'),
-
-            dbc.Row(dash_interactive_graphviz.DashInteractiveGraphviz(id="graph-with-slider", dot_source='')),
-
-            dbc.Row([
-                dbc.Col([
-                    html.Div(id='current-final-window', style={'display': 'none'}),
-                    html.Div(id='status-ipdd', style={'display': 'none'}),
-                    html.Div(id='diff', style={'display': 'none'}),
-
-                    dcc.Interval(
-                        id='check-similarity-finished',
-                        interval=1 * 1000,  # in milliseconds
-                        n_intervals=0,
-                        disabled=True)
+                    dbc.Button(children=['Analyze Process Drifts'],
+                               id='mine_models_btn', n_clicks=0, disabled=True,
+                               className='btn btn-primary', block=True, style={"margin-top": "1.4rem"})
                 ])
             ]),
-
-        ], id='models-col', width=9, style={'height': '100vh', 'display': 'none'})
-    ], className='mt-2')
+            dbc.Row([
+                dbc.Col([
+                    html.Span('Similarity metrics'),
+                    dcc.Checklist(id='metrics',
+                                  options=[{'label': item.value, 'value': item.value}
+                                           for item in framework.get_implemented_metrics()],
+                                  value=[item.value for item in framework.get_default_metrics()],
+                                  ),
+                ]),
+            ], style={'display': 'none'})
+        ]),
+        id='collapse-parameters', is_open=True
+    )
 ]
+
+models_card = [
+    dbc.Row([
+        dbc.Col([
+            dbc.Card(
+                dbc.CardBody([
+                    html.H6('Similarity Information', className='card-title'),
+                    html.Div(id='div-similarity-metrics-value', children=''),
+                    html.Div(id='div-differences', children=''),
+                ]),
+                style={'backgroundColor': 'rgba(232, 236, 241, 1)'}, className='mt-1'
+            )
+        ], width=3),
+
+        dbc.Col([
+            dcc.Slider(
+                id='window-slider',
+                step=None,
+                included=False,
+                min=0,
+                max=0,
+                value=0,
+                marks={}),
+
+            dash_interactive_graphviz.DashInteractiveGraphviz(id="current-model", dot_source=''),
+        ], width=9, style={'height': '75vh'})
+    ], className='mt-1'),
+
+    dbc.Row([
+        dbc.Col([
+            html.Div(id='current-final-window', style={'display': 'none'}),
+            html.Div(id='status-ipdd', style={'display': 'none'}),
+            html.Div(id='diff', style={'display': 'none'}),
+
+            dcc.Interval(
+                id='check-ipdd-finished',
+                interval=1 * 1000,  # in milliseconds
+                n_intervals=0,
+                disabled=True)
+        ])
+    ]),
+]
+
+
+def get_layout():
+    # main layout of the page
+    layout = [
+        dbc.Row([
+            dbc.Col(navbar)
+        ]),
+
+
+        dbc.Row(
+            dbc.Col(parameters_panel, width=12)
+        ),
+
+        dbc.Row(
+            dbc.Col(evaluation_card, width=12)
+        ),
+
+        dbc.Row(
+            dbc.Col(status_panel, className='mt-2')
+        ),
+
+        dbc.Row(
+            dbc.Col(models_card, id='models-col', width=12, style={'display': 'none'})
+        )
+    ]
+    return layout
+
+
+@app.callback(
+    Output("collapse-evaluation", "is_open"),
+    [Input("button-evaluation", "n_clicks")],
+    [State("collapse-evaluation", "is_open")],
+)
+def toggle_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+
+@app.callback(
+    Output("collapse-parameters", "is_open"),
+    [Input("button-parameters", "n_clicks")],
+    [State("collapse-parameters", "is_open"),
+     State('status-ipdd', 'children')],
+)
+def toggle_collapse(n, is_open, status_ipdd):
+    if n:
+        if not is_open and status_ipdd == IPDDProcessingStatus.RUNNING:
+            return is_open
+        else:
+            return not is_open
+    return is_open
+
+
+@app.callback(
+    Output("popover", "is_open"),
+    [Input("popover-bottom-target", "n_clicks")],
+    [State("popover", "is_open")],
+)
+def toggle_popover(n, is_open):
+    if n:
+        return not is_open
+    return is_open
 
 
 @app.callback([Output('window-unity', 'disabled'),
@@ -209,22 +286,25 @@ def type_selected(type_value, unity_value, winsize):
         return False, False, False, options
 
 
-@app.callback(Output('check-similarity-finished', 'disabled'),
+@app.callback([Output('check-ipdd-finished', 'disabled'),
+               Output('button-parameters', 'n_clicks')],
               [Input('status-ipdd', 'children'),
-               Input('window-size', 'children'),])
+               Input('window-size', 'children')])
 # used to start or stop the interval component for checking similarity calculation
 def check_status_ipdd(status, window_size):
-    print(f'check_status_ipdd window-size {window_size}')
-    # to avoid first call
+    # get information about the components that starts the callback function
     ctx = dash.callback_context
-    # when the callback is started not by interval
-    if not ctx.triggered or ctx.triggered[0]['prop_id'] == 'window-size.children':
-        status = framework.get_status_framework()
+    # when the callback is started not by interval, but because the user starts a new process drift analysis
+    if ctx.triggered[0]['prop_id'] == 'window-size.children':
+        return False, 1
 
+    # when the callback is started by the interval, the IPDD status must be checked
     if status == IPDDProcessingStatus.RUNNING:
-        return False
+        return False, 1
     elif status == IPDDProcessingStatus.NOT_STARTED or status == IPDDProcessingStatus.IDLE:
-        return True
+        # IPDD finished the process drift analysis
+        # stop the interval and hide the parameters panel
+        return True, 0
 
 
 @app.callback([Output('models-col', 'style'),
@@ -232,15 +312,12 @@ def check_status_ipdd(status, window_size):
                Output('window-slider', 'max'),
                Output('window-slider', 'value')],
               Input('current-final-window', 'children'),
-              State('window-slider', 'min'),
-              State('window-slider', 'max'),
-              State('models-col', 'style'),
-              State('window-size', 'children'), )
+              [State('window-slider', 'min'),
+               State('window-slider', 'max')])
 # this callback is triggered when mining have finished
-def update_slider(current_final_window, min, max, models_col_style, window_size):
-    print(f'update_slider: current_final_window {current_final_window} - window_size {window_size}')
-    if current_final_window and current_final_window > 0 and window_size and window_size != 0:
-        app.logger.info(f'Atualiza window-slider min: 1, max: {current_final_window - 1}, value: 0')
+def update_slider(current_final_window, min, max):
+    if current_final_window and current_final_window > 0:
+        print(f'Atualiza window-slider min: 1, max: {current_final_window - 1}, value: 0')
         return {'height': '100vh', 'display': 'block'}, min, current_final_window - 1, 0
     else:
         return {'height': '100vh', 'display': 'none'}, min, max, -1
@@ -260,57 +337,72 @@ def run_framework(n_clicks, input_window_size, window_type, window_unity, file, 
             int_input_size = int(input_window_size)
         if file != '' and int_input_size > 0:
             print(f'Running IPDD')
-            framework.run(file, window_type, window_unity, int_input_size, metrics)
-        print(f'Setting window-size value {input_window_size}')
+            user = get_user_id()
+            framework.run(file, window_type, window_unity, int_input_size, metrics, user)
+        print(f'Setting window-size value {input_window_size}, indicating IPDD starts the analysis')
         return input_window_size
     else:
-        print(f'Setting window-size value with initial value 0')
+        print(f'Setting window-size value with initial value 0, indicating IPDD is IDLE')
         return 0
 
 
-@app.callback([Output('graph-with-slider', 'dot_source'),
+@app.callback([Output('current-model', 'dot_source'),
+               # Output('previous-model', 'dot_source'),
                Output('div-similarity-metrics-value', 'children')],
               Input('window-slider', 'value'),
               State('hidden-filename', 'children'))
 def update_figure(window_value, file):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     process_map = ''
+    previous_process_map = ''
     div_similarity = []
     if 'window-slider' in changed_id and window_value >= 0:
         window_value += 1  # because slider starts on 0 but windows on 1
-        process_map = framework.get_model(file, window_value)
-        if framework.get_metrics_status() == IPDDProcessingStatus.IDLE:
-            metrics = framework.get_metrics_manager().get_metrics_info(window_value)
-            for metric in metrics:
-                div_similarity.append(html.Span(f'{metric.metric_name}: '))
-                div_similarity.append(html.Span("{:.2f}".format(metric.value), className='font-weight-bold'))
+        process_map = framework.get_model(file, window_value, get_user_id())
+        if window_value > 1:
+            previous_process_map = framework.get_model(file, window_value - 1, get_user_id())
+        if framework.total_of_windows > 1:  # if there is only one window the metrics manager is not initialized
+            if framework.get_metrics_status() == IPDDProcessingStatus.IDLE:
+                metrics = framework.get_metrics_manager().get_metrics_info(window_value)
+                for metric in metrics:
+                    div_similarity.append(html.Span(f'{metric.metric_name}: '))
+                    div_similarity.append(html.Span("{:.2f}".format(metric.value), className='font-weight-bold'))
 
-                for additional_info in metric.get_additional_info():
-                    strType, strList = additional_info.get_status_info()
-                    div_similarity.append(html.Div([
-                        html.Span(f'{strType}', className='font-italic'),
-                        html.Span(f'{strList}', className='font-weight-bold')
-                    ]))
+                    for additional_info in metric.get_additional_info():
+                        strType, strList = additional_info.get_status_info()
+                        div_similarity.append(html.Div([
+                            html.Span(f'{strType}', className='font-italic'),
+                            html.Span(f'{strList}', className='font-weight-bold')
+                        ]))
+    # return process_map, previous_process_map, html.Div(div_similarity)
     return process_map, html.Div(div_similarity)
 
 
 @app.callback([Output('div-status-similarity', 'children'),
                Output('div-status-mining', 'children'),
                Output('window-slider', 'marks'),
-               Output('evaluation-div', 'style'),
+               Output('evaluation-card', 'style'),
+               Output('button-evaluation', 'style'),
                Output('current-final-window', 'children'),
                Output('status-ipdd', 'children'),
-               Output('mine_models_btn', 'children')],
-              Input('check-similarity-finished', 'n_intervals'),
-              State('window-slider', 'marks'),
-              State('initial-index-type', 'value'),
-              State('current-final-window', 'children'))
-def update_status_and_drifts(n, marks, initial_index_type, current_final_window):
-    print(f'update_status_and_drifts - current_final_window {current_final_window}')
+               Output('div-status', 'children')],
+              Input('check-ipdd-finished', 'n_intervals'),
+              State('div-status', 'children'))
+def update_status_and_drifts(n, div_status):
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT MINING THE MODELS
     ###################################################################
-    div_status_mining = framework.get_status_mining_text()
+    div_status_mining = framework.get_status_mining_text() + "  "
+
+    ipdd_status = framework.get_status_framework()
+    total_of_windows = 0
+
+    # display or not the spinner (loading behavior)
+    if ipdd_status == IPDDProcessingStatus.RUNNING:
+        if len(div_status) == 1:
+            div_status = [dbc.Spinner(size="sm"), " "] + div_status
+    elif ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
+        div_status = [html.H5('Status: ', style={'display': 'inline'})]
 
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT THE METRIC'S CALCULATION
@@ -318,38 +410,22 @@ def update_status_and_drifts(n, marks, initial_index_type, current_final_window)
     div_similarity_status, windows, windows_with_drifts = framework.get_status_similarity_metrics_text()
     marks = {}
     for w in range(0, framework.get_windows()):
-        # The change of the trace initial information stops working after
-        # stopping interval component when IPDD finishs running
-        # TODO remove or fix the code below
-        initial_indexes = []
-        if initial_index_type == WindowInitialIndex.TRACE_INDEX.name:
-            initial_indexes = framework.get_initial_trace_indexes()
-        elif initial_index_type == WindowInitialIndex.TRACE_CONCEPT_NAME.name:
-            initial_indexes = framework.get_initial_trace_concept_names()
-        else:
-            print(f'Incorrect initial index type [{initial_index_type}]')
-        label = str(w + 1) + '|' + str(initial_indexes[(w)])
+        initial_indexes = framework.get_initial_trace_indexes()
+        label = str(w + 1) + '|' + str(initial_indexes[w])
         if windows_with_drifts and (w + 1) in windows_with_drifts:
             marks[w] = {'label': label, 'style': {'color': '#f50'}}
         else:
             marks[w] = {'label': label}
 
-    ipdd_status = framework.get_status_framework()
-    total_of_windows = framework.total_of_windows
-
     # display or not the evaluation container
     display_evaluation = {'display': 'none'}
     if ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
         display_evaluation = {'display': 'block'}
+        # get the number of windows generated
+        total_of_windows = framework.total_of_windows
 
-    # display or not the spinner (loading behavior of button)
-    children_button = ["Analyze Process Drifts"]
-    if ipdd_status == IPDDProcessingStatus.RUNNING:
-        children_button = [dbc.Spinner(size="sm"), " Analyzing Process Drifts..."]
-
-    print(f'update_status_and_drifts - returning as current_final_window {total_of_windows}')
-    return div_similarity_status, div_status_mining, marks, display_evaluation, total_of_windows, \
-           ipdd_status, children_button
+    return div_similarity_status, div_status_mining, marks, display_evaluation, display_evaluation, total_of_windows, \
+           ipdd_status, div_status
 
 
 @app.callback(Output('div-fscore', 'children'),

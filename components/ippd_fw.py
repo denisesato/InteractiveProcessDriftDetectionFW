@@ -13,13 +13,14 @@
 """
 import os
 import shutil
+
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from components.evaluate.calculate_fscore import EvaluationMetric
-from threading import Lock, Thread
+from threading import Thread
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.statistics.traces.generic.log import case_statistics
@@ -60,7 +61,7 @@ class Control:
         self.total_of_windows = 0
 
     def finished_run(self):
-        result = self.tasks_completed >= 2 # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
+        result = self.tasks_completed >= 2  # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
         return result
 
     def reset_tasks_counter(self):
@@ -104,41 +105,6 @@ class Control:
         return self.metrics_manager
 
 
-class SingletonMeta(type):
-    """
-    This is a thread-safe implementation of Singleton.
-    """
-
-    _instances = {}
-
-    _lock: Lock = Lock()
-    """
-    We now have a lock object that will be used to synchronize threads during
-    first access to the Singleton.
-    """
-
-    def __call__(cls, *args, **kwargs):
-        """
-        Possible changes to the value of the `__init__` argument do not affect
-        the returned instance.
-        """
-        # Now, imagine that the program has just been launched. Since there's no
-        # Singleton instance yet, multiple threads can simultaneously pass the
-        # previous conditional and reach this point almost at the same time. The
-        # first of them will acquire lock and will proceed further, while the
-        # rest will wait here.
-        with cls._lock:
-            # The first thread to acquire the lock, reaches this conditional,
-            # goes inside and creates the Singleton instance. Once it leaves the
-            # lock block, a thread that might have been waiting for the lock
-            # release may then enter this section. But since the Singleton field
-            # is already initialized, the thread won't create a new object.
-            if cls not in cls._instances:
-                instance = super().__call__(*args, **kwargs)
-                cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
 class IPDDParameters:
     def __init__(self, logname, wintype, winunity, winsize, metrics):
         self.logname = logname
@@ -146,22 +112,47 @@ class IPDDParameters:
         self.winunity = winunity
         self.winsize = winsize
         self.metrics = metrics
+        self.session_id = None
 
 
-class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
-    def __init__(self, script=False, model_type='dfg') -> None:
-        self.control = Control()
-        self.total_of_windows = 0
-        self.initial_indexes = []
-        self.windows_with_drifts = None
-        self.status_mining = ''
+def check_user_path(generic_path, user_id):
+    path = os.path.join(generic_path, user_id)
+    if not os.path.exists(path):
+        print(f'Creating path {generic_path} for user {user_id}')
+        os.makedirs(path)
+    return path
+
+
+class InteractiveProcessDriftDetectionFW:
+    __instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not InteractiveProcessDriftDetectionFW.__instance:
+            InteractiveProcessDriftDetectionFW.__instance = object.__new__(cls)
+        return InteractiveProcessDriftDetectionFW.__instance
+
+    def __init__(self, script=False, model_type='dfg'):
+        mode = 'web interface'
+        if script:
+            mode = 'command line interface'
+        print(f'Initializing IPDD Framework: model type [{model_type}] - [{mode}]')
+        self.MAX_TRACES = 20
+        self.current_log = None
+        self.current_parameters = None
         self.status_similarity_metrics = ''
-        self.input_path = os.path.join('data', 'input')
-        self.models_path = os.path.join('data', 'models')
-        self.metrics_path = os.path.join('data', 'metrics')
-        self.initialize_paths()
+        self.status_mining = ''
+        self.control = Control()
+        self.windows_with_drifts = None
+        self.initial_indexes = []
+        self.total_of_windows = 0
+        self.input_path = None
+        self.models_path = None
+        self.metrics_path = None
+        self.script = False
+        self.user_id = None
+        self.model_type_definitions = None
+        self.discovery = None
         self.script = script
-
         self.model_type = model_type
         # mine the process model and save it
         if self.model_type == 'dfg':
@@ -172,23 +163,18 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             self.model_type_definitions = PnDefinitions()
         else:
             print(f'Model type not implemented {self.model_type}')
-
-        self.current_parameters = None
-        self.current_log = None
-        self.MAX_TRACES = 20
-
-        print(f'Initializing IPDD Framework: model [{self.model_type}]')
+        self.input_path = os.path.join('data', 'input')
+        self.models_path = os.path.join('data', 'models')
+        self.metrics_path = os.path.join('data', 'metrics')
+        self.initialize_paths()
 
     def initialize_paths(self):
-        print(f'Initializing paths used by IPDD Framework...')
         # verify if the folder for saving the events logs exist, if not create it
         if not os.path.exists(self.input_path):
             os.makedirs(self.input_path)
-
-        # verify if the folder for saving the procces models exist, if not create it
+        # verify if the folder for saving the process models exist, if not create it
         if not os.path.exists(self.models_path):
             os.makedirs(self.models_path)
-
         # verify if the folder for saving the metrics exist, if not create it
         if not os.path.exists(self.metrics_path):
             os.makedirs(self.metrics_path)
@@ -199,14 +185,14 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_default_metrics(self):
         return self.model_type_definitions.get_default_metrics()
 
-    def get_input_path(self):
-        return self.input_path
+    def get_input_path(self, user_id):
+        return check_user_path(self.input_path, user_id)
 
-    def get_models_path(self):
-        return self.models_path
+    def get_models_path(self, user_id):
+        return check_user_path(self.models_path, user_id)
 
-    def get_metrics_path(self):
-        return self.metrics_path
+    def get_metrics_path(self, user_id):
+        return check_user_path(self.metrics_path, user_id)
 
     def import_log(self, complete_filename, filename):
         # import the chosen event log and calculate some statistics
@@ -229,7 +215,11 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                 f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
 
     @threaded
-    def run(self, event_log, win_type, win_unity, win_size, metrics=None):
+    def run(self, event_log, win_type, win_unity, win_size, metrics=None, user_id='script'):
+        self.user_id = user_id
+        if not self.script:
+            # clean data generated from previous runs
+            self.clean_generated_data(user_id)
         self.control.start_mining_calculation()
         self.total_of_windows = 0
 
@@ -244,7 +234,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             # if the user is using the web interface, the log was imported by the app_preview_file
             self.import_log(complete_filename, event_log)
         elif self.current_log is None:  # to prevent problems when user reload the process drift analysis page
-            complete_filename = os.path.join(self.input_path, event_log)
+            complete_filename = os.path.join(self.get_input_path(user_id), event_log)
             print(f'Importing event log: {event_log}')
             self.import_log(complete_filename, event_log)
 
@@ -261,8 +251,8 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         print(f'Metrics={metrics}')
         print(f'Starting windowing process...')
         models = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
-                              self.input_path, self.models_path, self.metrics_path, self.current_log,
-                              self.discovery)
+                              self.get_input_path(user_id), self.get_models_path(user_id),
+                              self.get_metrics_path(user_id), self.current_log, self.discovery)
         self.total_of_windows, self.initial_indexes = models.generate_models()
         self.control.finish_mining_calculation()
         print(f'*** Initial indexes for generated windows: {self.initial_indexes}')
@@ -271,7 +261,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def copy_event_log(self, event_log):
         path, log = os.path.split(event_log)
-        new_filepath = os.path.join(self.input_path, log)
+        new_filepath = os.path.join(self.get_input_path(self.user_id), log)
         print(f'Copying event log to input_folder: {new_filepath}')
         shutil.copyfile(event_log, new_filepath)
         return log
@@ -304,8 +294,8 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def reset_metrics_calculation(self):
         self.control.reset_metrics_calculation()
 
-    def get_model(self, original_filename, window):
-        return self.discovery.get_process_model(self.models_path, original_filename, window)
+    def get_model(self, original_filename, window, user):
+        return self.discovery.get_process_model(self.get_models_path(user), original_filename, window)
 
     # method that verify if one execution of IPDD finished running
     # used by the command line interface
@@ -356,3 +346,14 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def get_windows_candidates(self):
         return self.get_metrics_manager().get_window_candidates()
+
+    def clean_generated_data(self, user_id):
+        # cleaning data from previous executions - only for web acess
+        print(f'Cleaning files from previous run...')
+        models_path = self.get_models_path(user_id)
+        if os.path.exists(models_path):
+            shutil.rmtree(models_path)
+
+        metrics_path = self.get_metrics_path(user_id)
+        if os.path.exists(metrics_path):
+            shutil.rmtree(metrics_path)

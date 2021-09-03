@@ -12,7 +12,6 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 from json_tricks import dumps
-
 from components.metric_info import MetricInfo, AdditionalInfo
 
 
@@ -27,7 +26,3 @@ class ControlFlowMetricInfo(MetricInfo):
     def set_diff_removed(self, diff):
         if len(diff) > 0:
             self.add_additional_info(AdditionalInfo('Removed', diff))
-
-    def serialize(self):
-        result = dumps(self)
-        return result

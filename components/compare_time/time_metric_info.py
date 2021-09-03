@@ -12,20 +12,17 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 from json_tricks import dumps
-from components.metric_info import MetricInfo
+from components.metric_info import MetricInfo, AdditionalInfo
 
 
 class TimeMetricInfo(MetricInfo):
     def __init__(self, window, trace, metric_name):
         super().__init__(window, trace, metric_name)
 
-    def serialize(self):
-        result = dumps(self)
-        return result
+    def set_significant_difference(self, diff):
+        if len(diff) > 0:
+            self.add_additional_info(AdditionalInfo('Significant difference', diff))
 
-    def set_value(self, value):
-        self.value = value
+    def set_activities(self, activities):
+        self.include_complete_info(activities)
 
-    def serialize(self):
-        result = dumps(self)
-        return result

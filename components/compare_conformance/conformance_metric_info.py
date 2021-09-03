@@ -19,13 +19,3 @@ class ConformanceMetricInfo(MetricInfo):
     def __init__(self, window, trace, metric_name):
         super().__init__(window, trace, metric_name)
 
-    def serialize(self):
-        result = dumps(self)
-        return result
-
-    def set_value(self, value):
-        self.value = value
-
-    def serialize(self):
-        result = dumps(self)
-        return result

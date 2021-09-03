@@ -16,12 +16,16 @@ import os
 import time
 
 from components.apply_window import WindowType, WindowUnity
+from components.dfg_definitions import Metric
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
 
 def main():
     pathname = os.path.dirname(os.path.abspath(__file__))
     print(f'Pathname of script: {pathname}')
+
+    # getting instance of the IPDD
+    framework = InteractiveProcessDriftDetectionFW(script=True)
 
     parser = argparse.ArgumentParser(description='IPDD FW command line')
     parser.add_argument('--win_type', '-wt', help='Window type: t - stream of traces or e - event stream', default='t')
@@ -34,6 +38,10 @@ def main():
     parser.add_argument('--real_drifts', '-rd', type=int, nargs='+',
                         help='Real drifts: list of trace indexes from actual drifts (separated by a space), used for '
                              'evaluation')
+    parser.add_argument('--metrics', '-mt', nargs='+',
+                        help=f'Similarity Metrics: list of similarity metrics that IPDD should '
+                             f'calculate. Possible options: {[m.name for m in framework.get_implemented_metrics()]}',
+                        default=['NODES', 'EDGES'])
 
     args = parser.parse_args()
     if args.win_type == 't':
@@ -52,20 +60,28 @@ def main():
     event_log = args.event_log
     real_drifts = args.real_drifts
 
+    # get enum from metrics
+    metrics = []
+    for m in args.metrics:
+        for implemented_metric in Metric:
+            if m == implemented_metric.name:
+                metrics.append(implemented_metric)
+
     print('----------------------------------------------')
     print('Configuration:')
     print('----------------------------------------------')
     print(f'Window type: {win_type}')
     print(f'Window unity: {win_unity}')
     print(f'Window size: {win_size}')
+    print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
+
     if args.real_drifts is not None:
         print(f'Real drifts: {real_drifts}')
     print('----------------------------------------------')
 
-    framework = InteractiveProcessDriftDetectionFW(script=True)
     print(f'Starting analyzing process drifts ...')
-    framework.run(event_log, win_type, win_unity, win_size)
+    framework.run(event_log, win_type, win_unity, win_size, metrics)
 
     running = framework.get_status_running()
     while running:
