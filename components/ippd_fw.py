@@ -60,6 +60,10 @@ class Control:
         self.tasks_completed = 0
         self.total_of_windows = 0
 
+    def restart_status(self):
+        self.metrics_status = MetricsProcessingStatus.NOT_STARTED
+        self.mining_status = IPDDProcessingStatus.NOT_STARTED
+
     def finished_run(self):
         result = self.tasks_completed >= 2  # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
         return result
@@ -294,6 +298,9 @@ class InteractiveProcessDriftDetectionFW:
     def reset_metrics_calculation(self):
         self.control.reset_metrics_calculation()
 
+    def restart_status(self):
+        self.control.restart_status()
+
     def get_model(self, original_filename, window, user):
         return self.discovery.get_process_model(self.get_models_path(user), original_filename, window)
 
@@ -327,6 +334,8 @@ class InteractiveProcessDriftDetectionFW:
         return self.status_mining
 
     def get_status_similarity_metrics_text(self):
+        if self.get_metrics_status() == MetricsProcessingStatus.NOT_STARTED:
+            self.status_similarity_metrics = ''
         if self.get_metrics_status() == MetricsProcessingStatus.RUNNING:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
         # check if the metrics' calculation finished by timeout
