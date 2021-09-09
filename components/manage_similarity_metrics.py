@@ -123,6 +123,7 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
+        print(f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
         if self.final_window != 0 and self.metrics_count == (self.final_window * len(self.metrics_list)):
             self.finish()
 

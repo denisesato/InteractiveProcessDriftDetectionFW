@@ -286,7 +286,8 @@ def type_selected(type_value, unity_value, winsize):
 
 @app.callback([Output('check-ipdd-finished', 'disabled'),
                Output('button-parameters', 'n_clicks'),
-               Output('models-col', 'style')],
+               Output('models-col', 'style'),
+               Output('window-slider', 'value')],
               [Input('status-ipdd', 'children'),
                Input('window-size', 'children')],
               [State('check-ipdd-finished', 'disabled'),
@@ -301,22 +302,22 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
     if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:
         if status == IPDDProcessingStatus.NOT_STARTED or status == IPDDProcessingStatus.IDLE:
             # starts the interval and hide the parameters panel
-            return False, 1, {'display': 'none'}
+            return False, 1, {'display': 'none'}, -1
         else:
             # IPDD is still running
-            return interval_disabled, button_clicks, models_col_style
+            return interval_disabled, button_clicks, models_col_style, -1
     # interval check
     elif window_size > 0:
         if status == IPDDProcessingStatus.RUNNING:
-            return interval_disabled, button_clicks, models_col_style
+            return interval_disabled, button_clicks, models_col_style, -1
         if status == IPDDProcessingStatus.IDLE:
-            return True, 0, {'display': 'block'}
+            return True, 0, {'display': 'block'}, 0
     # user selected a new event log
     else:
         if status == IPDDProcessingStatus.IDLE:
             framework.restart_status()
-            return False, 0, {'display': 'none'}
-        return True, 0, {'display': 'none'}
+            return False, 0, {'display': 'none'}, -1
+        return True, 0, {'display': 'none'}, -1
 
 
 @app.callback(Output('window-size', 'children'),

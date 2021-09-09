@@ -105,6 +105,11 @@ class ApplyWindowing:
         initial_index = 0
         initial_indexes = {}
         initial_trace_index = None
+
+        # initialize similarity metrics manager
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
+
         for i, item in enumerate(event_data):
             # get the current case id
             if self.current_parameters.wintype == WindowType.EVENT.name:
@@ -166,8 +171,7 @@ class ApplyWindowing:
             size = len(event_data) - initial_index
             print(f'Analyzing final window... size {size} window_count {self.window_count}')
             # set the final window used by metrics manager to identify all the metrics have been calculated
-            if self.window_count > 1:  # if it is only one window IPDD do not calculates any similarity metric
-                self.metrics.set_final_window(self.window_count)
+            self.metrics.set_final_window(self.window_count)
             # process final window
             self.new_window(event_data, initial_index, len(event_data))
             # save information about the initial of the processed window
@@ -234,10 +238,8 @@ class ApplyWindowing:
         model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
                                                       self.window_count)
 
-        # if it is the second window initialize the Metrics Manager
+        # if it is the second window start the metrics calculation and timeout
         if self.window_count == 2:
-            self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                                   self.models_path, self.metrics_path)
             self.metrics.start_metrics_timeout()
             self.control.start_metrics_calculation()
 

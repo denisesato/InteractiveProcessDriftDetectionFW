@@ -334,7 +334,7 @@ class InteractiveProcessDriftDetectionFW:
         return self.status_mining
 
     def get_status_similarity_metrics_text(self):
-        if self.get_metrics_status() == MetricsProcessingStatus.NOT_STARTED:
+        if self.get_metrics_status() == MetricsProcessingStatus.NOT_STARTED or self.get_metrics_status() == MetricsProcessingStatus.IDLE:
             self.status_similarity_metrics = ''
         if self.get_metrics_status() == MetricsProcessingStatus.RUNNING:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
