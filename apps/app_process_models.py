@@ -447,6 +447,6 @@ def evaluate(n_clicks, real_drifts, window_size):
             print(f'Real drifts {list_real_drifts}')
             window_candidates = framework.get_windows_candidates()
             f_score = framework.evaluate(window_candidates, list_real_drifts, window_size)
-            print(f'IPDD f-score: {f_score}')
-        return f'F-score: {f_score}'
+            print(f'IPDD f-score: {"{:.2f}".format(f_score)}')
+        return f'F-score: {"{:.2f}".format(f_score)}'
     return ''
