@@ -16,11 +16,12 @@ from components.metric import Metric
 
 
 class TimeMetric(Metric):
-    def __init__(self, window, trace, metric_name, sublog1, sublog2):
+    def __init__(self, window, trace, metric_name, sublog1, sublog2, parameters):
         super().__init__(window, metric_name)
         self.sublog1 = sublog1
         self.sublog2 = sublog2
         self.initial_trace = trace
+        self.parameters = parameters
         self.metric_info = TimeMetricInfo(window, trace, metric_name)
 
     def is_dissimilar(self):

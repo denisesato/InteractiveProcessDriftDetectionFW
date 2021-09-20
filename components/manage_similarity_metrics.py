@@ -102,18 +102,18 @@ class ManageSimilarityMetrics:
         print(f'Setting final window value {w}')
         self.final_window = w
 
-    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2):
+    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2, parameters):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
         # calculate the chosen metrics and save the values on the file
         initial_trace = (current_window - 1) * self.current_parameters.winsize
-        self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2)
+        self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2, parameters)
 
-    def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2):
+    def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2, parameters):
         self.model_type_definitions.set_current_parameters(self.current_parameters)
         for metric_name in self.metrics_list:
             print(f'Starting [{metric_name}] calculation between windows [{current_window}-{current_window-1}]')
             metric = self.model_type_definitions.metrics_factory(metric_name, current_window,
-                                                                 initial_trace, metric_name, m1, m2, l1, l2)
+                                                                 initial_trace, metric_name, m1, m2, l1, l2, parameters)
 
             metric.set_saving_definitions(self.filenames[metric_name], self.current_parameters, self.locks[metric_name],
                                           self)
@@ -123,7 +123,7 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
-        print(f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
+        # print(f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
         if self.final_window != 0 and self.metrics_count == (self.final_window * len(self.metrics_list)):
             self.finish()
 

@@ -138,7 +138,7 @@ parameters_panel = [
                                   value=[item.value for item in framework.get_default_metrics()],
                                   ),
                 ]),
-            ], style={'display': 'none'})
+            ], style={'display': 'block'})
         ]),
         id='collapse-parameters', is_open=True
     )
@@ -296,7 +296,7 @@ def type_selected(type_value, unity_value, winsize):
 # used to start or stop the interval component for checking similarity calculation
 def check_status_ipdd(status, window_size, interval_disabled, button_clicks, models_col_style):
     ctx = dash.callback_context
-    print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
+    #print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
 
     # when the user starts a new process drift analysis
     if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:

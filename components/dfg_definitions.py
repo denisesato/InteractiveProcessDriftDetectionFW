@@ -15,7 +15,7 @@ import os
 
 from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, \
     DfgNodesSimilarityMetric
-from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric
+from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric, WaitingTimeSimilarityMetric
 from enum import Enum
 
 
@@ -24,6 +24,7 @@ class Metric(str, Enum):
     EDGES = 'Edges similarity'
     EDIT_DISTANCE = 'Edit distance similarity'
     SOJOURN_TIME = 'Sojourn time similarity'
+    WAITING_TIME = 'Waiting time similarity'
 
 
 class DfgDefinitions:
@@ -38,7 +39,8 @@ class DfgDefinitions:
         self.all_metrics = {Metric.NODES: 'DfgNodesSimilarityMetric',
                             Metric.EDGES: 'DfgEdgesSimilarityMetric',
                             Metric.EDIT_DISTANCE: 'DfgEditDistanceMetric',
-                            Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric'}
+                            Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric',
+                            Metric.WAITING_TIME: 'WaitingTimeSimilarityMetric'}
 
     def set_current_parameters(self, current_parameters):
         self.current_parameters = current_parameters
@@ -70,14 +72,15 @@ class DfgDefinitions:
     def get_metrics_list(self):
         return self.metrics
 
-    def metrics_factory(self, metric_name, window, initial_trace, name, m1, m2, l1, l2):
+    def metrics_factory(self, metric_name, window, initial_trace, name, m1, m2, l1, l2, parameters):
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
             'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2),
             'DfgEditDistanceMetric': DfgEditDistanceMetric(window, initial_trace, name, m1, m2),
             'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
-            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
+            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters),
+            'WaitingTimeSimilarityMetric': WaitingTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters)
         }
         return classes[self.all_metrics[metric_name]]
 

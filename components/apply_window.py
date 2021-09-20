@@ -246,7 +246,7 @@ class ApplyWindowing:
         # calculate the similarity metrics between consecutive windows
         if self.window_count > 1:
             self.metrics.calculate_metrics(self.window_count, self.previous_sub_log, sub_log, self.previous_model,
-                                           model)
+                                           model, self.current_parameters)
         # save the current model and sub_log for the next window
         self.previous_sub_log = sub_log
         self.previous_model = model

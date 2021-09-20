@@ -14,6 +14,8 @@
 import os
 import shutil
 
+from pm4py.objects.log.util import interval_lifecycle
+
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
@@ -217,6 +219,10 @@ class InteractiveProcessDriftDetectionFW:
             print(
                 f'Log [{filename}] - total of cases [{self.current_log.total_of_cases}] - median case duration '
                 f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
+
+            # convert to interval time log if needed
+            self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
+
 
     @threaded
     def run(self, event_log, win_type, win_unity, win_size, metrics=None, user_id='script'):

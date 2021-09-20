@@ -15,6 +15,7 @@ import os
 import pm4py
 from graphviz import Source
 from pm4py.visualization.dfg import visualizer as dfg_visualization
+from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery import Discovery
 
@@ -35,8 +36,9 @@ class DiscoveryDfg(Discovery):
             os.makedirs(models_path)
 
         # mine the DFG (using Pm4Py)
-        dfg, start_activities, end_activities = pm4py.discover_directly_follows_graph(sub_log)
-        gviz = dfg_visualization.apply(dfg, log=sub_log)
+        #dfg, start_activities, end_activities = pm4py.discover_directly_follows_graph(sub_log)
+        dfg = dfg_discovery.apply(sub_log, variant=dfg_discovery.Variants.PERFORMANCE)
+        gviz = dfg_visualization.apply(dfg, log=sub_log, variant=dfg_visualization.Variants.PERFORMANCE)
 
         # save the process model
         output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)

@@ -2,4 +2,4 @@ python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases
 
 python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes"
 
-python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes" -m CYCLE_TIME
+python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes" -mt SOJOURN_TIME
