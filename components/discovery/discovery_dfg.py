@@ -36,9 +36,12 @@ class DiscoveryDfg(Discovery):
             os.makedirs(models_path)
 
         # mine the DFG (using Pm4Py)
-        #dfg, start_activities, end_activities = pm4py.discover_directly_follows_graph(sub_log)
-        dfg = dfg_discovery.apply(sub_log, variant=dfg_discovery.Variants.PERFORMANCE)
-        gviz = dfg_visualization.apply(dfg, log=sub_log, variant=dfg_visualization.Variants.PERFORMANCE)
+        dfg, start_activities, end_activities = pm4py.discover_directly_follows_graph(sub_log)
+        parameters = {dfg_visualization.Variants.FREQUENCY.value.Parameters.START_ACTIVITIES: start_activities,
+                      dfg_visualization.Variants.FREQUENCY.value.Parameters.END_ACTIVITIES: end_activities}
+        gviz = dfg_visualization.apply(dfg, log=sub_log, parameters=parameters)
+        # dfg = dfg_discovery.apply(sub_log, variant=dfg_discovery.Variants.PERFORMANCE)
+        # gviz = dfg_visualization.apply(dfg, log=sub_log, variant=dfg_visualization.Variants.PERFORMANCE)
 
         # save the process model
         output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)

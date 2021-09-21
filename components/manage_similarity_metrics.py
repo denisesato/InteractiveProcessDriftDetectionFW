@@ -16,10 +16,6 @@ import time
 from threading import RLock, Thread
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
-
-
-# workaround for pygraphviz problem to release file handlers in windows
-# import win32file as wfile
 from components.pn_definitions import PnDefinitions
 
 
@@ -75,12 +71,6 @@ class ManageSimilarityMetrics:
         self.timeout = 60  # in seconds
         self.time_started = None
 
-        # workaround for pygraphviz problem - the library do not release file handlers
-        # in windows - this should be verified again
-        # change the maximum number of open files
-        # wfile._setmaxstdio(8196)
-        # print(f'NEW max open files: {[wfile._getmaxstdio()]}')
-
     # organize the file's structure for storing information about the
     # calculated metrics
     def verify_files(self):
@@ -111,7 +101,7 @@ class ManageSimilarityMetrics:
     def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2, parameters):
         self.model_type_definitions.set_current_parameters(self.current_parameters)
         for metric_name in self.metrics_list:
-            print(f'Starting [{metric_name}] calculation between windows [{current_window}-{current_window-1}]')
+            print(f'Starting [{metric_name}] calculation between windows [{current_window - 1}-{current_window}]')
             metric = self.model_type_definitions.metrics_factory(metric_name, current_window,
                                                                  initial_trace, metric_name, m1, m2, l1, l2, parameters)
 

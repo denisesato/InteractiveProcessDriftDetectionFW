@@ -76,7 +76,8 @@ class AnalyzeDrift:
                                        self.models_path, self.metrics_path, self.discovery)
 
             # execute actions for a checkpoint (end of a window)
-            window_count, metrics_manager, initial_indexes = windowing.apply_window(event_data)
+            # window_count, metrics_manager, initial_indexes = windowing.apply_tumbling_window(event_data)
+            window_count, metrics_manager, initial_indexes = windowing.apply_sliding_window(event_data)
 
             # stores the instance of the metrics manager, responsible to manage the asynchronous
             # calculation of the metrics
@@ -101,7 +102,44 @@ class ApplyWindowing:
         self.metrics_path = metrics_path
         self.metrics = None
 
-    def apply_window(self, event_data):
+    # only for new trace or event
+    def apply_sliding_window(self, event_data):
+        initial_index = 0
+        initial_indexes = {}
+        initial_trace_index = None
+
+        # initialize similarity metrics manager
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
+
+        # check if there is at least two windows
+        last_trace_index = len(event_data)
+        if last_trace_index > self.current_parameters.winsize / 2:
+            for i, item in enumerate(event_data):
+                # get the inital case id of the window
+                if self.current_parameters.wintype == WindowType.EVENT.name:
+                    case_id = item['case:concept:name']
+                elif self.current_parameters.wintype == WindowType.TRACE.name:
+                    case_id = item.attributes['concept:name']
+                else:
+                    print(f'Incorrect window type: {self.window_type}.')
+                initial_trace_index = case_id
+
+                start_index_w1 = i
+                start_index_w2 = i + self.current_parameters.winsize
+
+                if start_index_w2 > last_trace_index:
+                    print(f'Analyzing final window... window_count {self.window_count}')
+                    # set the final window used by metrics manager to identify all the metrics have been calculated
+                    self.metrics.set_final_window(self.window_count)
+                    # process and compare the two windows
+                    self.process_two_windows(event_data, start_index_w1, last_trace_index, self.current_parameters.winsize)
+                else:
+                    # process and compare the two windows
+                    self.process_two_windows(event_data, start_index_w1, start_index_w2, self.current_parameters.winsize)
+        return self.window_count, self.metrics, initial_indexes
+
+    def apply_tumbling_window(self, event_data):
         initial_index = 0
         initial_indexes = {}
         initial_trace_index = None
@@ -250,3 +288,45 @@ class ApplyWindowing:
         # save the current model and sub_log for the next window
         self.previous_sub_log = sub_log
         self.previous_model = model
+
+    # create for sliding windows
+    def process_two_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):
+        print(f'process_two_windows w1: {initial_index_w1} w2: {initial_index_w2} winsize: {winsize}')
+        if self.current_parameters.wintype == WindowType.EVENT.name:
+            # generate the sub-log for the window
+            window1 = EventStream(event_data[initial_index_w1:winsize])
+            window2 = EventStream(event_data[initial_index_w2:winsize])
+            sub_log1 = log_converter.apply(window1, variant=log_converter.Variants.TO_EVENT_LOG)
+            sub_log2 = log_converter.apply(window2, variant=log_converter.Variants.TO_EVENT_LOG)
+        elif self.current_parameters.wintype == WindowType.TRACE.name:
+            sub_log1 = EventLog(event_data[initial_index_w1:winsize])
+            sub_log2 = EventLog(event_data[initial_index_w2:(initial_index_w2+winsize)])
+        else:
+            print(f'Incorrect window type: {self.current_parameters.wintype}.')
+
+        # TODO remove after debugging
+        # for debug purpose
+        dataframe = log_converter.apply(sub_log1, variant=log_converter.Variants.TO_DATA_FRAME)
+        dataframe.to_csv(f'data/debug/{self.current_parameters.logname}_{self.window_count}_log1.csv')
+        dataframe = log_converter.apply(sub_log2, variant=log_converter.Variants.TO_DATA_FRAME)
+        dataframe.to_csv(f'data/debug/{self.current_parameters.logname}_{self.window_count}_log2.csv')
+        self.compare_windows(sub_log1, sub_log2)
+
+    # create for sliding windows
+    def compare_windows(self, sl1, sl2):
+        # increment the id of the window
+        self.window_count += 1
+        model1 = self.discovery.generate_process_model(sl1, self.models_path, self.current_parameters.logname,
+                                                      self.window_count)
+
+        # increment the id of the window
+        self.window_count += 1
+        model2 = self.discovery.generate_process_model(sl2, self.models_path, self.current_parameters.logname,
+                                                      self.window_count)
+
+        # if it is the second window start the metrics calculation and timeout
+        if self.window_count == 2:
+            self.metrics.start_metrics_timeout()
+            self.control.start_metrics_calculation()
+
+        self.metrics.calculate_metrics(self.window_count, sl1, sl2, model1, model2, self.current_parameters)

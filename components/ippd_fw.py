@@ -174,6 +174,13 @@ class InteractiveProcessDriftDetectionFW:
         self.metrics_path = os.path.join('data', 'metrics')
         self.initialize_paths()
 
+        # workaround for pygraphviz problem - the library do not release file handlers
+        # in windows - this should be verified again
+        # change the maximum number of open files
+        import win32file as wfile
+        wfile._setmaxstdio(4096)
+        print(f'NEW max open files: {[wfile._getmaxstdio()]}')
+
     def initialize_paths(self):
         # verify if the folder for saving the events logs exist, if not create it
         if not os.path.exists(self.input_path):
@@ -222,7 +229,6 @@ class InteractiveProcessDriftDetectionFW:
 
             # convert to interval time log if needed
             self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
-
 
     @threaded
     def run(self, event_log, win_type, win_unity, win_size, metrics=None, user_id='script'):

@@ -112,21 +112,24 @@ class SojournTime:
     @staticmethod
     def calculate_sojourn_time_similarity(log1, log2, window, parameters):
         # convert to interval log
-        new_log1 = EventLog(log1)
-        new_log2 = EventLog(log2)
-        interval_log1 = interval_lifecycle.to_interval(new_log1)
-        interval_log2 = interval_lifecycle.to_interval(new_log2)
+        # new_log1 = EventLog(log1)
+        # new_log2 = EventLog(log2)
+        # interval_log1 = interval_lifecycle.to_interval(new_log1)
+        # interval_log2 = interval_lifecycle.to_interval(new_log2)
 
+        # TODO remove after debugging
         # for debug purpose
-        # from pm4py.objects.conversion.log import converter as log_converter
-        # dataframe = log_converter.apply(interval_log1, variant=log_converter.Variants.TO_DATA_FRAME)
-        # dataframe.to_csv(f'data/debug/{window}_interval_log1.csv')
-        # dataframe = log_converter.apply(interval_log2, variant=log_converter.Variants.TO_DATA_FRAME)
-        # dataframe.to_csv(f'data/debug/{window}_interval_log2.csv')
+        from pm4py.objects.conversion.log import converter as log_converter
+        dataframe = log_converter.apply(log1, variant=log_converter.Variants.TO_DATA_FRAME)
+        dataframe.to_csv(f'data/debug/{parameters.logname}_{window}_log1.csv')
+        dataframe = log_converter.apply(log2, variant=log_converter.Variants.TO_DATA_FRAME)
+        dataframe.to_csv(f'data/debug/{parameters.logname}_{window}_log2.csv')
 
         # get the samples, containing a list of values for each activity
-        sample1 = SojournTime.get_durations(interval_log1)
-        sample2 = SojournTime.get_durations(interval_log2)
+        # sample1 = SojournTime.get_durations(interval_log1)
+        # sample2 = SojournTime.get_durations(interval_log2)
+        sample1 = SojournTime.get_durations(log1)
+        sample2 = SojournTime.get_durations(log2)
 
         # remove activities that are not present in both samples
         keys_to_remove = []
@@ -288,12 +291,12 @@ class WaitingTime:
 
             # TODO Remove after finishing the debug
             # create a file for each activity
-            dict = {f'w{window - 1}': sample1[activity], f'w{window}': sample2[activity]}
-            df = pd.DataFrame({key: pd.Series(value) for key, value in dict.items()})
-            filename = f'test{window - 1}-{window}_{activity}.csv'
-            print(f'Saving CSV file {filename}')
-            df.to_csv(os.path.join(folder_name, filename))
-            # filename = f'test{window - 1}-{window}_{activity}.xlsx'
+            # dict = {f'w{window - 1}': sample1[activity], f'w{window}': sample2[activity]}
+            # df = pd.DataFrame({key: pd.Series(value) for key, value in dict.items()})
+            # # filename = f'test{window - 1}-{window}_{activity}.csv'
+            # print(f'Saving CSV file {filename}')
+            # df.to_csv(os.path.join(folder_name, filename))
+            # # filename = f'test{window - 1}-{window}_{activity}.xlsx'
             # print(f'Saving excel file {filename}')
             # df.to_excel(os.path.join(folder_name, filename))
 
