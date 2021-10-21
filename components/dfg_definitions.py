@@ -20,11 +20,11 @@ from enum import Enum
 
 
 class Metric(str, Enum):
-    NODES = 'Nodes similarity'
-    EDGES = 'Edges similarity'
-    EDIT_DISTANCE = 'Edit distance similarity'
-    SOJOURN_TIME = 'Sojourn time similarity'
-    WAITING_TIME = 'Waiting time similarity'
+    NODES = 'Nodes'
+    EDGES = 'Edges'
+    EDIT_DISTANCE = 'Edit distance'
+    SOJOURN_TIME = 'Sojourn time'
+    WAITING_TIME = 'Waiting time'
 
 
 class DfgDefinitions:

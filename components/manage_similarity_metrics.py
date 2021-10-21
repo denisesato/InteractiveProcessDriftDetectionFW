@@ -113,8 +113,11 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
-        # print(f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
-        if self.final_window != 0 and self.metrics_count == (self.final_window * len(self.metrics_list)):
+        print(f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
+        # TODO this is the check for tumbling windows
+        # check to create a check that works with tumbling and sliding windows
+        if self.final_window != 0 and self.metrics_count == (self.final_window * len(self.metrics_list)): # for tumbling windows
+        # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
             self.finish()
 
     @threaded

@@ -67,7 +67,10 @@ class Control:
         self.mining_status = IPDDProcessingStatus.NOT_STARTED
 
     def finished_run(self):
-        result = self.tasks_completed >= 2  # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
+        if self.metrics_manager is not None:
+            result = self.tasks_completed >= 2  # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
+        else:
+            result = self.tasks_completed == 1
         return result
 
     def reset_tasks_counter(self):
@@ -112,8 +115,9 @@ class Control:
 
 
 class IPDDParameters:
-    def __init__(self, logname, wintype, winunity, winsize, metrics):
+    def __init__(self, logname, approach, wintype, winunity, winsize, metrics):
         self.logname = logname
+        self.approach = approach
         self.wintype = wintype
         self.winunity = winunity
         self.winsize = winsize
@@ -149,7 +153,7 @@ class InteractiveProcessDriftDetectionFW:
         self.status_mining = ''
         self.control = Control()
         self.windows_with_drifts = None
-        self.initial_indexes = []
+        self.initial_indexes = {}
         self.total_of_windows = 0
         self.input_path = None
         self.models_path = None
@@ -228,10 +232,10 @@ class InteractiveProcessDriftDetectionFW:
                 f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
 
             # convert to interval time log if needed
-            self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
+            # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
 
     @threaded
-    def run(self, event_log, win_type, win_unity, win_size, metrics=None, user_id='script'):
+    def run(self, event_log, approach, win_type, win_unity, win_size, metrics=None, user_id='script'):
         self.user_id = user_id
         if not self.script:
             # clean data generated from previous runs
@@ -259,17 +263,17 @@ class InteractiveProcessDriftDetectionFW:
             metrics = self.model_type_definitions.get_default_metrics()
 
         # set the parameters selected for the current run
-        self.current_parameters = IPDDParameters(event_log, win_type, win_unity, win_size, metrics)
+        self.current_parameters = IPDDParameters(event_log, approach, win_type, win_unity, win_size, metrics)
         self.discovery.set_current_parameters(self.current_parameters)
 
         self.control.reset_tasks_counter()
         print(f'User selected window={win_type}-{win_unity} with size={win_size}')
         print(f'Metrics={metrics}')
         print(f'Starting windowing process...')
-        models = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
+        analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
                               self.get_input_path(user_id), self.get_models_path(user_id),
                               self.get_metrics_path(user_id), self.current_log, self.discovery)
-        self.total_of_windows, self.initial_indexes = models.generate_models()
+        self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
         self.control.finish_mining_calculation()
         print(f'*** Initial indexes for generated windows: {self.initial_indexes}')
         print(f'*** Number of windows: [{self.total_of_windows}]')
@@ -366,7 +370,10 @@ class InteractiveProcessDriftDetectionFW:
         return self.status_similarity_metrics, self.total_of_windows, self.windows_with_drifts
 
     def get_windows_candidates(self):
-        return self.get_metrics_manager().get_window_candidates()
+        if self.get_metrics_manager():
+            return self.get_metrics_manager().get_window_candidates()
+        else:
+            return ()
 
     def clean_generated_data(self, user_id):
         # cleaning data from previous executions - only for web acess

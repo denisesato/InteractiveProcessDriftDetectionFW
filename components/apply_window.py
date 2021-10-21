@@ -13,10 +13,17 @@
 """
 from threading import Thread
 from enum import Enum
+
+import numpy as np
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
 from datetime import datetime, date
+
+from pm4py.objects.log.util import interval_lifecycle
+
 from components.manage_similarity_metrics import ManageSimilarityMetrics
+from skmultiflow.drift_detection.adwin import ADWIN
+import pandas as pd
 
 
 class WindowType(str, Enum):
@@ -35,6 +42,11 @@ class WindowInitialIndex(str, Enum):
     TRACE_CONCEPT_NAME = 'Trace concept name'
 
 
+class Approach(str, Enum):
+    FIXED = 'Fixed'
+    ADAPTIVE = 'Adaptive'
+
+
 def threaded(fn):
     def wrapper(*args, **kwargs):
         thread = Thread(target=fn, args=args, kwargs=kwargs)
@@ -47,96 +59,116 @@ def threaded(fn):
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
                  models_path, metrics_path, current_log, discovery):
+        self.window_count = 0
         self.current_parameters = current_parameters
         self.control = control
         self.input_path = input_path
         self.models_path = models_path
         self.metrics_path = metrics_path
         self.model_type = model_type
+        # instance of the MetricsManager
+        self.metrics = None
         # current loaded event log information
         self.current_log = current_log
+        # convert to interval time log if needed
+        self.converted_log = interval_lifecycle.to_interval(self.current_log.log)
+        # set the event_data as requested by the user (read event by event or trace by trace)
+        if self.current_parameters.wintype == WindowType.TRACE.name:
+            self.event_data = self.converted_log
+        if self.current_parameters.wintype == WindowType.EVENT.name:
+            # convert the log into an event stream
+            self.event_data = log_converter.apply(self.converted_log, variant=log_converter.Variants.TO_EVENT_STREAM)
+        else:
+            self.event_data = self.converted_log
+            print(
+                f'The window type received is not defined for IPDD {self.current_parameters.wintype}, assuming STREAM OF TRACES')
         # class that implements the discovery method for the current model
         self.discovery = discovery
+        self.previous_sub_log = None
+        self.previous_model = None
 
     # generate all the process models based on the windowing strategy
     # selected by the user and start the metrics calculation between
     # consecutive windows
-    def generate_models(self):
-        # get the current loaded event log
-        event_data = self.current_log.log
-        if event_data is not None:
-            # iterate on the log (event by event or trace by trace)
-            if self.current_parameters.wintype == WindowType.EVENT.name:
-                # convert the log into an event stream
-                event_data = log_converter.apply(event_data, variant=log_converter.Variants.TO_EVENT_STREAM)
-
+    def start_drift_analysis(self):
+        self.window_count = 0
+        metrics_manager = None
+        if self.event_data is not None:
             # call for the implementation of the different windowing strategies
-            # TODO: check if I can pass the AnalyzeDrift object instead of all this parameters
-            windowing = ApplyWindowing(self.model_type, self.current_parameters, self.control, self.input_path,
-                                       self.models_path, self.metrics_path, self.discovery)
+            if self.current_parameters.approach == Approach.FIXED.name:
+                window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
+                # window_count, metrics_manager, initial_indexes = self.apply_sliding_window(event_data)
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+                window_count, initial_indexes, window_cuts = self.apply_detector(self.event_data)
 
-            # execute actions for a checkpoint (end of a window)
-            # window_count, metrics_manager, initial_indexes = windowing.apply_tumbling_window(event_data)
-            window_count, metrics_manager, initial_indexes = windowing.apply_sliding_window(event_data)
+                # initialize similarity metrics manager
+                self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                                       self.models_path, self.metrics_path)
+                # set the final window used by metrics manager to identify all the metrics have been calculated
+                self.metrics.set_final_window(window_count)
+
+                # process the detected windows
+                print(f'Window cuts: {window_cuts}')
+                self.window_count = 0
+                begin_of_window = 0
+                for cut in window_cuts:
+                    self.new_window(begin_of_window, cut)
+                    begin_of_window = cut
+                # last window
+                if begin_of_window < len(self.event_data) - 1:
+                    end_of_window = len(self.event_data) - 1
+                    self.new_window(begin_of_window, end_of_window)
+            else:
+                print(f'Incorrect approach: {self.current_parameters.approach}')
 
             # stores the instance of the metrics manager, responsible to manage the asynchronous
             # calculation of the metrics
-            # no metrics manager instantiated when IPDD calculates one windows
+            # no metrics manager instantiated when IPDD calculates one window
             if metrics_manager:
                 self.control.set_metrics_manager(metrics_manager)
             return window_count, initial_indexes
 
-
-class ApplyWindowing:
-    def __init__(self, model_type, current_parameters, control, input_path,
-                 models_path, metrics_path, discovery):
-        self.current_parameters = current_parameters
-        self.input_path = input_path
-        self.models_path = models_path
-        self.window_count = 0
-        self.model_type = model_type
-        self.previous_sub_log = None
-        self.previous_model = None
-        self.discovery = discovery
-        self.control = control
-        self.metrics_path = metrics_path
-        self.metrics = None
+    # get the current case id from the trace or event
+    def get_case_id(self, item):
+        # get the initial case id of the window
+        if self.current_parameters.wintype == WindowType.EVENT.name:
+            case_id = item['case:concept:name']
+        elif self.current_parameters.wintype == WindowType.TRACE.name:
+            case_id = item.attributes['concept:name']
+        else:
+            print(f'Incorrect window type: {self.window_type}.')
+        return case_id
 
     # only for new trace or event
     def apply_sliding_window(self, event_data):
-        initial_index = 0
         initial_indexes = {}
-        initial_trace_index = None
-
         # initialize similarity metrics manager
         self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
                                                self.models_path, self.metrics_path)
-
         # check if there is at least two windows
-        last_trace_index = len(event_data)
-        if last_trace_index > self.current_parameters.winsize / 2:
-            for i, item in enumerate(event_data):
-                # get the inital case id of the window
-                if self.current_parameters.wintype == WindowType.EVENT.name:
-                    case_id = item['case:concept:name']
-                elif self.current_parameters.wintype == WindowType.TRACE.name:
-                    case_id = item.attributes['concept:name']
-                else:
-                    print(f'Incorrect window type: {self.window_type}.')
-                initial_trace_index = case_id
-
+        no_traces = len(event_data)
+        if no_traces > self.current_parameters.winsize / 2:
+            last_index = no_traces - self.current_parameters.winsize * 2 + 1
+            print(f'for até {last_index}')
+            for i in range(0, last_index):
                 start_index_w1 = i
                 start_index_w2 = i + self.current_parameters.winsize
 
-                if start_index_w2 > last_trace_index:
+                item = event_data[start_index_w1]
+                case_id1 = self.get_case_id(item)
+                item2 = event_data[start_index_w1]
+                case_id2 = self.get_case_id(item2)
+                initial_indexes[self.window_count + 1] = case_id1
+                initial_indexes[self.window_count + 2] = case_id2
+
+                if i == last_index - 1:
                     print(f'Analyzing final window... window_count {self.window_count}')
                     # set the final window used by metrics manager to identify all the metrics have been calculated
-                    self.metrics.set_final_window(self.window_count)
-                    # process and compare the two windows
-                    self.process_two_windows(event_data, start_index_w1, last_trace_index, self.current_parameters.winsize)
-                else:
-                    # process and compare the two windows
-                    self.process_two_windows(event_data, start_index_w1, start_index_w2, self.current_parameters.winsize)
+                    self.metrics.set_final_window(self.window_count + 2)
+
+                # process and compare the two windows
+                self.process_two_fixed_sliding_windows(event_data, start_index_w1, start_index_w2,
+                                                       self.current_parameters.winsize)
         return self.window_count, self.metrics, initial_indexes
 
     def apply_tumbling_window(self, event_data):
@@ -150,12 +182,7 @@ class ApplyWindowing:
 
         for i, item in enumerate(event_data):
             # get the current case id
-            if self.current_parameters.wintype == WindowType.EVENT.name:
-                case_id = item['case:concept:name']
-            elif self.current_parameters.wintype == WindowType.TRACE.name:
-                case_id = item.attributes['concept:name']
-            else:
-                print(f'Incorrect window type: {self.window_type}.')
+            case_id = self.get_case_id(item)
 
             # calculate the time_difference (options hours, days)
             time_difference = 0
@@ -192,7 +219,7 @@ class ApplyWindowing:
             # window checkpoint
             if self.verify_window_ckeckpoint(i, event_data, time_difference):
                 # process new window
-                self.new_window(event_data, initial_index, i)
+                self.new_window(initial_index, i)
                 # save information about the initial of the processed window
                 initial_indexes[initial_index] = initial_trace_index
 
@@ -211,7 +238,7 @@ class ApplyWindowing:
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             # process final window
-            self.new_window(event_data, initial_index, len(event_data))
+            self.new_window(initial_index, len(event_data))
             # save information about the initial of the processed window
             initial_indexes[initial_index] = initial_trace_index
 
@@ -233,6 +260,68 @@ class ApplyWindowing:
         else:
             print(f'Incorrent windowing unity [{self.current_parameters.winunity}].')
         return False
+
+    def apply_detector(self, event_data):
+        # by now working with sojourn time
+        initial_indexes = {}
+        # create or applying a detector
+        window_cuts = []
+        activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
+        print(f'Applying ADWIN to log {self.current_log.filename}')
+        activities = np.unique(np.array(activities))
+        adwin = {}
+        durations = {}
+        for a in activities:
+            adwin[a] = ADWIN()
+            durations[a] = []
+
+        for i, item in enumerate(event_data):
+            # get the current case id
+            case_id = self.get_case_id(item)
+            # save the first case id as the beginning of the first window
+            if i == 0:
+                initial_indexes[i] = case_id
+
+            # when reading the log trace by trace we need to iterate over the events
+            if self.current_parameters.wintype == WindowType.TRACE.name:
+                for event in item:
+                    activity = event['concept:name']
+                    duration = self.get_duration(event)
+                    # for debug
+                    durations[activity].append(duration)
+                    adwin[activity].add_element(duration)
+                    if adwin[activity].detected_change():
+                        print(
+                            f'Change detected in data: {duration} - at index: {i} - case: {case_id} - activity: {activity}')
+                        # save the initial of the processed window
+                        initial_indexes[i] = case_id
+                        window_cuts.append(i)
+            else:
+                # for each new event, collect the duration per activity
+                activity = item['concept:name']
+                duration = self.get_duration(item)
+                # for debug
+                durations[activity].append(duration)
+                adwin[activity].add_element(duration)
+                if adwin[activity].detected_change():
+                    print(
+                        f'Change detected in data: {duration} - at index: {i} - case: {case_id} - activity: {activity}')
+                    # save the initial of the processed window
+                    initial_indexes[i] = case_id
+                    window_cuts.append(i)
+        # for debug
+        # for a in activities:
+        #     df = pd.DataFrame(durations[a], columns=['duration'])
+        #     df.to_csv(f'data/debug/durations/{self.current_parameters.logname}_{a}.csv', index=False)
+        return len(initial_indexes), initial_indexes, window_cuts
+
+    # get the duration of the event
+    # the input must be an interval log
+    def get_duration(self, event):
+        start_time = event['start_timestamp'].timestamp()
+        complete_time = event['time:timestamp'].timestamp()
+        duration = complete_time - start_time
+        return duration
 
     def get_current_timestamp(self, item):
         timestamp_aux = None
@@ -257,25 +346,21 @@ class ApplyWindowing:
             print(f'Incorrect window type: {self.current_parameters.wintype}.')
         return date_aux
 
-    def new_window(self, event_data, initial_index, i):
+    def new_window(self, begin, end):
         # increment the id of the window
         self.window_count += 1
-
+        print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count}]')
         if self.current_parameters.wintype == WindowType.EVENT.name:
             # generate the sub-log for the window
-            window = EventStream(event_data[initial_index:i])
+            window = EventStream(self.event_data[begin:end])
             sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
         elif self.current_parameters.wintype == WindowType.TRACE.name:
-            sub_log = EventLog(event_data[initial_index:i])
+            sub_log = EventLog(self.event_data[begin:end])
         else:
             print(f'Incorrect window type: {self.current_parameters.wintype}.')
-
         self.execute_processes_for_window(sub_log)
 
-    def execute_processes_for_window(self, sub_log):
-        model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
-                                                      self.window_count)
-
+    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log):
         # if it is the second window start the metrics calculation and timeout
         if self.window_count == 2:
             self.metrics.start_metrics_timeout()
@@ -289,40 +374,48 @@ class ApplyWindowing:
         self.previous_sub_log = sub_log
         self.previous_model = model
 
+    # after defining a window (fixed or adaptive) IPDD must mine the models and calculate the similarity metrics
+    # between adjacent ones
+    def execute_processes_for_window(self, sub_log):
+        model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
+                                                      self.window_count)
+        self.calculate_metrics_between_adjacent_time_slots(model, sub_log)
+
     # create for sliding windows
-    def process_two_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):
+    def process_two_fixed_sliding_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):
         print(f'process_two_windows w1: {initial_index_w1} w2: {initial_index_w2} winsize: {winsize}')
         if self.current_parameters.wintype == WindowType.EVENT.name:
             # generate the sub-log for the window
-            window1 = EventStream(event_data[initial_index_w1:winsize])
-            window2 = EventStream(event_data[initial_index_w2:winsize])
+            window1 = EventStream(event_data[initial_index_w1:initial_index_w1 + winsize])
+            window2 = EventStream(event_data[initial_index_w2:initial_index_w2 + winsize])
             sub_log1 = log_converter.apply(window1, variant=log_converter.Variants.TO_EVENT_LOG)
             sub_log2 = log_converter.apply(window2, variant=log_converter.Variants.TO_EVENT_LOG)
         elif self.current_parameters.wintype == WindowType.TRACE.name:
-            sub_log1 = EventLog(event_data[initial_index_w1:winsize])
-            sub_log2 = EventLog(event_data[initial_index_w2:(initial_index_w2+winsize)])
+            sub_log1 = EventLog(event_data[initial_index_w1:initial_index_w1 + winsize])
+            sub_log2 = EventLog(event_data[initial_index_w2:(initial_index_w2 + winsize)])
+            print(f'Sub-log1: {len(sub_log1)} - Sub-log2: {len(sub_log2)}')
         else:
             print(f'Incorrect window type: {self.current_parameters.wintype}.')
 
         # TODO remove after debugging
         # for debug purpose
-        dataframe = log_converter.apply(sub_log1, variant=log_converter.Variants.TO_DATA_FRAME)
-        dataframe.to_csv(f'data/debug/{self.current_parameters.logname}_{self.window_count}_log1.csv')
-        dataframe = log_converter.apply(sub_log2, variant=log_converter.Variants.TO_DATA_FRAME)
-        dataframe.to_csv(f'data/debug/{self.current_parameters.logname}_{self.window_count}_log2.csv')
-        self.compare_windows(sub_log1, sub_log2)
+        # dataframe = log_converter.apply(sub_log1, variant=log_converter.Variants.TO_DATA_FRAME)
+        # dataframe.to_csv(f'data/debug/{self.current_parameters.logname}_{self.window_count}_log1.csv')
+        # dataframe = log_converter.apply(sub_log2, variant=log_converter.Variants.TO_DATA_FRAME)
+        # dataframe.to_csv(f'data/debug/{self.current_parameters.logname}_{self.window_count}_log2.csv')
+        self.compare_sliding_fixed_windows(sub_log1, sub_log2)
 
     # create for sliding windows
-    def compare_windows(self, sl1, sl2):
+    def compare_sliding_fixed_windows(self, sl1, sl2):
         # increment the id of the window
         self.window_count += 1
         model1 = self.discovery.generate_process_model(sl1, self.models_path, self.current_parameters.logname,
-                                                      self.window_count)
+                                                       self.window_count)
 
         # increment the id of the window
         self.window_count += 1
         model2 = self.discovery.generate_process_model(sl2, self.models_path, self.current_parameters.logname,
-                                                      self.window_count)
+                                                       self.window_count)
 
         # if it is the second window start the metrics calculation and timeout
         if self.window_count == 2:

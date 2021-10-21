@@ -110,26 +110,24 @@ class SojournTime:
         return sample
 
     @staticmethod
-    def calculate_sojourn_time_similarity(log1, log2, window, parameters):
+    def calculate_sojourn_time_similarity(sublog1, sublog2, window, parameters):
         # convert to interval log
-        # new_log1 = EventLog(log1)
-        # new_log2 = EventLog(log2)
-        # interval_log1 = interval_lifecycle.to_interval(new_log1)
-        # interval_log2 = interval_lifecycle.to_interval(new_log2)
+        new_log1 = EventLog(sublog1)
+        new_log2 = EventLog(sublog2)
+        interval_log1 = interval_lifecycle.to_interval(new_log1)
+        interval_log2 = interval_lifecycle.to_interval(new_log2)
 
         # TODO remove after debugging
         # for debug purpose
-        from pm4py.objects.conversion.log import converter as log_converter
-        dataframe = log_converter.apply(log1, variant=log_converter.Variants.TO_DATA_FRAME)
-        dataframe.to_csv(f'data/debug/{parameters.logname}_{window}_log1.csv')
-        dataframe = log_converter.apply(log2, variant=log_converter.Variants.TO_DATA_FRAME)
-        dataframe.to_csv(f'data/debug/{parameters.logname}_{window}_log2.csv')
+        # from pm4py.objects.conversion.log import converter as log_converter
+        # dataframe = log_converter.apply(log1, variant=log_converter.Variants.TO_DATA_FRAME)
+        # dataframe.to_csv(f'data/debug/{parameters.logname}_{window}_log1.csv')
+        # dataframe = log_converter.apply(log2, variant=log_converter.Variants.TO_DATA_FRAME)
+        # dataframe.to_csv(f'data/debug/{parameters.logname}_{window}_log2.csv')
 
         # get the samples, containing a list of values for each activity
-        # sample1 = SojournTime.get_durations(interval_log1)
-        # sample2 = SojournTime.get_durations(interval_log2)
-        sample1 = SojournTime.get_durations(log1)
-        sample2 = SojournTime.get_durations(log2)
+        sample1 = SojournTime.get_durations(interval_log1)
+        sample2 = SojournTime.get_durations(interval_log2)
 
         # remove activities that are not present in both samples
         keys_to_remove = []
@@ -157,7 +155,7 @@ class SojournTime:
         # Save the samples
         # Create target directory & all intermediate directories if don't exists
         experiment_name = f'{parameters.logname}_winsize{parameters.winsize}'
-        folder_name = os.path.join('data', 'debug', experiment_name, 'samples')
+        folder_name = os.path.join('data', 'debug', experiment_name, 'samples_waiting_time')
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
@@ -172,7 +170,7 @@ class SojournTime:
                 print(error)
 
             # TODO Remove after finishing the debug
-            # create a file for each activity
+            # create a file for each activity, containing the samples
             dict = {f'w{window - 1}': sample1[activity], f'w{window}': sample2[activity]}
             df = pd.DataFrame({key: pd.Series(value) for key, value in dict.items()})
             filename = f'test{window - 1}-{window}_{activity}.csv'
@@ -182,7 +180,7 @@ class SojournTime:
             # print(f'Saving excel file {filename}')
             # df.to_excel(os.path.join(folder_name, filename))
 
-            if p_value and p_value < 0.05:
+            if p_value and p_value < 0.01:
                 # assume alternative hypothesis - evidence of significant difference between the samples
                 activities_with_difference.append(activity)
 
@@ -217,8 +215,8 @@ class SojournTimeSimilarityMetric(TimeMetric):
 class WaitingTime:
     @staticmethod
     # accept an interval log as input
-    def get_waiting_time(log):
-        activities = [ev['concept:name'] for trace in log for ev in trace]
+    def get_waiting_time(sublog):
+        activities = [ev['concept:name'] for trace in sublog for ev in trace]
         activities = np.unique(np.array(activities))
         sample = {}
         sample_total = {}
@@ -227,7 +225,7 @@ class WaitingTime:
             sample_total[a] = 0
 
         # enriched the log with lead, cycle and waiting time
-        enriched_log = interval_lifecycle.assign_lead_cycle_time(log)
+        enriched_log = interval_lifecycle.assign_lead_cycle_time(sublog)
 
         # get the waiting time trace by trace
         for trace in enriched_log:
@@ -239,10 +237,10 @@ class WaitingTime:
         return sample
 
     @staticmethod
-    def calculate_waiting_time_similarity(log1, log2, window):
+    def calculate_waiting_time_similarity(sublog1, sublog2, window):
         # convert to interval log
-        new_log1 = EventLog(log1)
-        new_log2 = EventLog(log2)
+        new_log1 = EventLog(sublog1)
+        new_log2 = EventLog(sublog2)
         interval_log1 = interval_lifecycle.to_interval(new_log1)
         interval_log2 = interval_lifecycle.to_interval(new_log2)
 
@@ -288,17 +286,6 @@ class WaitingTime:
             except ValueError as e:
                 error = f'T Test paired cannot be calculated for activity {activity}: [{e}]'
                 print(error)
-
-            # TODO Remove after finishing the debug
-            # create a file for each activity
-            # dict = {f'w{window - 1}': sample1[activity], f'w{window}': sample2[activity]}
-            # df = pd.DataFrame({key: pd.Series(value) for key, value in dict.items()})
-            # # filename = f'test{window - 1}-{window}_{activity}.csv'
-            # print(f'Saving CSV file {filename}')
-            # df.to_csv(os.path.join(folder_name, filename))
-            # # filename = f'test{window - 1}-{window}_{activity}.xlsx'
-            # print(f'Saving excel file {filename}')
-            # df.to_excel(os.path.join(folder_name, filename))
 
             if p_value and p_value < 0.05:
                 # assume alternative hypothesis - evidence of significant difference between the samples

@@ -19,7 +19,7 @@ import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
 from app import app, get_user_id
 from app import framework
-from components.apply_window import WindowUnity, WindowType, WindowInitialIndex
+from components.apply_window import WindowUnity, WindowType, Approach, WindowInitialIndex
 from components.ippd_fw import IPDDProcessingStatus
 
 navbar = dbc.NavbarSimple(
@@ -35,9 +35,6 @@ navbar = dbc.NavbarSimple(
 evaluation_card = html.Div([
     dbc.Collapse([
         dbc.CardHeader(['Calculate F-score metric']),
-        # html.Hr(),
-        # html.H6(['Calculate F-score metric']),
-        # html.Hr(),
         dbc.CardBody([
             dbc.Row([
                 dbc.Col(html.Span('Real drifts: '), width=2),
@@ -104,11 +101,18 @@ parameters_panel = [
         dbc.CardBody([
             dbc.Row([
                 dbc.Col([
+                    html.Span('Approach'),
+                    dcc.Dropdown(id='approach',
+                                 options=[{'label': item.value, 'value': item.name}
+                                          for item in Approach],
+                                 ),
+                ]),
+                dbc.Col([
                     html.Span('Read the log as'),
                     dcc.Dropdown(id='window-type',
                                  options=[{'label': item.value, 'value': item.name}
                                           for item in WindowType],
-                                 ),
+                                 disabled=True),
                 ]),
                 dbc.Col([
                     html.Span('Split sub-logs based on'),
@@ -116,13 +120,13 @@ parameters_panel = [
                                  options=[],
                                  disabled=True,
                                  ),
-                ]),
+                ], id='col-window-unity', style={'display': 'none'}),
                 dbc.Col([
                     html.Span('Window size'),
                     dbc.Input(id='input-window-size', type='number', min=1,
-                              placeholder='Size', disabled=True),
+                              placeholder='Size', disabled=True, value=30),
                     html.Div(id='window-size', style={'display': 'none'}),
-                ]),
+                ], id='col-window-size', style={'display': 'none'}),
                 dbc.Col([
                     dbc.Button(children=['Analyze Process Drifts'],
                                id='mine_models_btn', n_clicks=0, disabled=True,
@@ -249,39 +253,69 @@ def toggle_popover(n, is_open):
     return is_open
 
 
+@app.callback([Output('col-window-unity', 'style'),
+               Output('col-window-size', 'style'),
+               Output('window-type', 'disabled')],
+              Input('approach', 'value'),
+              [State('window-unity', 'style'),
+               State('input-window-size', 'style')])
+def approach_selected(approach_value, window_unity_style, window_size_style):
+    show = {'display': 'block'}
+    hide = {'display': 'none'}
+    # print(f'Chamou {approach_value} {window_unity_style} {window_size_style}')
+    if approach_value:
+        if approach_value == Approach.FIXED.name:
+            return show, show, False
+        elif approach_value == Approach.ADAPTIVE.name:
+            return hide, hide, False
+        else:
+            print(f'Invalid approach type: {approach_value}')
+            return window_unity_style, window_size_style
+    else:  # first call
+        return hide, hide, True
+
+
 @app.callback([Output('window-unity', 'disabled'),
                Output('input-window-size', 'disabled'),
                Output('mine_models_btn', 'disabled'),
                Output('window-unity', 'options')],
               [Input('window-type', 'value'),
                Input('window-unity', 'value'),
-               Input('input-window-size', 'value')]
+               Input('input-window-size', 'value'),
+               State('approach', 'value')]
               )
-def type_selected(type_value, unity_value, winsize):
-    if type_value:
-        options = []
-        for item in WindowUnity:
-            if item == WindowUnity.UNITY:
-                if type_value == WindowType.TRACE.name:
-                    options.append({'label': 'Traces', 'value': item.name})
-                elif type_value == WindowType.EVENT.name:
-                    options.append({'label': 'Events', 'value': item.name})
-            else:
-                options.append({'label': item.value, 'value': item.name})
-    else:
-        options = [{'label': item.value, 'value': item.name}
-                   for item in WindowUnity]
+def type_and_options_selected(type_value, unity_value, winsize, approach):
+    print(f'type_and_options_selected window-type {type_value} window-unity {unity_value} input-window-size {winsize} approach {approach}')
+    enable_mine_button = False
+    enable_window_unity = False
+    enable_window_size = False
+    options = []
 
-    if not type_value:
-        return True, True, True, options
-    elif not unity_value:
-        print(f'User selected window-type: {type_value}')
-        return False, True, True, options
-    elif not winsize or winsize <= 0:
-        print(f'User selected window-unity: {unity_value}')
-        return False, False, True, options
-    else:
-        return False, False, False, options
+    # check if the mine button should be enabled
+    if type_value:
+        if approach and approach == Approach.ADAPTIVE.name:
+            enable_mine_button = True
+        elif approach and approach == Approach.FIXED.name:
+            # if the user have selected FIXED window and type, fill the options for window unity
+            if approach and approach == Approach.FIXED.name and type_value:
+                for item in WindowUnity:
+                    if item == WindowUnity.UNITY:
+                        if type_value == WindowType.TRACE.name:
+                            options.append({'label': 'Traces', 'value': item.name})
+                        elif type_value == WindowType.EVENT.name:
+                            options.append({'label': 'Events', 'value': item.name})
+                    else:
+                        options.append({'label': item.value, 'value': item.name})
+
+            # check if the window size input should be enabled
+            if unity_value:
+                enable_window_size = True
+
+                # check if the user fill the window size to enable mine button
+                if winsize and winsize > 0:
+                    enable_mine_button = True
+    return not enable_window_unity, not enable_window_size, not enable_mine_button, options
+
 
 
 @app.callback([Output('check-ipdd-finished', 'disabled'),
@@ -296,7 +330,7 @@ def type_selected(type_value, unity_value, winsize):
 # used to start or stop the interval component for checking similarity calculation
 def check_status_ipdd(status, window_size, interval_disabled, button_clicks, models_col_style):
     ctx = dash.callback_context
-    #print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
+    print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
 
     # when the user starts a new process drift analysis
     if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:
@@ -308,6 +342,7 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
             return interval_disabled, button_clicks, models_col_style, -1
     # interval check
     elif window_size > 0:
+        print(f'interval check: status {status}')
         if status == IPDDProcessingStatus.RUNNING:
             return interval_disabled, button_clicks, models_col_style, -1
         if status == IPDDProcessingStatus.IDLE:
@@ -322,12 +357,13 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
 
 @app.callback(Output('window-size', 'children'),
               [Input('mine_models_btn', 'n_clicks')],
-              [State('input-window-size', 'value'),
+              [State('approach', 'value'),
+               State('input-window-size', 'value'),
                State('window-type', 'value'),
                State('window-unity', 'value'),
                State('hidden-filename', 'children'),
                State('metrics', 'value')])
-def run_framework(n_clicks, input_window_size, window_type, window_unity, file, metrics):
+def run_framework(n_clicks, approach, input_window_size, window_type, window_unity, file, metrics):
     if n_clicks > 0:
         int_input_size = 0
         if input_window_size is not None:
@@ -335,7 +371,7 @@ def run_framework(n_clicks, input_window_size, window_type, window_unity, file, 
         if file != '' and int_input_size > 0:
             print(f'Running IPDD')
             user = get_user_id()
-            framework.run(file, window_type, window_unity, int_input_size, metrics, user)
+            framework.run(file, approach, window_type, window_unity, int_input_size, metrics, user)
         print(f'Setting window-size value {input_window_size}, indicating IPDD starts the analysis')
         return input_window_size
     else:
@@ -401,8 +437,9 @@ def update_status_and_drifts(n, div_status):
     ###################################################################
     div_similarity_status, windows, windows_with_drifts = framework.get_status_similarity_metrics_text()
     marks = {}
+
+    initial_indexes = framework.get_initial_trace_indexes()
     for w in range(0, framework.get_windows()):
-        initial_indexes = framework.get_initial_trace_indexes()
         label = str(w + 1) + '|' + str(initial_indexes[w] + 1)
         if windows_with_drifts and (w + 1) in windows_with_drifts:
             marks[w] = {'label': label, 'style': {'color': '#f50'}}

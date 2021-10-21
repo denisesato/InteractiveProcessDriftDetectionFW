@@ -15,7 +15,7 @@ import argparse
 import os
 import time
 
-from components.apply_window import WindowType, WindowUnity
+from components.apply_window import WindowType, WindowUnity, Approach
 from components.dfg_definitions import Metric
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
@@ -28,6 +28,7 @@ def main():
     framework = InteractiveProcessDriftDetectionFW(script=True)
 
     parser = argparse.ArgumentParser(description='IPDD FW command line')
+    parser.add_argument('--approach', '-a', help='Approach: f - fixed window or a - adaptive window', default='a')
     parser.add_argument('--win_type', '-wt', help='Window type: t - stream of traces or e - event stream', default='t')
     parser.add_argument('--win_unity', '-wu',
                         help='Window unity: u - amount of traces or events, h - hours, or d - days', default='u')
@@ -44,6 +45,11 @@ def main():
                         default=['NODES', 'EDGES'])
 
     args = parser.parse_args()
+    if args.approach == 'f':
+        approach = Approach.FIXED.name
+    elif args.approach == 'a':
+        approach = Approach.ADAPTIVE.name
+
     if args.win_type == 't':
         win_type = WindowType.TRACE.name
     elif args.win_type == 'e':
@@ -70,6 +76,7 @@ def main():
     print('----------------------------------------------')
     print('Configuration:')
     print('----------------------------------------------')
+    print(f'Approach: {approach}')
     print(f'Window type: {win_type}')
     print(f'Window unity: {win_unity}')
     print(f'Window size: {win_size}')
@@ -81,12 +88,12 @@ def main():
     print('----------------------------------------------')
 
     print(f'Starting analyzing process drifts ...')
-    framework.run(event_log, win_type, win_unity, win_size, metrics)
+    framework.run(event_log, approach, win_type, win_unity, win_size, metrics)
 
     running = framework.get_status_running()
     while running:
         print(f'Waiting for IPDD finishes ... Status running: {running}')
-        time.sleep(60)  # in seconds
+        time.sleep(2)  # in seconds
         running = framework.get_status_running()
     print(f'IPDD finished drift analysis')
 
