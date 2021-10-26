@@ -14,8 +14,8 @@
 import base64
 import os
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output, State
 from app import app, get_user_id
 from app import framework
@@ -40,7 +40,7 @@ load_files_div = html.Div([
     dcc.Upload(
         id='upload-data',
         children=html.Div([
-            'Drop your files here or ',
+            'Drop your file here or ',
             html.A('Select a File', className='link-primary')
         ]),
         style={
@@ -55,11 +55,19 @@ load_files_div = html.Div([
         },
         # Allow multiple files to be uploaded
         multiple=False
-    )])
+    ),
+])
 
 alert_error = dbc.Alert(
     "The event log must be a XES file.",
     id="alert-error",
+    dismissable=True,
+    color="danger"
+)
+
+alert_error_size = dbc.Alert(
+    "The size of the event log is not supported yet. Try it with a small file.",
+    id="alert_error_size",
     dismissable=True,
     color="danger"
 )
@@ -79,6 +87,7 @@ main_card = [
             show_files_div
         ]),
 ]
+
 
 def get_layout():
     # main layout of the page
@@ -102,7 +111,6 @@ def save_file(content, filename):
         uploaded_file = os.path.join(framework.get_input_path(user_id=user),
                                      f'{filename}')
         print(f'Saving event log in the input data directory: {uploaded_file}')
-
         data = content.encode("utf8").split(b";base64,")[1]
         with open(uploaded_file, "wb") as fp:
             fp.write(base64.decodebytes(data))
@@ -133,12 +141,15 @@ def show_file_link(filename):
               [State('upload-data', 'filename')])
 def update_output(content, name):
     status = None
-    if content is not None:
+    if content and content != '':
         if not save_file(content, name):
             status = alert_error
+    elif content:
+        status = alert_error_size
 
     files = list_uploaded_files()
     if len(files) == 0:
         return [html.Li("No event logs loaded yet!")], status
     else:
         return [html.Li(show_file_link(filename)) for filename in files], status
+

@@ -22,9 +22,9 @@ from enum import Enum
 class Metric(str, Enum):
     NODES = 'Nodes'
     EDGES = 'Edges'
-    EDIT_DISTANCE = 'Edit distance'
-    SOJOURN_TIME = 'Sojourn time'
-    WAITING_TIME = 'Waiting time'
+    # EDIT_DISTANCE = 'Edit distance'
+    # SOJOURN_TIME = 'Sojourn time'
+    # WAITING_TIME = 'Waiting time'
 
 
 class DfgDefinitions:
@@ -33,14 +33,6 @@ class DfgDefinitions:
         self.current_parameters = None
         self.metrics = None
 
-        # aqui define as métrics disponíveis para o modelo de processo
-        # chave é o nome utilizado na interface, e o valor é o nome da classe
-        # todas obrigatoriamente devem ser instanciadas no método metrics_factory
-        self.all_metrics = {Metric.NODES: 'DfgNodesSimilarityMetric',
-                            Metric.EDGES: 'DfgEdgesSimilarityMetric',
-                            Metric.EDIT_DISTANCE: 'DfgEditDistanceMetric',
-                            Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric',
-                            Metric.WAITING_TIME: 'WaitingTimeSimilarityMetric'}
 
     def set_current_parameters(self, current_parameters):
         self.current_parameters = current_parameters
@@ -76,11 +68,10 @@ class DfgDefinitions:
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            'DfgEdgesSimilarityMetric': DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2),
-            'DfgEditDistanceMetric': DfgEditDistanceMetric(window, initial_trace, name, m1, m2),
-            'DfgNodesSimilarityMetric': DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
-            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters),
-            'WaitingTimeSimilarityMetric': WaitingTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters)
+            Metric.EDGES.value: DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2),
+            # Metric.EDIT_DISTANCE.value: DfgEditDistanceMetric(window, initial_trace, name, m1, m2),
+            Metric.NODES.value: DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
+            # Metric.SOJOURN_TIME.value: SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters),
+            # Metric.WAITING_TIME.value: WaitingTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters)
         }
-        return classes[self.all_metrics[metric_name]]
-
+        return classes[metric_name]

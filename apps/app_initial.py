@@ -12,14 +12,11 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 import uuid
-
 import dash_bootstrap_components as dbc
-import dash_html_components as html
+from dash import html
 from flask import session
 
 # configuring a navbar
-from app import framework
-
 navbar = dbc.NavbarSimple(
     children=[
         dbc.NavItem(dbc.NavLink("Start IPDD", href="/apps/app_manage_files")),

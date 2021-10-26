@@ -28,12 +28,6 @@ class PnDefinitions:
         self.model_path = 'pn'
         self.current_parameters = None
 
-        # aqui define as métrics disponíveis para o modelo de processo
-        # chave é o nome utilizado na interface, e o valor é o nome da classe
-        # todas obrigatoriamente devem ser instanciadas no método metrics_factory
-        self.all_metrics = {Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric',
-                            Metric.CONFORMANCE: 'ConformanceSimilarityMetric'}
-
     def set_current_parameters(self, current_parameters):
         self.current_parameters = current_parameters
 
@@ -64,10 +58,10 @@ class PnDefinitions:
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
-            'ConformanceSimilarityMetric': ConformanceSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
+            Metric.SOJOURN_TIME.value: SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
+            Metric.CONFORMANCE.value: ConformanceSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
         }
-        return classes[self.all_metrics[metric_name]]
+        return classes[metric_name]
 
 
 class PNModel:

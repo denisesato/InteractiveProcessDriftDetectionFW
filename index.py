@@ -11,15 +11,11 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import uuid
-
-import dash_core_components as dcc
+from dash import dcc
 import dash_bootstrap_components as dbc
-import dash_html_components as html
+from dash import html
 from dash.dependencies import Input, Output, State
-from flask import session
-
-from app import app
+from app import app, framework, get_user_id
 # from app import server  # needed for gunicorn
 from apps import app_manage_files, app_process_models, app_preview_file, app_initial
 

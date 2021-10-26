@@ -13,10 +13,11 @@
 """
 import os
 import shutil
+from enum import Enum
 
 from pm4py.objects.log.util import interval_lifecycle
 
-from components.apply_window import AnalyzeDrift
+from components.apply_window import AnalyzeDrift, Approach
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.pn_definitions import PnDefinitions
@@ -52,6 +53,10 @@ class MetricsProcessingStatus:
     IDLE = 'IDLE'  # after finishing an execution
     FINISHED = 'FINISHED'  # normally
     TIMEOUT = 'TIMEOUT'  # by timeout
+
+
+class AttributeForAdaptive(str, Enum):
+    SOJOURN_ACTIVITY_TIME = 'Sojourn Activity Time'
 
 
 class Control:
@@ -115,13 +120,14 @@ class Control:
 
 
 class IPDDParameters:
-    def __init__(self, logname, approach, wintype, winunity, winsize, metrics):
+    def __init__(self, logname, approach, wintype, winunity, winsize, metrics, attribute):
         self.logname = logname
         self.approach = approach
         self.wintype = wintype
         self.winunity = winunity
         self.winsize = winsize
         self.metrics = metrics
+        self.attribute = attribute
         self.session_id = None
 
 
@@ -131,6 +137,19 @@ def check_user_path(generic_path, user_id):
         print(f'Creating path {generic_path} for user {user_id}')
         os.makedirs(path)
     return path
+
+
+class SojournActivityTime:
+    def __init__(self, name):
+        self.name = name
+
+    def get_value(self, event):
+        # get the duration of the event
+        # the input must be an interval log
+        start_time = event['start_timestamp'].timestamp()
+        complete_time = event['time:timestamp'].timestamp()
+        duration = complete_time - start_time
+        return duration
 
 
 class InteractiveProcessDriftDetectionFW:
@@ -146,6 +165,7 @@ class InteractiveProcessDriftDetectionFW:
         if script:
             mode = 'command line interface'
         print(f'Initializing IPDD Framework: model type [{model_type}] - [{mode}]')
+
         self.MAX_TRACES = 20
         self.current_log = None
         self.current_parameters = None
@@ -185,6 +205,14 @@ class InteractiveProcessDriftDetectionFW:
         wfile._setmaxstdio(4096)
         print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
+    def get_selected_attribute_class(self, attribute_name):
+        # define todas as classes de atributo disponíveis
+        # porém só será retornada aquela escolhida pelo usuário
+        classes = {
+            AttributeForAdaptive.SOJOURN_ACTIVITY_TIME.name: SojournActivityTime(attribute_name),
+        }
+        return classes[attribute_name]
+    
     def initialize_paths(self):
         # verify if the folder for saving the events logs exist, if not create it
         if not os.path.exists(self.input_path):
@@ -235,7 +263,7 @@ class InteractiveProcessDriftDetectionFW:
             # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
 
     @threaded
-    def run(self, event_log, approach, win_type, win_unity, win_size, metrics=None, user_id='script'):
+    def run(self, event_log, approach, win_type, win_unity, win_size, metrics=None, attribute=None, user_id='script'):
         self.user_id = user_id
         if not self.script:
             # clean data generated from previous runs
@@ -263,16 +291,25 @@ class InteractiveProcessDriftDetectionFW:
             metrics = self.model_type_definitions.get_default_metrics()
 
         # set the parameters selected for the current run
-        self.current_parameters = IPDDParameters(event_log, approach, win_type, win_unity, win_size, metrics)
+        # TODO - create a specialized class for each approach
+        self.current_parameters = IPDDParameters(event_log, approach, win_type, win_unity, win_size, metrics, attribute)
         self.discovery.set_current_parameters(self.current_parameters)
 
         self.control.reset_tasks_counter()
         print(f'User selected window={win_type}-{win_unity} with size={win_size}')
         print(f'Metrics={metrics}')
         print(f'Starting windowing process...')
-        analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
-                              self.get_input_path(user_id), self.get_models_path(user_id),
-                              self.get_metrics_path(user_id), self.current_log, self.discovery)
+        if approach == Approach.FIXED.name:
+            analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
+                                   self.get_input_path(user_id), self.get_models_path(user_id),
+                                   self.get_metrics_path(user_id), self.current_log, self.discovery)
+        elif approach == Approach.ADAPTIVE.name:
+            analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
+                                   self.get_input_path(user_id), self.get_models_path(user_id),
+                                   self.get_metrics_path(user_id), self.current_log, self.discovery,
+                                   self.get_selected_attribute_class(attribute))
+        else:
+            print(f'Incorrect approach: {approach}')
         self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
         self.control.finish_mining_calculation()
         print(f'*** Initial indexes for generated windows: {self.initial_indexes}')

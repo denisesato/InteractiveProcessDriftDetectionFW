@@ -58,7 +58,7 @@ def threaded(fn):
 
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
-                 models_path, metrics_path, current_log, discovery):
+                 models_path, metrics_path, current_log, discovery, attribute=None):
         self.window_count = 0
         self.current_parameters = current_parameters
         self.control = control
@@ -86,6 +86,7 @@ class AnalyzeDrift:
         self.discovery = discovery
         self.previous_sub_log = None
         self.previous_model = None
+        self.attribute = attribute # class that get the information of the selected attribute in case of adaptive approach
 
     # generate all the process models based on the windowing strategy
     # selected by the user and start the metrics calculation between
@@ -105,7 +106,8 @@ class AnalyzeDrift:
                 self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
                                                        self.models_path, self.metrics_path)
                 # set the final window used by metrics manager to identify all the metrics have been calculated
-                self.metrics.set_final_window(window_count)
+                self.metrics.set_final_window(window_count-1)
+                metrics_manager = self.metrics
 
                 # process the detected windows
                 print(f'Window cuts: {window_cuts}')
@@ -270,10 +272,10 @@ class AnalyzeDrift:
         print(f'Applying ADWIN to log {self.current_log.filename}')
         activities = np.unique(np.array(activities))
         adwin = {}
-        durations = {}
+        attribute_values = {}
         for a in activities:
             adwin[a] = ADWIN()
-            durations[a] = []
+            attribute_values[a] = []
 
         for i, item in enumerate(event_data):
             # get the current case id
@@ -286,26 +288,26 @@ class AnalyzeDrift:
             if self.current_parameters.wintype == WindowType.TRACE.name:
                 for event in item:
                     activity = event['concept:name']
-                    duration = self.get_duration(event)
+                    value = self.attribute.get_value(event)
                     # for debug
-                    durations[activity].append(duration)
-                    adwin[activity].add_element(duration)
+                    attribute_values[activity].append(value)
+                    adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
                         print(
-                            f'Change detected in data: {duration} - at index: {i} - case: {case_id} - activity: {activity}')
+                            f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
                         # save the initial of the processed window
                         initial_indexes[i] = case_id
                         window_cuts.append(i)
             else:
                 # for each new event, collect the duration per activity
                 activity = item['concept:name']
-                duration = self.get_duration(item)
+                value = self.attribute.get_value(event)
                 # for debug
-                durations[activity].append(duration)
-                adwin[activity].add_element(duration)
+                attribute_values[activity].append(value)
+                adwin[activity].add_element(value)
                 if adwin[activity].detected_change():
                     print(
-                        f'Change detected in data: {duration} - at index: {i} - case: {case_id} - activity: {activity}')
+                        f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
                     # save the initial of the processed window
                     initial_indexes[i] = case_id
                     window_cuts.append(i)
@@ -314,14 +316,6 @@ class AnalyzeDrift:
         #     df = pd.DataFrame(durations[a], columns=['duration'])
         #     df.to_csv(f'data/debug/durations/{self.current_parameters.logname}_{a}.csv', index=False)
         return len(initial_indexes), initial_indexes, window_cuts
-
-    # get the duration of the event
-    # the input must be an interval log
-    def get_duration(self, event):
-        start_time = event['start_timestamp'].timestamp()
-        complete_time = event['time:timestamp'].timestamp()
-        duration = complete_time - start_time
-        return duration
 
     def get_current_timestamp(self, item):
         timestamp_aux = None
