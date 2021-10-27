@@ -11,16 +11,14 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import dash
 import dash_bootstrap_components as dbc
 from dash import dcc
 from dash import html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
-from app import app, get_user_id
-from app import framework
-from components.apply_window import WindowUnity, WindowType, Approach, WindowInitialIndex
-from components.ippd_fw import IPDDProcessingStatus, AttributeForAdaptive
+from app import app, get_user_id, framework, dash
+from components.parameters import WindowUnityFixed, ReadLogAs, AttributeAdaptive, Approach
+from components.ippd_fw import IPDDProcessingStatus, IPDDParametersFixed, IPDDParametersAdaptive
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -111,14 +109,14 @@ parameters_panel = [
                     html.Span('Read the log as'),
                     dcc.Dropdown(id='window-type',
                                  options=[{'label': item.value, 'value': item.name}
-                                          for item in WindowType],
+                                          for item in ReadLogAs],
                                  disabled=True),
                 ]),
                 dbc.Col([
                     html.Span('Attribute'),
                     dcc.Dropdown(id='attribute',
                                  options=[{'label': item.value, 'value': item.name}
-                                          for item in AttributeForAdaptive],
+                                          for item in AttributeAdaptive],
                                  disabled=True),
                 ], id='col-attribute', style={'display': 'None'}),
                 dbc.Col([
@@ -316,11 +314,11 @@ def type_and_options_selected(read_log_as, unity_value, winsize, attribute, appr
         elif approach and approach == Approach.FIXED.name:
             # if the user have selected FIXED window and type, fill the options for window unity
             if approach and approach == Approach.FIXED.name and read_log_as:
-                for item in WindowUnity:
-                    if item == WindowUnity.UNITY:
-                        if read_log_as == WindowType.TRACE.name:
+                for item in WindowUnityFixed:
+                    if item == WindowUnityFixed.UNITY.name:
+                        if read_log_as == ReadLogAs.TRACE.name:
                             options.append({'label': 'Traces', 'value': item.name})
-                        elif read_log_as == WindowType.EVENT.name:
+                        elif read_log_as == ReadLogAs.EVENT.name:
                             options.append({'label': 'Events', 'value': item.name})
                     else:
                         options.append({'label': item.value, 'value': item.name})
@@ -391,10 +389,11 @@ def run_framework(n_clicks, approach, input_window_size, window_type, window_uni
             print(f'Running IPDD')
             user = get_user_id()
             if approach == Approach.FIXED.name:
-                framework.run(file, approach, window_type, window_unity, int_input_size, metrics, user_id=user)
+                parameters = IPDDParametersFixed(file, approach, window_type, metrics, window_unity, int_input_size)
+                framework.run(parameters, user_id=user)
             elif approach == Approach.ADAPTIVE.name:
-                framework.run(file, approach, window_type, window_unity, int_input_size, metrics, attribute=attribute,
-                              user_id=user)
+                parameters = IPDDParametersAdaptive(file, approach, window_type, metrics, attribute)
+                framework.run(parameters, user_id=user)
             else:
                 print(f'Incorrect approach {approach}')
         print(f'Setting window-size value {input_window_size}, indicating IPDD starts the analysis')

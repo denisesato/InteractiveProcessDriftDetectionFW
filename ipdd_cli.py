@@ -15,7 +15,7 @@ import argparse
 import os
 import time
 
-from components.apply_window import WindowType, WindowUnity, Approach
+from components.apply_window import ReadLogAs, WindowUnity, Approach
 from components.dfg_definitions import Metric
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
 
@@ -51,9 +51,9 @@ def main():
         approach = Approach.ADAPTIVE.name
 
     if args.win_type == 't':
-        win_type = WindowType.TRACE.name
+        win_type = ReadLogAs.TRACE.name
     elif args.win_type == 'e':
-        win_type = WindowType.EVENT.name
+        win_type = ReadLogAs.EVENT.name
 
     if args.win_unity == 'u':
         win_unity = WindowUnity.UNITY.name

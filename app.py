@@ -13,24 +13,30 @@
 """
 import dash
 import dash_bootstrap_components as dbc
+import dash_uploader as du
 from flask import session
-
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
+import uuid
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY],
                 meta_tags=[{'name': 'viewport',
                             'content': 'width=device-width, initial-scale=1.0'}],
                 suppress_callback_exceptions=True)
-
-app.title = 'IPDD Framework'
-server = app.server
-server.secret_key = b'e\x19\xf5\xcaZ\x89\xff\xf4\xbf\x15\x14S.\x931\xbd'
 framework = InteractiveProcessDriftDetectionFW(model_type='dfg')
+app.title = 'IPDD Framework'
+# configure the upload folder
+du.configure_upload(app, framework.get_input_path())
+server = app.server
+app.server.secret_key = b'e\x19\xf5\xcaZ\x89\xff\xf4\xbf\x15\x14S.\x931\xbd'
 
 
 def get_user_id():
     # recover the user from session
     user = 'unknown'
-    if session.get('user'):
+    if not session.get('user'):
+        print(f'Creating user session...')
+        session['user'] = str(uuid.uuid4())
+    elif session.get('user'):
         user = session['user']
+        # print(f'Get user from session {user}')
     return user

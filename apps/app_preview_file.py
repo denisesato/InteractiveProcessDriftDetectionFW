@@ -16,8 +16,7 @@ from dash import dash_table
 import dash_bootstrap_components as dbc
 from dash import html
 from dash.dependencies import Input, Output
-from app import app, get_user_id
-from app import framework
+from app import app, get_user_id, framework
 
 # configuring a navbar
 navbar = dbc.NavbarSimple(

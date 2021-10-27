@@ -14,12 +14,11 @@
 import os
 import shutil
 from enum import Enum
-
 from pm4py.objects.log.util import interval_lifecycle
-
-from components.apply_window import AnalyzeDrift, Approach
+from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
+from components.parameters import AttributeAdaptive
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from components.evaluate.calculate_fscore import EvaluationMetric
@@ -53,10 +52,6 @@ class MetricsProcessingStatus:
     IDLE = 'IDLE'  # after finishing an execution
     FINISHED = 'FINISHED'  # normally
     TIMEOUT = 'TIMEOUT'  # by timeout
-
-
-class AttributeForAdaptive(str, Enum):
-    SOJOURN_ACTIVITY_TIME = 'Sojourn Activity Time'
 
 
 class Control:
@@ -120,15 +115,25 @@ class Control:
 
 
 class IPDDParameters:
-    def __init__(self, logname, approach, wintype, winunity, winsize, metrics, attribute):
+    def __init__(self, logname, approach, read_log_as, metrics):
         self.logname = logname
         self.approach = approach
-        self.wintype = wintype
-        self.winunity = winunity
-        self.winsize = winsize
+        self.read_log_as = read_log_as
         self.metrics = metrics
-        self.attribute = attribute
         self.session_id = None
+
+
+class IPDDParametersFixed(IPDDParameters):
+    def __init__(self, logname, approach, read_log_as, metrics, winunity, winsize):
+        super().__init__(logname, approach, read_log_as, metrics)
+        self.win_unity = winunity
+        self.win_size = winsize
+
+
+class IPDDParametersAdaptive(IPDDParameters):
+    def __init__(self, logname, approach, read_log_as, metrics, attribute):
+        super().__init__(logname, approach, read_log_as, metrics)
+        self.attribute = attribute
 
 
 def check_user_path(generic_path, user_id):
@@ -137,19 +142,6 @@ def check_user_path(generic_path, user_id):
         print(f'Creating path {generic_path} for user {user_id}')
         os.makedirs(path)
     return path
-
-
-class SojournActivityTime:
-    def __init__(self, name):
-        self.name = name
-
-    def get_value(self, event):
-        # get the duration of the event
-        # the input must be an interval log
-        start_time = event['start_timestamp'].timestamp()
-        complete_time = event['time:timestamp'].timestamp()
-        duration = complete_time - start_time
-        return duration
 
 
 class InteractiveProcessDriftDetectionFW:
@@ -205,14 +197,6 @@ class InteractiveProcessDriftDetectionFW:
         wfile._setmaxstdio(4096)
         print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
-    def get_selected_attribute_class(self, attribute_name):
-        # define todas as classes de atributo disponíveis
-        # porém só será retornada aquela escolhida pelo usuário
-        classes = {
-            AttributeForAdaptive.SOJOURN_ACTIVITY_TIME.name: SojournActivityTime(attribute_name),
-        }
-        return classes[attribute_name]
-    
     def initialize_paths(self):
         # verify if the folder for saving the events logs exist, if not create it
         if not os.path.exists(self.input_path):
@@ -230,7 +214,7 @@ class InteractiveProcessDriftDetectionFW:
     def get_default_metrics(self):
         return self.model_type_definitions.get_default_metrics()
 
-    def get_input_path(self, user_id):
+    def get_input_path(self, user_id=''):
         return check_user_path(self.input_path, user_id)
 
     def get_models_path(self, user_id):
@@ -263,7 +247,7 @@ class InteractiveProcessDriftDetectionFW:
             # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
 
     @threaded
-    def run(self, event_log, approach, win_type, win_unity, win_size, metrics=None, attribute=None, user_id='script'):
+    def run(self, parameters, user_id='script'):
         self.user_id = user_id
         if not self.script:
             # clean data generated from previous runs
@@ -275,41 +259,31 @@ class InteractiveProcessDriftDetectionFW:
         # first IPDD needs to copy the event log into the folder data\input
         # then, remove the original path
         if self.script:
-            complete_filename = event_log
+            complete_filename = parameters.logname
             event_log = self.copy_event_log(complete_filename)
             print(f'Importing event log: {event_log}')
             # import the event log from the XES file and save it into self.current_log object
             # if the user is using the web interface, the log was imported by the app_preview_file
             self.import_log(complete_filename, event_log)
         elif self.current_log is None:  # to prevent problems when user reload the process drift analysis page
-            complete_filename = os.path.join(self.get_input_path(user_id), event_log)
-            print(f'Importing event log: {event_log}')
-            self.import_log(complete_filename, event_log)
+            complete_filename = os.path.join(self.get_input_path(user_id), parameters.logname)
+            print(f'Importing event log: {parameters.logname}')
+            self.import_log(complete_filename, parameters.logname)
 
         # if metrics not defined, use default metrics for process model
-        if not metrics:
-            metrics = self.model_type_definitions.get_default_metrics()
+        if not parameters.metrics:
+            parameters.metrics = self.model_type_definitions.get_default_metrics()
 
         # set the parameters selected for the current run
-        # TODO - create a specialized class for each approach
-        self.current_parameters = IPDDParameters(event_log, approach, win_type, win_unity, win_size, metrics, attribute)
-        self.discovery.set_current_parameters(self.current_parameters)
+        self.discovery.set_current_parameters(parameters)
 
         self.control.reset_tasks_counter()
-        print(f'User selected window={win_type}-{win_unity} with size={win_size}')
-        print(f'Metrics={metrics}')
+        print(f'User selected approach={parameters.approach} reading log as={parameters.read_log_as}')
+        print(f'Metrics={parameters.metrics}')
         print(f'Starting windowing process...')
-        if approach == Approach.FIXED.name:
-            analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
-                                   self.get_input_path(user_id), self.get_models_path(user_id),
-                                   self.get_metrics_path(user_id), self.current_log, self.discovery)
-        elif approach == Approach.ADAPTIVE.name:
-            analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
-                                   self.get_input_path(user_id), self.get_models_path(user_id),
-                                   self.get_metrics_path(user_id), self.current_log, self.discovery,
-                                   self.get_selected_attribute_class(attribute))
-        else:
-            print(f'Incorrect approach: {approach}')
+        analyze = AnalyzeDrift(self.model_type, parameters, self.control,
+                               self.get_input_path(user_id), self.get_models_path(user_id),
+                               self.get_metrics_path(user_id), self.current_log, self.discovery)
         self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
         self.control.finish_mining_calculation()
         print(f'*** Initial indexes for generated windows: {self.initial_indexes}')

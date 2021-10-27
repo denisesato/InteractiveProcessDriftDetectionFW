@@ -18,6 +18,8 @@ from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgE
 from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric, WaitingTimeSimilarityMetric
 from enum import Enum
 
+from components.parameters import Approach
+
 
 class Metric(str, Enum):
     NODES = 'Nodes'
@@ -26,13 +28,11 @@ class Metric(str, Enum):
     # SOJOURN_TIME = 'Sojourn time'
     # WAITING_TIME = 'Waiting time'
 
-
 class DfgDefinitions:
     def __init__(self):
         self.models_path = 'dfg'
         self.current_parameters = None
         self.metrics = None
-
 
     def set_current_parameters(self, current_parameters):
         self.current_parameters = current_parameters
@@ -49,7 +49,13 @@ class DfgDefinitions:
         return map_file
 
     def get_metrics_filename(self, current_parameters, metric_name):
-        filename = f'{metric_name}_winsize_{current_parameters.winsize}.txt'
+        if current_parameters.approach == Approach.FIXED.name:
+            filename = f'{metric_name}_winsize_{current_parameters.win_size}.txt'
+        elif current_parameters.approach == Approach.ADAPTIVE.name:
+            filename = f'{metric_name}_adaptive_{current_parameters.attribute}.txt'
+        else:
+            print(f'Incorrect approach: {current_parameters.approach} - using default name')
+            filename = f'{metric_name}.txt'
         return filename
 
     def get_metrics_path(self, generic_metrics_path, original_filename):
@@ -57,8 +63,15 @@ class DfgDefinitions:
         return path
 
     def get_models_path(self, generic_models_path, original_filename):
-        dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
-                                       f'winsize_{self.current_parameters.winsize}')
+        if self.current_parameters.approach == Approach.FIXED.name:
+            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
+                                           f'winsize_{self.current_parameters.win_size}')
+        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
+                                           f'adaptive_{self.current_parameters.attribute}')
+        else:
+            print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
+            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename)
         return dfg_models_path
 
     def get_metrics_list(self):

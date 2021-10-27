@@ -11,14 +11,12 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import base64
 import os
 import dash_bootstrap_components as dbc
 from dash import dcc
 from dash import html
-from dash.dependencies import Input, Output, State
-from app import app, get_user_id
-from app import framework
+from dash.dependencies import Output
+from app import du, get_user_id, framework
 
 # configuring a navbar
 navbar = dbc.NavbarSimple(
@@ -30,94 +28,45 @@ navbar = dbc.NavbarSimple(
     dark=True,
 )
 
-div_instructions = html.H5('Start by loading and selecting the event log (XES format) to be analyzed.')
-
-load_files_div = html.Div([
-    html.P(
-        'Here you can load the event logs for analyzing process drifts. If the log is already '
-        'loaded, just click on its name to continue.'),
-
-    dcc.Upload(
-        id='upload-data',
-        children=html.Div([
-            'Drop your file here or ',
-            html.A('Select a File', className='link-primary')
-        ]),
-        style={
-            'width': '100%',
-            'height': '60px',
-            'lineHeight': '60px',
-            'borderWidth': '1px',
-            'borderStyle': 'dashed',
-            'borderRadius': '5px',
-            'textAlign': 'center',
-            'margin': '0px'
-        },
-        # Allow multiple files to be uploaded
-        multiple=False
-    ),
-])
-
-alert_error = dbc.Alert(
-    "The event log must be a XES file.",
-    id="alert-error",
-    dismissable=True,
-    color="danger"
-)
-
-alert_error_size = dbc.Alert(
-    "The size of the event log is not supported yet. Try it with a small file.",
-    id="alert_error_size",
-    dismissable=True,
-    color="danger"
-)
-
-show_files_div = html.Div([
-    html.H4('Loaded event logs.'),
-    html.H5('Select the file you want to analyze:'),
-    html.Div(id='div-alerts', children=[]),
-    html.Div(id='list-files'),
-], className='mt-2')
-
-main_card = [
-    dbc.CardBody(
-        [
-            div_instructions,
-            load_files_div,
-            show_files_div
-        ]),
-]
-
 
 def get_layout():
+    div_instructions = html.H5('Start by loading and selecting the event log (XES format) to be analyzed.')
+
+    load_files_div = html.Div([
+        html.P(
+            'Here you can load the event logs for analyzing process drifts. If the log is already '
+            'loaded, just click on its name to continue.'),
+
+        du.Upload(id='dash-uploader',
+                  max_file_size=1800,  # 1800 Mb
+                  filetypes=['xes'],
+                  upload_id=get_user_id()),
+    ])
+
+    show_files_div = html.Div([
+        html.H4('Loaded event logs.'),
+        html.H5('Select the file you want to analyze:'),
+        html.Div(id='div-alerts', children=[]),
+        html.Div(id='list-files', children=return_li_files()),
+    ], className='mt-2')
+
     # main layout of the page
     layout = [
         dbc.Row([
             dbc.Col(navbar, width=12)
         ]),
         dbc.Row([
-            dbc.Col(main_card, className='mt-2', width=12)
+            dbc.Col(
+                dbc.CardBody(
+                    [
+                        div_instructions,
+                        load_files_div,
+                        show_files_div
+                    ]), className='mt-2', width=12),
         ]),
     ]
 
     return layout
-
-
-def save_file(content, filename):
-    if '.xes' in filename:
-        user = get_user_id()
-
-        # Save the loaded file in the input path
-        uploaded_file = os.path.join(framework.get_input_path(user_id=user),
-                                     f'{filename}')
-        print(f'Saving event log in the input data directory: {uploaded_file}')
-        data = content.encode("utf8").split(b";base64,")[1]
-        with open(uploaded_file, "wb") as fp:
-            fp.write(base64.decodebytes(data))
-            return True
-    else:
-        print(f'Event log must be a XES file: {filename}')
-        return False
 
 
 def list_uploaded_files():
@@ -135,21 +84,17 @@ def show_file_link(filename):
     return dcc.Link(filename, href=location)
 
 
-@app.callback([Output('list-files', 'children'),
-               Output('div-alerts', 'children')],
-              [Input('upload-data', 'contents')],
-              [State('upload-data', 'filename')])
-def update_output(content, name):
-    status = None
-    if content and content != '':
-        if not save_file(content, name):
-            status = alert_error
-    elif content:
-        status = alert_error_size
-
+def return_li_files():
     files = list_uploaded_files()
     if len(files) == 0:
-        return [html.Li("No event logs loaded yet!")], status
+        return [html.Li("No event logs loaded yet!")]
     else:
-        return [html.Li(show_file_link(filename)) for filename in files], status
+        return [html.Li(show_file_link(filename)) for filename in files]
 
+
+@du.callback(
+    output=Output('list-files', 'children'),
+    id='dash-uploader',
+)
+def update_files_list(filenames):
+    return return_li_files()

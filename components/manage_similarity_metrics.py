@@ -95,7 +95,7 @@ class ManageSimilarityMetrics:
     def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2, parameters):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
         # calculate the chosen metrics and save the values on the file
-        initial_trace = (current_window - 1) * self.current_parameters.winsize
+        initial_trace = (current_window - 1) * self.current_parameters.win_size
         self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2, parameters)
 
     def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2, parameters):
@@ -160,7 +160,7 @@ class ManageSimilarityMetrics:
                         if metrics_info.is_dissimilar():
                             candidates.add(metrics_info.window)
                 self.locks[m].release()
-            filename = os.path.join(self.metrics_path, f'winsize_{self.current_parameters.winsize}_drift_windows.txt')
+            filename = os.path.join(self.metrics_path, f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
             with open(filename, 'w+') as file_drift_windows:
                 file_drift_windows.write(str(candidates))

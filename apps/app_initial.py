@@ -11,10 +11,8 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import uuid
 import dash_bootstrap_components as dbc
 from dash import html
-from flask import session
 
 # configuring a navbar
 navbar = dbc.NavbarSimple(
@@ -58,9 +56,9 @@ info_ipdd = [
 
 
 def get_layout():
-    if not session.get('user'):
-        print(f'Creating user session...')
-        session['user'] = str(uuid.uuid4())
+    # if not session.get('user'):
+    #     print(f'Creating user session...')
+    #     session['user'] = str(uuid.uuid4())
 
     # main layout of the page
     layout = [
