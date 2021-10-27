@@ -61,10 +61,6 @@ info_ipdd = [
 
 
 def get_layout():
-    if not session.get('user'):
-        print(f'Creating user session...')
-        session['user'] = str(uuid.uuid4())
-
     # main layout of the page
     layout = [
         dbc.Row([

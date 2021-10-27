@@ -189,7 +189,7 @@ class InteractiveProcessDriftDetectionFW:
     def get_default_metrics(self):
         return self.model_type_definitions.get_default_metrics()
 
-    def get_input_path(self, user_id):
+    def get_input_path(self, user_id=''):
         return check_user_path(self.input_path, user_id)
 
     def get_models_path(self, user_id):
