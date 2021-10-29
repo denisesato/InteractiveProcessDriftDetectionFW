@@ -19,6 +19,7 @@ from datetime import datetime, date
 from pm4py.objects.log.util import interval_lifecycle
 
 from components.adaptive.attributes import SelectAttribute
+from components.adaptive.change_points import ChangePoints
 from components.parameters import Approach
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
@@ -66,14 +67,6 @@ class AnalyzeDrift:
         self.discovery = discovery
         self.previous_sub_log = None
         self.previous_model = None
-
-    def get_selected_attribute_class(self, attribute_name):
-        # define todas as classes de atributo disponíveis
-        # porém só será retornada aquela escolhida pelo usuário
-        classes = {
-            AttributeAdaptive.SOJOURN_ACTIVITY_TIME.name: SojournActivityTime(attribute_name),
-        }
-        return classes[attribute_name]
 
     # generate all the process models based on the windowing strategy
     # selected by the user and start the metrics calculation between
@@ -253,7 +246,8 @@ class AnalyzeDrift:
         return False
 
     def apply_detector(self, event_data, attribute_class):
-        # by now working with sojourn time
+        # initialize information about the drifts for saving it
+        drifts = ChangePoints(attribute_class.name, self.metrics_path)
         initial_indexes = {}
         # create or applying a detector
         window_cuts = []
@@ -287,6 +281,8 @@ class AnalyzeDrift:
                         # save the initial of the processed window
                         initial_indexes[i] = case_id
                         window_cuts.append(i)
+                        # save the change point
+                        drifts.add_cp(i)
             else:
                 # for each new event, collect the duration per activity
                 activity = item['concept:name']
@@ -300,10 +296,15 @@ class AnalyzeDrift:
                     # save the initial of the processed window
                     initial_indexes[i] = case_id
                     window_cuts.append(i)
+                    # save the change point
+                    drifts.add_cp(i)
         # for debug
         # for a in activities:
         #     df = pd.DataFrame(durations[a], columns=['duration'])
         #     df.to_csv(f'data/debug/durations/{self.current_parameters.logname}_{a}.csv', index=False)
+
+        # saving the detected change points
+        drifts.save_drift_info()
         return len(initial_indexes), initial_indexes, window_cuts
 
     def get_current_timestamp(self, item):
@@ -341,9 +342,9 @@ class AnalyzeDrift:
             sub_log = EventLog(self.event_data[begin:end])
         else:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
-        self.execute_processes_for_window(sub_log)
+        self.execute_processes_for_window(sub_log, begin)
 
-    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log):
+    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index):
         # if it is the second window start the metrics calculation and timeout
         if self.window_count == 2:
             self.metrics.start_metrics_timeout()
@@ -352,17 +353,17 @@ class AnalyzeDrift:
         # calculate the similarity metrics between consecutive windows
         if self.window_count > 1:
             self.metrics.calculate_metrics(self.window_count, self.previous_sub_log, sub_log, self.previous_model,
-                                           model, self.current_parameters)
+                                           model, self.current_parameters, initial_trace_index)
         # save the current model and sub_log for the next window
         self.previous_sub_log = sub_log
         self.previous_model = model
 
     # after defining a window (fixed or adaptive) IPDD must mine the models and calculate the similarity metrics
     # between adjacent ones
-    def execute_processes_for_window(self, sub_log):
+    def execute_processes_for_window(self, sub_log, initial_trace_index):
         model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
                                                       self.window_count)
-        self.calculate_metrics_between_adjacent_time_slots(model, sub_log)
+        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index)
 
     # create for sliding windows
     def process_two_fixed_sliding_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):

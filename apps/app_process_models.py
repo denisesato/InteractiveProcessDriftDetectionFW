@@ -40,7 +40,7 @@ evaluation_card = html.Div([
                                   placeholder='Fill with real drifts separated by space'), width=4),
                 dbc.Col(dbc.Button(id='submit-evaluation',
                                    n_clicks=0, children='Evaluate',
-                                   className='btn btn-primary'), width=2)
+                                   className='btn btn-secondary'), width=2)
             ]),
             dbc.Row([
                 dbc.Col(html.H4(id='div-fscore', className='mt-2')),
@@ -64,18 +64,18 @@ parameters_panel = [
                 dbc.Col(
                     dbc.Button(
                         "Show/Hide Parameters",
-                        # color="link",
                         id="button-parameters",
+                        className='btn btn-secondary'
                     ), width=8
                 ),
 
                 dbc.Col([
-                    dbc.Button("Evaluate results", id="button-evaluation", color="link",
+                    dbc.Button("Evaluate results", id="button-evaluation", className="btn btn-light",
                                style={'display': 'none'}),
                 ], width=2),
 
                 dbc.Col([
-                    dbc.Button("How to analyze", id="popover-bottom-target", color="link"),
+                    dbc.Button("How to analyze", id="popover-bottom-target", className="btn btn-light"),
                     dbc.Popover(
                         [
                             dbc.PopoverHeader("Analyzing Process Drifts using IPDD Framework"),
@@ -135,17 +135,17 @@ parameters_panel = [
                 dbc.Col([
                     dbc.Button(children=['Analyze Process Drifts'],
                                id='mine_models_btn', n_clicks=0, disabled=True,
-                               className='btn btn-primary', style={"margin-top": "1.4rem"})
+                               className='btn btn-secondary', style={"margin-top": "1.4rem"})
                 ])
             ]),
             dbc.Row([
                 dbc.Col([
                     html.Span('Similarity metrics for control-flow'),
-                    dcc.Checklist(id='metrics',
+                    dbc.Checklist(id='metrics',
                                   options=[{'label': item.value, 'value': item.value}
                                            for item in framework.get_implemented_metrics()],
                                   value=[item.value for item in framework.get_default_metrics()],
-                                  ),
+                                  inline=True),
                 ]),
             ], style={'display': 'block'})
         ]),
@@ -175,7 +175,6 @@ models_card = [
                 max=0,
                 value=0,
                 marks={}),
-
             dash_interactive_graphviz.DashInteractiveGraphviz(id="current-model", dot_source=''),
         ], width=9, style={'height': '75vh'})
     ], className='mt-1'),
@@ -262,7 +261,7 @@ def toggle_popover(n, is_open):
                Output('col-window-size', 'style'),  # next attribute for fixed approach
                Output('col-attribute', 'style'),  # next attribute for adaptive approach
                Output('window-type', 'disabled'),
-               Output('window-type', 'value')], # read the log as
+               Output('window-type', 'value')],  # read the log as
               Input('approach', 'value'),
               State('window-type', 'value'))
 def approach_selected(approach_value, read_log_as_value):
@@ -292,7 +291,7 @@ def approach_selected(approach_value, read_log_as_value):
                Input('window-unity', 'value'),
                Input('input-window-size', 'value'),
                Input('attribute', 'value')],
-               State('approach', 'value')
+              State('approach', 'value')
               )
 def type_and_options_selected(read_log_as, unity_value, winsize, attribute, approach):
     enable_mine_button = False
@@ -331,7 +330,6 @@ def type_and_options_selected(read_log_as, unity_value, winsize, attribute, appr
                 if winsize and winsize > 0:
                     enable_mine_button = True
     return not enable_window_unity, not enable_window_size, options, not enable_attribute, not enable_mine_button,
-
 
 
 @app.callback([Output('check-ipdd-finished', 'disabled'),

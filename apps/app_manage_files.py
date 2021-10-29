@@ -96,5 +96,6 @@ def return_li_files():
     output=Output('list-files', 'children'),
     id='dash-uploader',
 )
-def update_files_list(filenames):
+def update_files_list(filename):
+    print(f'User uploaded file {filename}')
     return return_li_files()

@@ -16,6 +16,8 @@ import time
 from threading import RLock, Thread
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
+
+from components.parameters import Approach
 from components.pn_definitions import PnDefinitions
 
 
@@ -92,10 +94,10 @@ class ManageSimilarityMetrics:
         print(f'Setting final window value {w}')
         self.final_window = w
 
-    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2, parameters):
+    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2, parameters, initial_trace=None):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
         # calculate the chosen metrics and save the values on the file
-        initial_trace = (current_window - 1) * self.current_parameters.win_size
+        print(f'calculate_metrics - current window {current_window} - initial_trace = {initial_trace}')
         self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2, parameters)
 
     def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2, parameters):
@@ -160,7 +162,13 @@ class ManageSimilarityMetrics:
                         if metrics_info.is_dissimilar():
                             candidates.add(metrics_info.window)
                 self.locks[m].release()
-            filename = os.path.join(self.metrics_path, f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
+            if self.current_parameters.approach == Approach.FIXED.name:
+                filename = os.path.join(self.metrics_path, f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+                filename = os.path.join(self.metrics_path, f'adaptive_drift_windows.txt')
+            else:
+                filename = os.path.join(self.metrics_path, f'_drift_windows.txt')
+                print(f'Incorrect approach {self.current_parameters.approach}. Using default file name: {filename}')
             print(f'Saving drift windows: {filename}')
             with open(filename, 'w+') as file_drift_windows:
                 file_drift_windows.write(str(candidates))
