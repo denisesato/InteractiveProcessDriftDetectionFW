@@ -15,8 +15,9 @@ from json_tricks import dumps
 
 
 class ChangePointsInfo:
-    def __init__(self, attribute_name):
+    def __init__(self, attribute_name, activity):
         self.attribute_name = attribute_name
+        self.activity = activity
         self.info = []
         self.change_points = []
 
@@ -35,6 +36,7 @@ class ChangePointsInfo:
 
     def __str__(self):
         info = f'Attribute name: {self.attribute_name_name}\n'
+        info = f'Activity: {self.activity}\n'
         info += f'Window: {self.window}\n'
         info += f'Initial trace: {self.initial_trace}\n'
         info += f'Change points: {self.change_points}\n'

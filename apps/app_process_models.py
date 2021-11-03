@@ -462,7 +462,7 @@ def update_status_and_drifts(n, div_status):
 
     initial_indexes = framework.get_initial_trace_indexes()
     for w in range(0, framework.get_windows()):
-        label = str(w + 1) + '|' + str(initial_indexes[w] + 1)
+        label = str(w + 1) + '|' + str(initial_indexes[w])
         if windows_with_drifts and (w + 1) in windows_with_drifts:
             marks[w] = {'label': label, 'style': {'color': '#f50'}}
         else:

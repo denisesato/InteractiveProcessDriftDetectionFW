@@ -80,28 +80,10 @@ class AnalyzeDrift:
                 window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
                 # window_count, metrics_manager, initial_indexes = self.apply_sliding_window(event_data)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-                window_count, initial_indexes, window_cuts = self.apply_detector(self.event_data,
-                                                                                 SelectAttribute.get_selected_attribute_class(
-                                                                                     self.current_parameters.attribute))
+                window_count, metrics_manager, initial_indexes = self.apply_detector(self.event_data,
+                                                                                     SelectAttribute.get_selected_attribute_class(
+                                                                                         self.current_parameters.attribute))
 
-                # initialize similarity metrics manager
-                self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                                       self.models_path, self.metrics_path)
-                # set the final window used by metrics manager to identify all the metrics have been calculated
-                self.metrics.set_final_window(window_count - 1)
-                metrics_manager = self.metrics
-
-                # process the detected windows
-                print(f'Window cuts: {window_cuts}')
-                self.window_count = 0
-                begin_of_window = 0
-                for cut in window_cuts:
-                    self.new_window(begin_of_window, cut)
-                    begin_of_window = cut
-                # last window
-                if begin_of_window < len(self.event_data) - 1:
-                    end_of_window = len(self.event_data) - 1
-                    self.new_window(begin_of_window, end_of_window)
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
 
@@ -215,7 +197,7 @@ class AnalyzeDrift:
                     initial_timestamp = current_timestamp
                 elif self.current_parameters.win_unity == WindowUnityFixed.DAY.name:
                     initial_day = current_day
-        # process remaining traces as last window
+        # process remaining items as last window
         if initial_index < len(event_data):
             size = len(event_data) - initial_index
             print(f'Analyzing final window... size {size} window_count {self.window_count}')
@@ -246,9 +228,11 @@ class AnalyzeDrift:
         return False
 
     def apply_detector(self, event_data, attribute_class):
-        # initialize information about the drifts for saving it
-        drifts = ChangePoints(attribute_class.name, self.metrics_path)
+        initial_index = 0
         initial_indexes = {}
+        # initialize similarity metrics manager
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
         # create or applying a detector
         window_cuts = []
         activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
@@ -256,9 +240,12 @@ class AnalyzeDrift:
         activities = np.unique(np.array(activities))
         adwin = {}
         attribute_values = {}
+        drifts = {}
         for a in activities:
             adwin[a] = ADWIN()
             attribute_values[a] = []
+            # initialize information about the drifts for saving it
+            drifts[a] = ChangePoints(attribute_class.name, a, self.metrics_path)
 
         for i, item in enumerate(event_data):
             # get the current case id
@@ -273,39 +260,55 @@ class AnalyzeDrift:
                     activity = event['concept:name']
                     value = attribute_class.get_value(event)
                     # for debug
-                    attribute_values[activity].append(value)
+                    # attribute_values[activity].append(value)
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
                         print(
                             f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+                        # save the change point
+                        drifts[activity].add_cp(i)
+                        # process new window
+                        self.new_window(initial_index, i)
                         # save the initial of the processed window
                         initial_indexes[i] = case_id
-                        window_cuts.append(i)
-                        # save the change point
-                        drifts.add_cp(i)
+                        # update the beginning of the next window
+                        initial_index = i
             else:
                 # for each new event, collect the duration per activity
                 activity = item['concept:name']
                 value = attribute_class.get_value(item)
                 # for debug
-                attribute_values[activity].append(value)
+                # attribute_values[activity].append(value)
                 adwin[activity].add_element(value)
                 if adwin[activity].detected_change():
                     print(
                         f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+                    # save the change point
+                    drifts[activity].add_cp(i)
+                    # process new window
+                    self.new_window(initial_index, i)
                     # save the initial of the processed window
                     initial_indexes[i] = case_id
-                    window_cuts.append(i)
-                    # save the change point
-                    drifts.add_cp(i)
+                    # update the beginning of the next window
+                    initial_index = i
+        # process remaining items as the last window
+        if initial_index < len(event_data):
+            size = len(event_data) - initial_index
+            print(f'Analyzing final window... size {size} window_count {self.window_count}')
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            # process final window
+            self.new_window(initial_index, len(event_data))
+
         # for debug
         # for a in activities:
         #     df = pd.DataFrame(durations[a], columns=['duration'])
         #     df.to_csv(f'data/debug/durations/{self.current_parameters.logname}_{a}.csv', index=False)
 
-        # saving the detected change points
-        drifts.save_drift_info()
-        return len(initial_indexes), initial_indexes, window_cuts
+        # saving the detected change points for each activity
+        for activity in drifts.keys():
+            drifts[activity].save_drift_info()
+        return len(initial_indexes), self.metrics, initial_indexes
 
     def get_current_timestamp(self, item):
         timestamp_aux = None

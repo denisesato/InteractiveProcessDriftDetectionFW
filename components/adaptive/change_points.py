@@ -17,12 +17,13 @@ from components.adaptive.change_points_info import ChangePointsInfo
 
 
 class ChangePoints:
-    def __init__(self, attribute_name, metrics_path):
+    def __init__(self, attribute_name, activity, metrics_path):
         self.attribute_name = attribute_name
+        self.activity = activity
         self.metrics_path = metrics_path
         self.lock = RLock()
         self.change_points = []
-        self.change_points_info = ChangePointsInfo(attribute_name)
+        self.change_points_info = ChangePointsInfo(attribute_name, activity)
         self.filename = os.path.join(self.metrics_path, f'ADWIN_change_points_{attribute_name}.txt')
 
     def add_cp(self, change_point):

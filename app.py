@@ -36,7 +36,8 @@ def get_user_id():
     user = 'unknown'
     if not session.get('user'):
         print(f'Creating user session...')
-        session['user'] = str(uuid.uuid4())
+        user = str(uuid.uuid4())
+        session['user'] = user
     elif session.get('user'):
         user = session['user']
         # print(f'Get user from session {user}')
