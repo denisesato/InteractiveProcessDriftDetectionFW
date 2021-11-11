@@ -19,7 +19,7 @@ from datetime import datetime, date
 from pm4py.objects.log.util import interval_lifecycle
 
 from components.adaptive.attributes import SelectAttribute
-from components.adaptive.change_points import ChangePoints
+from components.adaptive.change_point import ChangePoint
 from components.parameters import Approach
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
@@ -230,22 +230,22 @@ class AnalyzeDrift:
     def apply_detector(self, event_data, attribute_class):
         initial_index = 0
         initial_indexes = {}
-        # initialize similarity metrics manager
-        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                               self.models_path, self.metrics_path)
-        # create or applying a detector
-        window_cuts = []
+        # get the activities
         activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
         print(f'Applying ADWIN to log {self.current_log.filename}')
         activities = np.unique(np.array(activities))
         adwin = {}
         attribute_values = {}
         drifts = {}
+        # initialize one detector for each activity
         for a in activities:
             adwin[a] = ADWIN()
             attribute_values[a] = []
-            # initialize information about the drifts for saving it
-            drifts[a] = ChangePoints(attribute_class.name, a, self.metrics_path)
+
+        # initialize similarity metrics manager
+        self.current_parameters.total_of_activities = len(activities)
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
 
         for i, item in enumerate(event_data):
             # get the current case id
@@ -266,31 +266,45 @@ class AnalyzeDrift:
                         print(
                             f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
                         # save the change point
-                        drifts[activity].add_cp(i)
-                        # process new window
-                        self.new_window(initial_index, i)
-                        # save the initial of the processed window
-                        initial_indexes[i] = case_id
-                        # update the beginning of the next window
-                        initial_index = i
-            else:
-                # for each new event, collect the duration per activity
-                activity = item['concept:name']
-                value = attribute_class.get_value(item)
-                # for debug
-                # attribute_values[activity].append(value)
-                adwin[activity].add_element(value)
-                if adwin[activity].detected_change():
-                    print(
-                        f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
-                    # save the change point
-                    drifts[activity].add_cp(i)
+                        if i in drifts.keys():
+                            # if the change point os already detected for another activity recover it
+                            cp = drifts[i]
+                        else:
+                            # if not create it
+                            cp = ChangePoint(attribute_class.name, i, self.metrics_path)
+                            drifts[i] = cp
+                        # associate the current activity with the change point
+                        cp.add_activity(activity)
+
+                if i in drifts:
                     # process new window
-                    self.new_window(initial_index, i)
+                    self.new_window(initial_index, i, drifts[i])
                     # save the initial of the processed window
                     initial_indexes[i] = case_id
                     # update the beginning of the next window
                     initial_index = i
+
+            else:
+                print(f'Adaptive approach not implemented yet for EVENT STREAM')
+                # problema, se mais de uma atividade reportar drift corre o risco de ter janelas muito pequenas
+                # pensar como implementar
+                # # for each new event, collect the duration per activity
+                # activity = item['concept:name']
+                # value = attribute_class.get_value(item)
+                # # for debug
+                # # attribute_values[activity].append(value)
+                # adwin[activity].add_element(value)
+                # if adwin[activity].detected_change():
+                #     print(
+                #         f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+                #     # save the change point
+                #     drifts[activity].add_cp(i)
+                #     # process new window
+                #     self.new_window(initial_index, i)
+                #     # save the initial of the processed window
+                #     initial_indexes[i] = case_id
+                #     # update the beginning of the next window
+                #     initial_index = i
         # process remaining items as the last window
         if initial_index < len(event_data):
             size = len(event_data) - initial_index
@@ -298,7 +312,7 @@ class AnalyzeDrift:
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             # process final window
-            self.new_window(initial_index, len(event_data))
+            self.new_window(initial_index, len(event_data), drifts[initial_index])
 
         # for debug
         # for a in activities:
@@ -306,8 +320,8 @@ class AnalyzeDrift:
         #     df.to_csv(f'data/debug/durations/{self.current_parameters.logname}_{a}.csv', index=False)
 
         # saving the detected change points for each activity
-        for activity in drifts.keys():
-            drifts[activity].save_drift_info()
+        # for k in drifts.keys():
+        #     drifts[k].save_drift_info()
         return len(initial_indexes), self.metrics, initial_indexes
 
     def get_current_timestamp(self, item):
@@ -333,10 +347,10 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
         return date_aux
 
-    def new_window(self, begin, end):
+    def new_window(self, begin, end, change_point=None):
         # increment the id of the window
         self.window_count += 1
-        print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count}]')
+        print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count}] - change_point {change_point}')
         if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             # generate the sub-log for the window
             window = EventStream(self.event_data[begin:end])
@@ -345,9 +359,9 @@ class AnalyzeDrift:
             sub_log = EventLog(self.event_data[begin:end])
         else:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
-        self.execute_processes_for_window(sub_log, begin)
+        self.execute_processes_for_window(sub_log, begin, change_point)
 
-    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index):
+    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, change_point):
         # if it is the second window start the metrics calculation and timeout
         if self.window_count == 2:
             self.metrics.start_metrics_timeout()
@@ -357,16 +371,20 @@ class AnalyzeDrift:
         if self.window_count > 1:
             self.metrics.calculate_metrics(self.window_count, self.previous_sub_log, sub_log, self.previous_model,
                                            model, self.current_parameters, initial_trace_index)
+            if self.current_parameters.approach == Approach.ADAPTIVE.name:
+                self.metrics.calculate_adaptive_metrics(self.window_count, change_point, self.current_parameters,
+                                                        initial_trace_index)
+
         # save the current model and sub_log for the next window
         self.previous_sub_log = sub_log
         self.previous_model = model
 
     # after defining a window (fixed or adaptive) IPDD must mine the models and calculate the similarity metrics
     # between adjacent ones
-    def execute_processes_for_window(self, sub_log, initial_trace_index):
+    def execute_processes_for_window(self, sub_log, initial_trace_index, change_point):
         model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
                                                       self.window_count)
-        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index)
+        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index, change_point)
 
     # create for sliding windows
     def process_two_fixed_sliding_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):

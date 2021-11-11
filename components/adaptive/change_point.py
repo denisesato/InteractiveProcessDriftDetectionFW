@@ -13,25 +13,25 @@
 """
 import os
 from threading import RLock
-from components.adaptive.change_points_info import ChangePointsInfo
+from components.adaptive.change_point_info import ChangePointInfo
 
 
-class ChangePoints:
-    def __init__(self, attribute_name, activity, metrics_path):
+class ChangePoint:
+    def __init__(self, attribute_name, cp, metrics_path):
         self.attribute_name = attribute_name
-        self.activity = activity
+        self.cp = cp
         self.metrics_path = metrics_path
         self.lock = RLock()
-        self.change_points = []
-        self.change_points_info = ChangePointsInfo(attribute_name, activity)
+        self.activities = []
+        self.change_point_info = ChangePointInfo(attribute_name, cp)
         self.filename = os.path.join(self.metrics_path, f'ADWIN_change_points_{attribute_name}.txt')
 
-    def add_cp(self, change_point):
-        self.change_points.append(change_point)
-        self.change_points_info.add_cp(change_point)
+    def add_activity(self, activity):
+        self.activities.append(activity)
+        self.change_point_info.add_activity(activity)
 
     def get_info(self):
-        return self.change_points_info
+        return self.change_point_info
 
     def get_value(self, event):
         pass
@@ -44,4 +44,4 @@ class ChangePoints:
             file.write(self.get_info().serialize())
             file.write('\n')
         self.lock.release()
-        print(f'Saving drifts detected at [{self.change_points}] using attribute [{self.attribute_name}]')
+        print(f'Saving drift detected at [{self.cp}], activities {self.activities}, using attribute [{self.attribute_name}]')

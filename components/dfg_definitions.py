@@ -15,10 +15,11 @@ import os
 
 from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, \
     DfgNodesSimilarityMetric
-from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric, WaitingTimeSimilarityMetric
+from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric, WaitingTimeSimilarityMetric, \
+    SojournTimeSimilarityAdaptiveMetric
 from enum import Enum
 
-from components.parameters import Approach
+from components.parameters import Approach, AttributeAdaptive
 
 
 class Metric(str, Enum):
@@ -27,6 +28,7 @@ class Metric(str, Enum):
     # EDIT_DISTANCE = 'Edit distance'
     # SOJOURN_TIME = 'Sojourn time'
     # WAITING_TIME = 'Waiting time'
+
 
 class DfgDefinitions:
     def __init__(self):
@@ -86,5 +88,13 @@ class DfgDefinitions:
             Metric.NODES.value: DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
             # Metric.SOJOURN_TIME.value: SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters),
             # Metric.WAITING_TIME.value: WaitingTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters)
+        }
+        return classes[metric_name]
+
+    def adaptive_metrics_factory(self, metric_name, window, initial_trace, change_point, total_of_activities):
+        # define todas as métricas existentes para o tipo de modelo de processo
+        # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
+        classes = {
+            AttributeAdaptive.SOJOURN_ACTIVITY_TIME.name: SojournTimeSimilarityAdaptiveMetric(window, initial_trace, metric_name, change_point, total_of_activities),
         }
         return classes[metric_name]

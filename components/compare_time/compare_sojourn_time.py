@@ -17,7 +17,7 @@ from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.util import interval_lifecycle
 import numpy as np
 from scipy import stats
-from components.compare_time.time_metric import TimeMetric
+from components.compare_time.time_metric import TimeMetric, TimeAdaptiveMetric
 import math
 
 
@@ -48,6 +48,7 @@ def print_log(log, name='', time=False):
                 print_event(event)
 
 
+# approach using statistical hypothesis test
 class SojournTime:
     @staticmethod
     # Remove activities not listed in list_activities
@@ -197,6 +198,7 @@ class SojournTime:
         return 1 - percentual_of_difference, activities_with_difference, activities
 
 
+# for fixed window size
 class SojournTimeSimilarityMetric(TimeMetric):
     def __init__(self, window, trace, metric_name, sublog1, sublog2, parameters):
         super().__init__(window, trace, metric_name, sublog1, sublog2, parameters)
@@ -209,6 +211,21 @@ class SojournTimeSimilarityMetric(TimeMetric):
                                                                                                self.sublog2,
                                                                                                self.window,
                                                                                                self.parameters)
+        return self.value, self.diff, self.activities
+
+
+# for adaptive window
+class SojournTimeSimilarityAdaptiveMetric(TimeAdaptiveMetric):
+    def __init__(self, window, trace, metric_name, change_point, total_of_activities):
+        super().__init__(window, trace, metric_name, change_point, total_of_activities)
+
+    def is_dissimilar(self):
+        return self.value < 1
+
+    def calculate(self):
+        self.activities = self.change_point.activities
+        self.value = 1.0 - (len(self.change_point.activities) / self.total_of_activities)
+        self.diff = self.change_point.activities
         return self.value, self.diff, self.activities
 
 

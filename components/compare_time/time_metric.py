@@ -35,3 +35,21 @@ class TimeMetric(Metric):
         self.metric_info.set_dissimilar(self.is_dissimilar())
         self.save_metrics()
 
+
+class TimeAdaptiveMetric(Metric):
+    def __init__(self, window, trace, metric_name, change_point, total_of_activities):
+        super().__init__(window, metric_name)
+        self.initial_trace = trace
+        self.change_point = change_point
+        self.total_of_activities = total_of_activities
+        self.metric_info = TimeMetricInfo(window, trace, metric_name)
+
+    def is_dissimilar(self):
+        pass
+
+    def run(self):
+        value, diff, activities = self.calculate()
+        self.metric_info.set_value(value)
+        self.metric_info.set_activities(activities)
+        self.metric_info.set_dissimilar(self.is_dissimilar())
+        self.save_metrics()

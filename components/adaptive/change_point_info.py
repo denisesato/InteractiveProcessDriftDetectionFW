@@ -14,15 +14,15 @@
 from json_tricks import dumps
 
 
-class ChangePointsInfo:
-    def __init__(self, attribute_name, activity):
+class ChangePointInfo:
+    def __init__(self, attribute_name, cp):
         self.attribute_name = attribute_name
-        self.activity = activity
+        self.change_point = cp
         self.info = []
-        self.change_points = []
+        self.activities = []
 
-    def add_cp(self, change_point):
-        self.change_points.append(change_point)
+    def add_activity(self, activity):
+        self.activities.append(activity)
 
     def add_additional_info(self, additional_info):
         self.info.append(additional_info)
@@ -36,10 +36,10 @@ class ChangePointsInfo:
 
     def __str__(self):
         info = f'Attribute name: {self.attribute_name_name}\n'
-        info = f'Activity: {self.activity}\n'
+        info = f'Activities: {self.activities}\n'
         info += f'Window: {self.window}\n'
         info += f'Initial trace: {self.initial_trace}\n'
-        info += f'Change points: {self.change_points}\n'
+        info += f'Change point (final trace): {self.change_point}\n'
         info += f'Additional info: {[info.get_status_info() for info in self.info]}\n'
         return info
 
