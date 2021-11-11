@@ -11,6 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
+import os
 from threading import Thread
 import numpy as np
 from pm4py.objects.conversion.log import converter as log_converter
@@ -54,9 +55,9 @@ class AnalyzeDrift:
         # convert to interval time log if needed
         self.converted_log = interval_lifecycle.to_interval(self.current_log.log)
         # set the event_data as requested by the user (read event by event or trace by trace)
-        if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+        if self.current_parameters.read_log_as == ReadLogAs.TRACE.value:
             self.event_data = self.converted_log
-        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+        if self.current_parameters.read_log_as == ReadLogAs.EVENT.value:
             # convert the log into an event stream
             self.event_data = log_converter.apply(self.converted_log, variant=log_converter.Variants.TO_EVENT_STREAM)
         else:
@@ -259,8 +260,7 @@ class AnalyzeDrift:
                 for event in item:
                     activity = event['concept:name']
                     value = attribute_class.get_value(event)
-                    # for debug
-                    # attribute_values[activity].append(value)
+                    attribute_values[activity].append(value)
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
                         print(
@@ -314,10 +314,12 @@ class AnalyzeDrift:
             # process final window
             self.new_window(initial_index, len(event_data), drifts[initial_index])
 
-        # for debug
-        # for a in activities:
-        #     df = pd.DataFrame(durations[a], columns=['duration'])
-        #     df.to_csv(f'data/debug/durations/{self.current_parameters.logname}_{a}.csv', index=False)
+        # for plotting information about the data
+        for a in activities:
+            df = pd.DataFrame(attribute_values[a], columns=['value'])
+            filename = f'{self.current_parameters.attribute}_{a}.csv'
+            output_filename = os.path.join(self.metrics_path, filename)
+            df.to_csv(output_filename, index=False)
 
         # saving the detected change points for each activity
         # for k in drifts.keys():
