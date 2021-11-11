@@ -18,7 +18,6 @@ from pm4py.objects.log.util import interval_lifecycle
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
-from components.parameters import AttributeAdaptive
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from components.evaluate.calculate_fscore import EvaluationMetric
@@ -188,6 +187,7 @@ class InteractiveProcessDriftDetectionFW:
         self.input_path = os.path.join('data', 'input')
         self.models_path = os.path.join('data', 'models')
         self.metrics_path = os.path.join('data', 'metrics')
+        self.adaptive_path = os.path.join('data', 'adaptive')
         self.initialize_paths()
 
         # workaround for pygraphviz problem - the library do not release file handlers
@@ -222,6 +222,9 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_metrics_path(self, user_id):
         return check_user_path(self.metrics_path, user_id)
+
+    def get_adaptive_path(self, user_id):
+        return check_user_path(self.adaptive_path, user_id)
 
     def import_log(self, complete_filename, filename):
         # import the chosen event log and calculate some statistics
@@ -283,7 +286,8 @@ class InteractiveProcessDriftDetectionFW:
         print(f'Starting windowing process...')
         analyze = AnalyzeDrift(self.model_type, parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
-                               self.get_metrics_path(user_id), self.current_log, self.discovery)
+                               self.get_metrics_path(user_id), self.current_log, self.discovery,
+                               self.get_adaptive_path(user_id))
         self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
         self.control.finish_mining_calculation()
         print(f'*** Initial indexes for generated windows: {self.initial_indexes}')

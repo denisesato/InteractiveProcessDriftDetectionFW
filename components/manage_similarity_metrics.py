@@ -31,7 +31,8 @@ def threaded(fn):
 
 
 class ManageSimilarityMetrics:
-    def __init__(self, model_type, current_parameters, control, models_path, metrics_path):
+    def __init__(self, model_type, current_parameters, control, models_path, metrics_path,
+                 adaptive_path=None):
         print(f'**************************************************************************')
         print(f'*************** Similarity metrics calculation started *******************')
         print(f'**************************************************************************')
@@ -62,9 +63,16 @@ class ManageSimilarityMetrics:
         if self.current_parameters.approach == Approach.ADAPTIVE.name:
             self.locks[self.current_parameters.attribute] = RLock()
 
+        # Define the path for the adaptive metrics file
+        self.adaptive_path = os.path.join(adaptive_path, self.current_parameters.logname)
+        # Check if the folder already exists, and create it if not
+        if not os.path.exists(self.adaptive_path):
+            os.makedirs(self.adaptive_path)
+
         # Define the path for the metrics file
         # IPDD creates one file by each implemented metric
-        self.metrics_path = self.model_type_definitions.get_metrics_path(metrics_path, self.current_parameters.logname)
+        self.metrics_path = self.model_type_definitions.get_metrics_path(metrics_path,
+                                                                         self.current_parameters.logname)
         # Check if the folder already exists, and create it if not
         if not os.path.exists(self.metrics_path):
             os.makedirs(self.metrics_path)
@@ -79,23 +87,31 @@ class ManageSimilarityMetrics:
     # calculated metrics
     def verify_files(self):
         for metric in self.metrics_list:
-            self.create_file(metric)
+            self.filenames[metric] = os.path.join(self.metrics_path,
+                                                  self.model_type_definitions.get_metrics_filename(
+                                                      self.current_parameters, metric))
+
+            # if the file already exists, IPDD deletes it
+            if os.path.exists(self.filenames[metric]):
+                print(f'Deleting file {self.filenames[metric]}')
+                os.remove(self.filenames[metric])
+
+            # create the file
+            with open(self.filenames[metric], 'w+') as fp:
+                pass
+
         if self.current_parameters.approach == Approach.ADAPTIVE.name:
-            self.create_file(self.current_parameters.attribute)
+            attribute = self.current_parameters.attribute
+            self.filenames[attribute] = os.path.join(self.adaptive_path, f'{attribute}.txt')
 
-    def create_file(self, metric):
-        self.filenames[metric] = os.path.join(self.metrics_path,
-                                              self.model_type_definitions.get_metrics_filename(
-                                                  self.current_parameters, metric))
+            # if the file already exists, IPDD deletes it
+            if os.path.exists(self.filenames[metric]):
+                print(f'Deleting file {self.filenames[metric]}')
+                os.remove(self.filenames[metric])
 
-        # if the file already exists, IPDD deletes it
-        if os.path.exists(self.filenames[metric]):
-            print(f'Deleting file {self.filenames[metric]}')
-            os.remove(self.filenames[metric])
-
-        # create the file
-        with open(self.filenames[metric], 'w+') as fp:
-            pass
+            # create the file
+            with open(self.filenames[metric], 'w+') as fp:
+                pass
 
     def set_final_window(self, w):
         print(f'Setting final window value {w}')
@@ -142,14 +158,19 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
-        # print(
-        #     f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
-        # TODO this is the check for tumbling windows
-        # check to create a check that works with tumbling and sliding windows
-        if self.final_window != 0 and self.metrics_count == (
-                self.final_window * len(self.metrics_list)):  # for tumbling windows
+        print(
+            f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
+        if self.current_parameters.approach == Approach.FIXED.name:
+            # check for tumbling windows
+            if self.final_window != 0 and self.metrics_count == (
+                    self.final_window * len(self.metrics_list)):
             # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
-            self.finish()
+                self.finish()
+        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+            # check for tumbling windows, + 1 because of the adaptive metric
+            if self.final_window != 0 and self.metrics_count == (
+                    self.final_window * (len(self.metrics_list) + 1)):
+                self.finish()
 
     @threaded
     def check_metrics_timeout(self):
@@ -194,14 +215,14 @@ class ManageSimilarityMetrics:
         if self.metrics_list:
             for m in self.metrics_list:
                 self.consider_metric(m, candidates)
-            if self.current_parameters.approach == Approach.ADAPTIVE.name:
-                self.consider_metric(self.current_parameters.attribute, candidates)
+            # if self.current_parameters.approach == Approach.ADAPTIVE.name:
+            #     self.consider_metric(self.current_parameters.attribute, candidates)
 
             if self.current_parameters.approach == Approach.FIXED.name:
                 filename = os.path.join(self.metrics_path,
                                         f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
             elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-                filename = os.path.join(self.metrics_path, f'adaptive_drift_windows.txt')
+                filename = os.path.join(self.adaptive_path, f'adaptive_drift_windows.txt')
             else:
                 filename = os.path.join(self.metrics_path, f'_drift_windows.txt')
             print(f'Saving drift windows: {filename}')

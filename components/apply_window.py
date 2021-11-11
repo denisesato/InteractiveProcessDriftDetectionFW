@@ -40,13 +40,14 @@ def threaded(fn):
 
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
-                 models_path, metrics_path, current_log, discovery):
+                 models_path, metrics_path, current_log, discovery, adaptive_path=None):
         self.window_count = 0
         self.current_parameters = current_parameters
         self.control = control
         self.input_path = input_path
         self.models_path = models_path
         self.metrics_path = metrics_path
+        self.adaptive_path = adaptive_path
         self.model_type = model_type
         # instance of the MetricsManager
         self.metrics = None
@@ -246,7 +247,7 @@ class AnalyzeDrift:
         # initialize similarity metrics manager
         self.current_parameters.total_of_activities = len(activities)
         self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                               self.models_path, self.metrics_path)
+                                               self.models_path, self.metrics_path, self.adaptive_path)
 
         for i, item in enumerate(event_data):
             # get the current case id
@@ -318,7 +319,7 @@ class AnalyzeDrift:
         for a in activities:
             df = pd.DataFrame(attribute_values[a], columns=['value'])
             filename = f'{self.current_parameters.attribute}_{a}.csv'
-            output_filename = os.path.join(self.metrics_path, filename)
+            output_filename = os.path.join(self.adaptive_path, self.current_parameters.logname, filename)
             df.to_csv(output_filename, index=False)
 
         # saving the detected change points for each activity
@@ -352,7 +353,7 @@ class AnalyzeDrift:
     def new_window(self, begin, end, change_point=None):
         # increment the id of the window
         self.window_count += 1
-        print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count}] - change_point {change_point}')
+        print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count}]')
         if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             # generate the sub-log for the window
             window = EventStream(self.event_data[begin:end])
