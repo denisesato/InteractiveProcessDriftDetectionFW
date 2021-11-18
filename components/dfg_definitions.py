@@ -44,7 +44,7 @@ class DfgDefinitions:
         return Metric
 
     def get_default_metrics(self):
-        return [Metric.NODES, Metric.EDGES]
+        return [Metric.NODES]
 
     def get_model_filename(self, log_name, window):
         map_file = f'{self.models_path}_w{window}.gv'
@@ -64,16 +64,16 @@ class DfgDefinitions:
         path = os.path.join(generic_metrics_path, self.models_path, original_filename)
         return path
 
-    def get_models_path(self, generic_models_path, original_filename):
+    def get_models_path(self, generic_models_path, original_filename, activity):
         if self.current_parameters.approach == Approach.FIXED.name:
             dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
                                            f'winsize_{self.current_parameters.win_size}')
         elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
+            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
                                            f'adaptive_{self.current_parameters.attribute}')
         else:
             print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
-            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename)
+            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity)
         return dfg_models_path
 
     def get_metrics_list(self):

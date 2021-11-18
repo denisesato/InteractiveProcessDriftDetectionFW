@@ -56,18 +56,18 @@ class ManageSimilarityMetrics:
 
         # get the metrics selected by the user
         self.metrics_list = current_parameters.metrics
+
         # Create a locker for each metric to manage the access to the file where the information is saved
         self.locks = {}
         for m in self.metrics_list:
             self.locks[m] = RLock()
         if self.current_parameters.approach == Approach.ADAPTIVE.name:
             self.locks[self.current_parameters.attribute] = RLock()
-
-        # Define the path for the adaptive metrics file
-        self.adaptive_path = os.path.join(adaptive_path, self.current_parameters.logname)
-        # Check if the folder already exists, and create it if not
-        if not os.path.exists(self.adaptive_path):
-            os.makedirs(self.adaptive_path)
+            # Define the path for the adaptive metrics file
+            self.adaptive_path = os.path.join(adaptive_path, self.current_parameters.logname)
+            # Check if the folder already exists, and create it if not
+            if not os.path.exists(self.adaptive_path):
+                os.makedirs(self.adaptive_path)
 
         # Define the path for the metrics file
         # IPDD creates one file by each implemented metric
@@ -160,17 +160,22 @@ class ManageSimilarityMetrics:
     def check_finish(self):
         print(
             f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
-        if self.current_parameters.approach == Approach.FIXED.name:
-            # check for tumbling windows
-            if self.final_window != 0 and self.metrics_count == (
-                    self.final_window * len(self.metrics_list)):
-            # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
-                self.finish()
-        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-            # check for tumbling windows, + 1 because of the adaptive metric
-            if self.final_window != 0 and self.metrics_count == (
-                    self.final_window * (len(self.metrics_list) + 1)):
-                self.finish()
+        # if self.current_parameters.approach == Approach.FIXED.name:
+        #     # check for tumbling windows
+        #     if self.final_window != 0 and self.metrics_count == (
+        #             self.final_window * len(self.metrics_list)):
+        #     # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
+        #         self.finish()
+        # elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+        #     # check for tumbling windows, + 1 because of the adaptive metric
+        #     if self.final_window != 0 and self.metrics_count == (
+        #             self.final_window * (len(self.metrics_list) + 1)):
+        #         self.finish()
+        # check for tumbling windows
+        if self.final_window != 0 and self.metrics_count == (
+                self.final_window * len(self.metrics_list)):
+        # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
+            self.finish()
 
     @threaded
     def check_metrics_timeout(self):
@@ -246,6 +251,6 @@ class ManageSimilarityMetrics:
         if self.metrics_list:
             for m in self.metrics_list:
                 self.get_info(m, window, metrics)
-        if self.current_parameters.approach == Approach.ADAPTIVE.name:
-            self.get_info(self.current_parameters.attribute, window, metrics)
+        # if self.current_parameters.approach == Approach.ADAPTIVE.name:
+        #     self.get_info(self.current_parameters.attribute, window, metrics)
         return metrics

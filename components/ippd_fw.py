@@ -18,6 +18,7 @@ from pm4py.objects.log.util import interval_lifecycle
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
+from components.parameters import Approach
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from components.evaluate.calculate_fscore import EvaluationMetric
@@ -109,7 +110,9 @@ class Control:
     def set_metrics_manager(self, metrics_manager):
         self.metrics_manager = metrics_manager
 
-    def get_metrics_manager(self):
+    def get_metrics_manager(self, activity=None):
+        if activity:
+            return self.metrics_manager[activity]
         return self.metrics_manager
 
 
@@ -163,9 +166,6 @@ class InteractiveProcessDriftDetectionFW:
         self.status_similarity_metrics = ''
         self.status_mining = ''
         self.control = Control()
-        self.windows_with_drifts = None
-        self.initial_indexes = {}
-        self.total_of_windows = 0
         self.input_path = None
         self.models_path = None
         self.metrics_path = None
@@ -175,6 +175,10 @@ class InteractiveProcessDriftDetectionFW:
         self.discovery = None
         self.script = script
         self.model_type = model_type
+        self.total_of_windows = None
+        self.windows_with_drifts = None
+        self.initial_indexes = None
+        self.activities = []
         # mine the process model and save it
         if self.model_type == 'dfg':
             self.discovery = DiscoveryDfg()
@@ -188,7 +192,6 @@ class InteractiveProcessDriftDetectionFW:
         self.models_path = os.path.join('data', 'models')
         self.metrics_path = os.path.join('data', 'metrics')
         self.adaptive_path = os.path.join('data', 'adaptive')
-        self.initialize_paths()
 
         # workaround for pygraphviz problem - the library do not release file handlers
         # in windows - this should be verified again
@@ -197,16 +200,19 @@ class InteractiveProcessDriftDetectionFW:
         wfile._setmaxstdio(4096)
         print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
-    def initialize_paths(self):
-        # verify if the folder for saving the events logs exist, if not create it
-        if not os.path.exists(self.input_path):
-            os.makedirs(self.input_path)
-        # verify if the folder for saving the process models exist, if not create it
-        if not os.path.exists(self.models_path):
-            os.makedirs(self.models_path)
-        # verify if the folder for saving the metrics exist, if not create it
-        if not os.path.exists(self.metrics_path):
-            os.makedirs(self.metrics_path)
+    # return the activities from the event log of the last run
+    def get_activities(self):
+        return self.activities
+
+    def get_first_activity(self):
+        if len(self.activities) > 0:
+            return self.activities[0]
+        return ''
+
+    def get_total_of_windows(self, activity=None):
+        if activity:
+            return self.total_of_windows[activity]
+        return self.total_of_windows
 
     def get_implemented_metrics(self):
         return self.model_type_definitions.get_implemented_metrics()
@@ -277,9 +283,18 @@ class InteractiveProcessDriftDetectionFW:
         if not parameters.metrics:
             parameters.metrics = self.model_type_definitions.get_default_metrics()
 
+        # initializing attributes that depend of the approach
+        if parameters.approach == Approach.FIXED.name:
+            self.windows_with_drifts = {}
+            self.total_of_windows = {}
+        elif parameters.approach == Approach.ADAPTIVE.name:
+            self.windows_with_drifts = None
+            self.total_of_windows = 0
+        else:
+            print(f'Approach not defined {parameters.approach}')
+
         # set the parameters selected for the current run
         self.discovery.set_current_parameters(parameters)
-
         self.control.reset_tasks_counter()
         print(f'User selected approach={parameters.approach} reading log as={parameters.read_log_as}')
         print(f'Metrics={parameters.metrics}')
@@ -289,6 +304,10 @@ class InteractiveProcessDriftDetectionFW:
                                self.get_metrics_path(user_id), self.current_log, self.discovery,
                                self.get_adaptive_path(user_id))
         self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
+        if parameters.approach == Approach.ADAPTIVE.name:
+            self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
+            print(f'Setting the activities with drifts: {self.activities}')
+
         self.control.finish_mining_calculation()
         print(f'*** Initial indexes for generated windows: {self.initial_indexes}')
         print(f'*** Number of windows: [{self.total_of_windows}]')
@@ -305,11 +324,12 @@ class InteractiveProcessDriftDetectionFW:
         metric = EvaluationMetric(real_drifts, windows_drifts, win_size)
         return metric.calculate_fscore()
 
-    def get_windows(self):
-        return self.total_of_windows
-
-    def get_initial_trace_indexes(self):
-        return list(self.initial_indexes.keys())
+    def get_initial_trace_indexes(self, activity):
+        if self.initial_indexes:
+            if activity:
+                return list(self.initial_indexes[activity].keys())
+            return list(self.initial_indexes.keys())
+        return None
 
     def get_initial_trace_concept_names(self):
         return list(self.initial_indexes.values())
@@ -317,7 +337,9 @@ class InteractiveProcessDriftDetectionFW:
     def get_metrics_status(self):
         return self.control.get_metrics_status()
 
-    def get_metrics_manager(self):
+    def get_metrics_manager(self, activity=None):
+        if activity and activity != '':
+            return self.control.get_metrics_manager(activity)
         return self.control.get_metrics_manager()
 
     def get_mining_status(self):
@@ -332,8 +354,8 @@ class InteractiveProcessDriftDetectionFW:
     def restart_status(self):
         self.control.restart_status()
 
-    def get_model(self, original_filename, window, user):
-        return self.discovery.get_process_model(self.get_models_path(user), original_filename, window)
+    def get_model(self, original_filename, window, user, activity=''):
+        return self.discovery.get_process_model(self.get_models_path(user), original_filename, window, activity)
 
     # method that verify if one execution of IPDD finished running
     # used by the command line interface
@@ -371,15 +393,22 @@ class InteractiveProcessDriftDetectionFW:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
         # check if the metrics' calculation finished by timeout
         # and correctly define the status message for the web interface
+        windows_ok = True
+        if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
+            windows_ok = self.total_of_windows > 0
+        elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
+            windows_ok = len(self.total_of_windows.keys()) > 0
+        elif self.current_parameters:
+            print(f'Invalid approach {self.current_parameters.approach} in get_status_similarity_metrics_text')
         if (self.get_metrics_status() == MetricsProcessingStatus.FINISHED
             or self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT) \
-                and self.total_of_windows > 0:
+                and windows_ok:
             if self.get_metrics_status() == MetricsProcessingStatus.FINISHED:
                 self.status_similarity_metrics = f'Similarity metrics calculated.'
             elif self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT:
                 self.status_similarity_metrics = f'Similarity metrics TIMEOUT. Some metrics will not be presented...'
 
-            self.windows_with_drifts = self.get_metrics_manager().get_window_candidates()
+            # self.windows_with_drifts = self.get_metrics_manager().get_window_candidates()
             self.reset_metrics_calculation()
 
         return self.status_similarity_metrics, self.total_of_windows, self.windows_with_drifts
@@ -396,7 +425,9 @@ class InteractiveProcessDriftDetectionFW:
         models_path = self.get_models_path(user_id)
         if os.path.exists(models_path):
             shutil.rmtree(models_path)
-
         metrics_path = self.get_metrics_path(user_id)
         if os.path.exists(metrics_path):
             shutil.rmtree(metrics_path)
+        adaptive_path = self.get_adaptive_path(user_id)
+        if os.path.exists(adaptive_path):
+            shutil.rmtree(adaptive_path)

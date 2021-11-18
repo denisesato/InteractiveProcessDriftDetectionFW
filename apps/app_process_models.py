@@ -158,6 +158,7 @@ models_card = [
         dbc.Col([
             dbc.Card(
                 dbc.CardBody([
+                    dcc.Dropdown(id='activity', value=''),
                     html.H6('Similarity Information', className='card-title'),
                     html.Div(id='div-similarity-metrics-value', children=''),
                     html.Div(id='div-differences', children=''),
@@ -334,8 +335,7 @@ def type_and_options_selected(read_log_as, unity_value, winsize, attribute, appr
 
 @app.callback([Output('check-ipdd-finished', 'disabled'),
                Output('button-parameters', 'n_clicks'),
-               Output('models-col', 'style'),
-               Output('window-slider', 'value')],
+               Output('models-col', 'style')],
               [Input('status-ipdd', 'children'),
                Input('window-size', 'children')],
               [State('check-ipdd-finished', 'disabled'),
@@ -350,23 +350,23 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
     if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:
         if status == IPDDProcessingStatus.NOT_STARTED or status == IPDDProcessingStatus.IDLE:
             # starts the interval and hide the parameters panel
-            return False, 1, {'display': 'none'}, -1
+            return False, 1, {'display': 'none'}
         else:
             # IPDD is still running
-            return interval_disabled, button_clicks, models_col_style, -1
+            return interval_disabled, button_clicks, models_col_style
     # interval check
     elif window_size > 0:
         # print(f'interval check: status {status}')
         if status == IPDDProcessingStatus.RUNNING:
-            return interval_disabled, button_clicks, models_col_style, -1
+            return interval_disabled, button_clicks, models_col_style
         if status == IPDDProcessingStatus.IDLE:
-            return True, 0, {'display': 'block'}, 0
+            return True, 0, {'display': 'block'}
     # user selected a new event log
     else:
         if status == IPDDProcessingStatus.IDLE:
             framework.restart_status()
-            return False, 0, {'display': 'none'}, -1
-        return True, 0, {'display': 'none'}, -1
+            return False, 0, {'display': 'none'}
+        return True, 0, {'display': 'none'}
 
 
 @app.callback(Output('window-size', 'children'),
@@ -404,19 +404,20 @@ def run_framework(n_clicks, approach, input_window_size, window_type, window_uni
 @app.callback([Output('current-model', 'dot_source'),
                Output('div-similarity-metrics-value', 'children')],
               Input('window-slider', 'value'),
+              State('activity', 'value'),
               State('hidden-filename', 'children'))
-def update_figure(window_value, file):
+def update_figure(window_value, activity, file):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     process_map = ''
     div_similarity = []
     if 'window-slider' in changed_id and window_value >= 0:
         window_value += 1  # because slider starts on 0 but windows on 1
-        process_map = framework.get_model(file, window_value, get_user_id())
+        process_map = framework.get_model(file, window_value, get_user_id(), activity)
         if window_value > 1:
-            previous_process_map = framework.get_model(file, window_value - 1, get_user_id())
-        if framework.total_of_windows > 1:  # if there is only one window the metrics manager is not initialized
+            previous_process_map = framework.get_model(file, window_value - 1, get_user_id(), activity)
+        if framework.get_total_of_windows(activity) > 1:  # if there is only one window the metrics manager is not initialized
             if framework.get_metrics_status() == IPDDProcessingStatus.IDLE:
-                metrics = framework.get_metrics_manager().get_metrics_info(window_value)
+                metrics = framework.get_metrics_manager(activity).get_metrics_info(window_value)
                 for metric in metrics:
                     div_similarity.append(html.Span(f'{metric.metric_name}: '))
                     div_similarity.append(html.Span("{:.2f}".format(metric.value), className='font-weight-bold'))
@@ -430,17 +431,46 @@ def update_figure(window_value, file):
     return process_map, html.Div(div_similarity)
 
 
+@app.callback([Output('window-slider', 'marks'),
+               Output('window-slider', 'max'),
+               Output('window-slider', 'value')],
+              Input('activity', 'value'))
+def update_slider(activity):
+    marks = {}
+    max_slider = 0
+    selected = -1
+    initial_indexes = framework.get_initial_trace_indexes(activity)
+    last_window = framework.get_total_of_windows(activity)
+    print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
+    if initial_indexes and activity != '':
+        selected = 0
+        # get the number of windows generated
+        total_of_windows = framework.get_total_of_windows(activity)
+        max_slider = total_of_windows - 1
+
+        for w in range(0, last_window):
+            label = str(w + 1) + '|' + str(initial_indexes[w])
+            marks[w] = {'label': label}
+            # if windows_with_drifts and (w + 1) in windows_with_drifts:
+            #     marks[w] = {'label': label, 'style': {'color': '#f50'}}
+            # else:
+            #     marks[w] = {'label': label}
+    return marks, max_slider, selected
+
+
 @app.callback([Output('div-status-similarity', 'children'),
                Output('div-status-mining', 'children'),
-               Output('window-slider', 'marks'),
                Output('evaluation-card', 'style'),
                Output('button-evaluation', 'style'),
                Output('status-ipdd', 'children'),
                Output('div-status', 'children'),
-               Output('window-slider', 'max')],
+               Output('activity', 'options'),
+               Output('activity', 'value')],
               Input('check-ipdd-finished', 'n_intervals'),
-              State('div-status', 'children'))
-def update_status_and_drifts(n, div_status):
+              State('div-status', 'children'),
+              State('activity', 'value'),
+              State('approach', 'value'))
+def update_status_and_drifts(n, div_status, activity, approach):
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT MINING THE MODELS
     ###################################################################
@@ -458,27 +488,18 @@ def update_status_and_drifts(n, div_status):
     # UPDATE THE USER INTERFACE ABOUT THE METRIC'S CALCULATION
     ###################################################################
     div_similarity_status, windows, windows_with_drifts = framework.get_status_similarity_metrics_text()
-    marks = {}
-
-    initial_indexes = framework.get_initial_trace_indexes()
-    for w in range(0, framework.get_windows()):
-        label = str(w + 1) + '|' + str(initial_indexes[w])
-        if windows_with_drifts and (w + 1) in windows_with_drifts:
-            marks[w] = {'label': label, 'style': {'color': '#f50'}}
-        else:
-            marks[w] = {'label': label}
 
     # display or not
     display_evaluation = {'display': 'none'}
-    max_slider = 0
+    activities = []
+    first_activity = ''
     if ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
         display_evaluation = {'display': 'block'}
-        # get the number of windows generated
-        total_of_windows = framework.total_of_windows
-        max_slider = total_of_windows - 1
-
-    return div_similarity_status, div_status_mining, marks, display_evaluation, display_evaluation, ipdd_status, \
-           div_status, max_slider
+        activities = [{'label': item, 'value': item} for item in framework.get_activities()]
+        first_activity = framework.get_first_activity()
+        print(f'Activities with drifts {activities} - selected activity {first_activity}')
+    return div_similarity_status, div_status_mining, display_evaluation, display_evaluation, ipdd_status, \
+           div_status, activities, first_activity
 
 
 @app.callback(Output('div-fscore', 'children'),

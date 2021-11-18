@@ -16,6 +16,7 @@ from enum import Enum
 
 from components.compare_conformance.compare_conformance_pn import ConformanceSimilarityMetric
 from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric
+from components.parameters import Approach
 
 
 class Metric(str, Enum):
@@ -43,10 +44,17 @@ class PnDefinitions:
         path = os.path.join(generic_metrics_path, self.model_path, original_filename)
         return path
 
-    def get_models_path(self, generic_models_path, original_filename):
-        model_path = os.path.join(generic_models_path, self.model_path, original_filename,
-                                  f'winsize_{self.current_parameters.winsize}')
-        return model_path
+    def get_models_path(self, generic_models_path, original_filename, activity):
+        if self.current_parameters.approach == Approach.FIXED.name:
+            models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
+                                           f'winsize_{self.current_parameters.win_size}')
+        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+            models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
+                                           f'adaptive_{self.current_parameters.attribute}')
+        else:
+            print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
+            models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity)
+        return models_path
 
     def get_implemented_metrics(self):
         return Metric
