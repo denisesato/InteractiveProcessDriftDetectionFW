@@ -441,20 +441,22 @@ def update_slider(activity):
     selected = -1
     initial_indexes = framework.get_initial_trace_indexes(activity)
     last_window = framework.get_total_of_windows(activity)
-    print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
-    if initial_indexes and activity != '':
+    # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
+    if initial_indexes:
         selected = 0
         # get the number of windows generated
         total_of_windows = framework.get_total_of_windows(activity)
         max_slider = total_of_windows - 1
 
+        windows_with_drifts = framework.get_windows_candidates(activity)
         for w in range(0, last_window):
             label = str(w + 1) + '|' + str(initial_indexes[w])
             marks[w] = {'label': label}
-            # if windows_with_drifts and (w + 1) in windows_with_drifts:
-            #     marks[w] = {'label': label, 'style': {'color': '#f50'}}
-            # else:
-            #     marks[w] = {'label': label}
+
+            if windows_with_drifts and (w + 1) in windows_with_drifts:
+                marks[w] = {'label': label, 'style': {'color': '#f50'}}
+            else:
+                marks[w] = {'label': label}
     return marks, max_slider, selected
 
 
@@ -465,7 +467,8 @@ def update_slider(activity):
                Output('status-ipdd', 'children'),
                Output('div-status', 'children'),
                Output('activity', 'options'),
-               Output('activity', 'value')],
+               Output('activity', 'value'),
+               Output('activity', 'style')],
               Input('check-ipdd-finished', 'n_intervals'),
               State('div-status', 'children'),
               State('activity', 'value'),
@@ -487,19 +490,25 @@ def update_status_and_drifts(n, div_status, activity, approach):
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT THE METRIC'S CALCULATION
     ###################################################################
-    div_similarity_status, windows, windows_with_drifts = framework.get_status_similarity_metrics_text()
+    # div_similarity_status, windows, windows_with_drifts = framework.get_status_similarity_metrics_text()
+    div_similarity_status = framework.get_status_similarity_metrics_text()
 
     # display or not
     display_evaluation = {'display': 'none'}
+    style_activity = {'display': 'none'}
     activities = []
     first_activity = ''
     if ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
         display_evaluation = {'display': 'block'}
-        activities = [{'label': item, 'value': item} for item in framework.get_activities()]
-        first_activity = framework.get_first_activity()
-        print(f'Activities with drifts {activities} - selected activity {first_activity}')
+
+        if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name:
+            style_activity = {'display': 'block'}
+            activities = [{'label': item, 'value': item} for item in framework.get_activities()]
+            first_activity = framework.get_first_activity()
+            print(f'Activities with drifts {activities} - selected activity {first_activity}')
+
     return div_similarity_status, div_status_mining, display_evaluation, display_evaluation, ipdd_status, \
-           div_status, activities, first_activity
+           div_status, activities, first_activity, style_activity
 
 
 @app.callback(Output('div-fscore', 'children'),

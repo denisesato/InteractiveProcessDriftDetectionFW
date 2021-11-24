@@ -60,7 +60,7 @@ class Control:
         self.mining_status = IPDDProcessingStatus.NOT_STARTED
         self.metrics_manager = None
         self.tasks_completed = 0
-        self.total_of_windows = 0
+        # self.total_of_windows = 0
 
     def restart_status(self):
         self.metrics_status = MetricsProcessingStatus.NOT_STARTED
@@ -204,15 +204,23 @@ class InteractiveProcessDriftDetectionFW:
     def get_activities(self):
         return self.activities
 
+    def get_approach(self):
+        if self.current_parameters:
+            return self.current_parameters.approach
+        return None
+
     def get_first_activity(self):
         if len(self.activities) > 0:
             return self.activities[0]
         return ''
 
     def get_total_of_windows(self, activity=None):
-        if activity:
+        if self.total_of_windows and self.get_approach() == Approach.ADAPTIVE.name and activity != '':
             return self.total_of_windows[activity]
-        return self.total_of_windows
+        elif self.total_of_windows and self.get_approach() == Approach.FIXED.name:
+            return self.total_of_windows
+        else:
+            return 0
 
     def get_implemented_metrics(self):
         return self.model_type_definitions.get_implemented_metrics()
@@ -262,7 +270,6 @@ class InteractiveProcessDriftDetectionFW:
             # clean data generated from previous runs
             self.clean_generated_data(user_id)
         self.control.start_mining_calculation()
-        self.total_of_windows = 0
 
         # if the user is running from command line
         # first IPDD needs to copy the event log into the folder data\input
@@ -294,6 +301,7 @@ class InteractiveProcessDriftDetectionFW:
             print(f'Approach not defined {parameters.approach}')
 
         # set the parameters selected for the current run
+        self.current_parameters = parameters
         self.discovery.set_current_parameters(parameters)
         self.control.reset_tasks_counter()
         print(f'User selected approach={parameters.approach} reading log as={parameters.read_log_as}')
@@ -393,31 +401,28 @@ class InteractiveProcessDriftDetectionFW:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
         # check if the metrics' calculation finished by timeout
         # and correctly define the status message for the web interface
-        windows_ok = True
-        if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
-            windows_ok = self.total_of_windows > 0
-        elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
-            windows_ok = len(self.total_of_windows.keys()) > 0
-        elif self.current_parameters:
-            print(f'Invalid approach {self.current_parameters.approach} in get_status_similarity_metrics_text')
+        # windows_ok = True
+        # if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
+        #     windows_ok = self.total_of_windows > 0
+        # elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
+        #     windows_ok = len(self.total_of_windows.keys()) > 0
+        # elif self.current_parameters:
+        #     print(f'Invalid approach {self.current_parameters.approach} in get_status_similarity_metrics_text')
         if (self.get_metrics_status() == MetricsProcessingStatus.FINISHED
-            or self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT) \
-                and windows_ok:
+            or self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT): #   and windows_ok:
             if self.get_metrics_status() == MetricsProcessingStatus.FINISHED:
                 self.status_similarity_metrics = f'Similarity metrics calculated.'
             elif self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT:
                 self.status_similarity_metrics = f'Similarity metrics TIMEOUT. Some metrics will not be presented...'
-
-            # self.windows_with_drifts = self.get_metrics_manager().get_window_candidates()
             self.reset_metrics_calculation()
 
-        return self.status_similarity_metrics, self.total_of_windows, self.windows_with_drifts
+        # return self.status_similarity_metrics, self.total_of_windows, self.windows_with_drifts
+        return self.status_similarity_metrics
 
-    def get_windows_candidates(self):
-        if self.get_metrics_manager():
-            return self.get_metrics_manager().get_window_candidates()
-        else:
-            return ()
+    def get_windows_candidates(self, activity):
+        if activity and activity != '':
+            return self.get_metrics_manager(activity).get_window_candidates()
+        return self.get_metrics_manager().get_window_candidates()
 
     def clean_generated_data(self, user_id):
         # cleaning data from previous executions - only for web acess

@@ -44,9 +44,9 @@ class DiscoveryDfg(Discovery):
         # gviz = dfg_visualization.apply(dfg, log=sub_log, variant=dfg_visualization.Variants.PERFORMANCE)
 
         # save the process model
-        if activity != '':
+        if activity and activity != '': # adaptive approach generates models per activity
             output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count[activity])
-        else:
+        else: # fixed approach generate the models based on the window size
             output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)
         print(f'Saving {models_path} - {output_filename}')
         Source.save(gviz, filename=output_filename, directory=models_path)

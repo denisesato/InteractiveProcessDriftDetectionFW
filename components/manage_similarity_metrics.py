@@ -61,13 +61,13 @@ class ManageSimilarityMetrics:
         self.locks = {}
         for m in self.metrics_list:
             self.locks[m] = RLock()
-        if self.current_parameters.approach == Approach.ADAPTIVE.name:
-            self.locks[self.current_parameters.attribute] = RLock()
-            # Define the path for the adaptive metrics file
-            self.adaptive_path = os.path.join(adaptive_path, self.current_parameters.logname)
-            # Check if the folder already exists, and create it if not
-            if not os.path.exists(self.adaptive_path):
-                os.makedirs(self.adaptive_path)
+        # if self.current_parameters.approach == Approach.ADAPTIVE.name:
+        #     self.locks[self.current_parameters.attribute] = RLock()
+        #     # Define the path for the adaptive metrics file
+        #     self.adaptive_path = os.path.join(adaptive_path, self.current_parameters.logname)
+        #     # Check if the folder already exists, and create it if not
+        #     if not os.path.exists(self.adaptive_path):
+        #         os.makedirs(self.adaptive_path)
 
         # Define the path for the metrics file
         # IPDD creates one file by each implemented metric
@@ -100,18 +100,18 @@ class ManageSimilarityMetrics:
             with open(self.filenames[metric], 'w+') as fp:
                 pass
 
-        if self.current_parameters.approach == Approach.ADAPTIVE.name:
-            attribute = self.current_parameters.attribute
-            self.filenames[attribute] = os.path.join(self.adaptive_path, f'{attribute}.txt')
-
-            # if the file already exists, IPDD deletes it
-            if os.path.exists(self.filenames[metric]):
-                print(f'Deleting file {self.filenames[metric]}')
-                os.remove(self.filenames[metric])
-
-            # create the file
-            with open(self.filenames[metric], 'w+') as fp:
-                pass
+        # if self.current_parameters.approach == Approach.ADAPTIVE.name:
+        #     attribute = self.current_parameters.attribute
+        #     self.filenames[attribute] = os.path.join(self.adaptive_path, f'{attribute}.txt')
+        #
+        #     # if the file already exists, IPDD deletes it
+        #     if os.path.exists(self.filenames[metric]):
+        #         print(f'Deleting file {self.filenames[metric]}')
+        #         os.remove(self.filenames[metric])
+        #
+        #     # create the file
+        #     with open(self.filenames[metric], 'w+') as fp:
+        #         pass
 
     def set_final_window(self, w):
         print(f'Setting final window value {w}')
@@ -227,8 +227,9 @@ class ManageSimilarityMetrics:
                 filename = os.path.join(self.metrics_path,
                                         f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
             elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-                filename = os.path.join(self.adaptive_path, f'adaptive_drift_windows.txt')
+                filename = os.path.join(self.metrics_path, f'adaptive_drift_windows.txt')
             else:
+                print(f'Approach not defined {self.current_parameters.approach} - using default filename...')
                 filename = os.path.join(self.metrics_path, f'_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
             with open(filename, 'w+') as file_drift_windows:

@@ -24,9 +24,10 @@ from components.adaptive.change_point import ChangePoint
 from components.parameters import Approach
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
-import pandas as pd
-
 from components.parameters import ReadLogAs, WindowUnityFixed
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def threaded(fn):
@@ -256,7 +257,7 @@ class AnalyzeDrift:
         # initialize one detector for each activity
         for a in activities:
             adwin[a] = ADWIN()
-            attribute_values[a] = []
+            attribute_values[a] = {}
             change_points[a] = []
             initial_indexes[a] = {}
             initial_index[a] = 0
@@ -271,9 +272,11 @@ class AnalyzeDrift:
             #     os.path.makedirs(models_aux)
 
             metrics_path_aux = os.path.join(self.metrics_path, a)
-            adaptive_path_aux = os.path.join(self.adaptive_path, a)
+            # adaptive_path_aux = os.path.join(self.adaptive_path, a)
+            # self.metrics[a] = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+            #                                        self.models_path, metrics_path_aux, adaptive_path_aux)
             self.metrics[a] = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                                   self.models_path, metrics_path_aux, adaptive_path_aux)
+                                                      self.models_path, metrics_path_aux)
 
         self.current_parameters.total_of_activities = len(activities)
         for i, item in enumerate(event_data):
@@ -289,7 +292,7 @@ class AnalyzeDrift:
                 for event in item:
                     activity = event['concept:name']
                     value = attribute_class.get_value(event)
-                    attribute_values[activity].append(value)
+                    attribute_values[activity][i] = value
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
                         change_points[activity].append(i)
@@ -344,14 +347,29 @@ class AnalyzeDrift:
                     # process final window for all activities where a drift has been detected
                     self.new_window(initial_index[a], len(event_data), drifts_info[initial_index[a]], a)
 
-                # for plotting information about the data
-                df = pd.DataFrame(attribute_values[a], columns=['value'])
-                filename = f'{self.current_parameters.attribute}_{a}.csv'
+                # save data and plot about the data
+                df = pd.DataFrame([attribute_values[a].keys(), attribute_values[a].values()]).T
+                df.columns = ['trace', 'value']
+                filename_attributes = f'{self.current_parameters.attribute}_{a}.csv'
                 output_path = os.path.join(self.adaptive_path, self.current_parameters.logname)
-                output_filename = os.path.join(output_path, filename)
+                output_filename = os.path.join(output_path, filename_attributes)
                 if not os.path.exists(output_path):
                     os.makedirs(output_path)
                 df.to_csv(output_filename, index=False)
+
+                plt.figure()
+                sns.set_style("whitegrid")
+                plot = sns.lineplot(data=df, x='trace', y='value')
+                plot.set_ylabel(f'Activity {a}')
+                for cp in change_points[a]:
+                    plt.axvline(x=cp, color='r', linestyle=':')
+                # save the plot
+                filename = os.path.join(output_path, f'{a}_sojourn_time.png')
+                plt.savefig(filename)
+                # plt.show()
+                plt.close()
+                plt.cla()
+                plt.clf()
 
         # saving the detected change points for each activity
         # for k in drifts.keys():
