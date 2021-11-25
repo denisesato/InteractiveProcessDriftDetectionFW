@@ -276,13 +276,14 @@ class InteractiveProcessDriftDetectionFW:
         # then, remove the original path
         if self.script:
             complete_filename = parameters.logname
-            event_log = self.copy_event_log(complete_filename)
-            print(f'Importing event log: {event_log}')
+            parameters.logname = self.copy_event_log(complete_filename)
+            print(f'Importing event log: {parameters.logname}')
             # import the event log from the XES file and save it into self.current_log object
             # if the user is using the web interface, the log was imported by the app_preview_file
-            self.import_log(complete_filename, event_log)
+            self.import_log(complete_filename, parameters.logname)
         elif self.current_log is None:  # to prevent problems when user reload the process drift analysis page
             complete_filename = os.path.join(self.get_input_path(user_id), parameters.logname)
+
             print(f'Importing event log: {parameters.logname}')
             self.import_log(complete_filename, parameters.logname)
 
@@ -309,7 +310,7 @@ class InteractiveProcessDriftDetectionFW:
         print(f'Starting windowing process...')
         analyze = AnalyzeDrift(self.model_type, parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
-                               self.get_metrics_path(user_id), self.current_log, self.discovery,
+                               self.get_metrics_path(user_id), self.current_log, self.discovery, user_id,
                                self.get_adaptive_path(user_id))
         self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
         if parameters.approach == Approach.ADAPTIVE.name:
@@ -364,6 +365,16 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_model(self, original_filename, window, user, activity=''):
         return self.discovery.get_process_model(self.get_models_path(user), original_filename, window, activity)
+
+    def get_activity_plot_src(self, user, activity, attribute):
+        filename = os.path.join(self.get_adaptive_path(user), self.current_log.filename,
+                                f'{activity}_{attribute}.png')
+        return filename
+
+    def get_activity_plot_src_assets(self, user, activity, attribute):
+        filename = os.path.join(user, self.current_log.filename,
+                                f'{activity}_{attribute}.png')
+        return filename
 
     # method that verify if one execution of IPDD finished running
     # used by the command line interface
@@ -420,9 +431,13 @@ class InteractiveProcessDriftDetectionFW:
         return self.status_similarity_metrics
 
     def get_windows_candidates(self, activity):
-        if activity and activity != '':
+        if self.get_approach() == Approach.ADAPTIVE.name and activity != '':
             return self.get_metrics_manager(activity).get_window_candidates()
-        return self.get_metrics_manager().get_window_candidates()
+        elif self.get_approach() == Approach.FIXED.name:
+            return self.get_metrics_manager().get_window_candidates()
+        else:
+            print(f'Approach not identified {self.get_approach()} in self.get_approach()')
+            return ()
 
     def clean_generated_data(self, user_id):
         # cleaning data from previous executions - only for web acess

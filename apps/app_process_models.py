@@ -11,6 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
+import base64
 import dash_bootstrap_components as dbc
 from dash import dcc
 from dash import html
@@ -156,9 +157,12 @@ parameters_panel = [
 models_card = [
     dbc.Row([
         dbc.Col([
+            dbc.CardImg(id='activity_plot', top=True),
             dbc.Card(
                 dbc.CardBody([
+                    html.H6('Activity', className='card-title'),
                     dcc.Dropdown(id='activity', value=''),
+                    html.Hr(),
                     html.H6('Similarity Information', className='card-title'),
                     html.Div(id='div-similarity-metrics-value', children=''),
                     html.Div(id='div-differences', children=''),
@@ -433,12 +437,15 @@ def update_figure(window_value, activity, file):
 
 @app.callback([Output('window-slider', 'marks'),
                Output('window-slider', 'max'),
-               Output('window-slider', 'value')],
-              Input('activity', 'value'))
-def update_slider(activity):
+               Output('window-slider', 'value'),
+               Output('activity_plot', 'src')],
+              Input('activity', 'value'),
+              State('attribute', 'value'))
+def update_slider_and_plot(activity, attribute):
     marks = {}
     max_slider = 0
     selected = -1
+    plot = ''
     initial_indexes = framework.get_initial_trace_indexes(activity)
     last_window = framework.get_total_of_windows(activity)
     # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
@@ -447,7 +454,6 @@ def update_slider(activity):
         # get the number of windows generated
         total_of_windows = framework.get_total_of_windows(activity)
         max_slider = total_of_windows - 1
-
         windows_with_drifts = framework.get_windows_candidates(activity)
         for w in range(0, last_window):
             label = str(w + 1) + '|' + str(initial_indexes[w])
@@ -457,7 +463,14 @@ def update_slider(activity):
                 marks[w] = {'label': label, 'style': {'color': '#f50'}}
             else:
                 marks[w] = {'label': label}
-    return marks, max_slider, selected
+        if activity and activity != '':
+            plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
+            print(f'Trying to show plot {plot_filename}')
+            # plot_assets = framework.get_activity_plot_src_assets(get_user_id(), activity, attribute)
+            # plot = app.get_asset_url(plot_assets)
+            encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
+            plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
+    return marks, max_slider, selected, plot
 
 
 @app.callback([Output('div-status-similarity', 'children'),

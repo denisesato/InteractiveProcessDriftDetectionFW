@@ -41,9 +41,10 @@ def threaded(fn):
 
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
-                 models_path, metrics_path, current_log, discovery, adaptive_path=None):
+                 models_path, metrics_path, current_log, discovery, user, adaptive_path=None):
 
         self.current_parameters = current_parameters
+        self.user = user
         self.control = control
         self.input_path = input_path
         self.models_path = models_path
@@ -98,7 +99,7 @@ class AnalyzeDrift:
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector(self.event_data,
                                         SelectAttribute.get_selected_attribute_class(
-                                            self.current_parameters.attribute))
+                                            self.current_parameters.attribute), self.user)
 
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
@@ -243,7 +244,7 @@ class AnalyzeDrift:
             print(f'Incorrent windowing unity [{self.current_parameters.win_unity}].')
         return False
 
-    def apply_detector(self, event_data, attribute_class):
+    def apply_detector(self, event_data, attribute_class, user):
         # get the activities
         activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
         print(f'Applying ADWIN to log {self.current_log.filename}')
@@ -350,23 +351,21 @@ class AnalyzeDrift:
                 # save data and plot about the data
                 df = pd.DataFrame([attribute_values[a].keys(), attribute_values[a].values()]).T
                 df.columns = ['trace', 'value']
-                filename_attributes = f'{self.current_parameters.attribute}_{a}.csv'
+                filename_attributes = f'{a}_{self.current_parameters.attribute}.csv'
                 output_path = os.path.join(self.adaptive_path, self.current_parameters.logname)
-                output_filename = os.path.join(output_path, filename_attributes)
                 if not os.path.exists(output_path):
                     os.makedirs(output_path)
+                output_filename = os.path.join(output_path, filename_attributes)
                 df.to_csv(output_filename, index=False)
-
-                plt.figure()
+                # plt.figure()
                 sns.set_style("whitegrid")
                 plot = sns.lineplot(data=df, x='trace', y='value')
                 plot.set_ylabel(f'Activity {a}')
                 for cp in change_points[a]:
                     plt.axvline(x=cp, color='r', linestyle=':')
                 # save the plot
-                filename = os.path.join(output_path, f'{a}_sojourn_time.png')
+                filename = os.path.join(output_path, f'{a}_{self.current_parameters.attribute}.png')
                 plt.savefig(filename)
-                # plt.show()
                 plt.close()
                 plt.cla()
                 plt.clf()
