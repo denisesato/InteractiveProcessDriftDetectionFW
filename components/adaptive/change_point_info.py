@@ -13,7 +13,8 @@
 """
 from json_tricks import dumps
 
-
+# created when considering the change detector analysis for all the activities combined
+# after we have changed to define change points per activity is not needed anymore
 class ChangePointInfo:
     def __init__(self, attribute_name, cp):
         self.attribute_name = attribute_name

@@ -299,16 +299,20 @@ class AnalyzeDrift:
                         change_points[activity].append(i)
                         print(
                             f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+
+                        # created when considering the change detector analysis for all the activities combined
+                        # after we have changed to define change points per activity is not needed anymore
                         # save the change point
-                        if i in drifts_info.keys():
-                            # if the change point os already detected for another activity recover it
-                            cp = drifts_info[i]
-                        else:
-                            # if not create it
-                            cp = ChangePoint(attribute_class.name, i, self.metrics_path)
-                            drifts_info[i] = cp
-                        # associate the current activity with the change point
-                        cp.add_activity(activity)
+                        # if i in drifts_info.keys():
+                        #     # if the change point os already detected for another activity recover it
+                        #     cp = drifts_info[i]
+                        # else:
+                        #     # if not create it
+                        #     cp = ChangePoint(attribute_class.name, i, self.metrics_path)
+                        #     drifts_info[i] = cp
+                        # # associate the current activity with the change point
+                        # cp.add_activity(activity)
+
                         # process new window
                         self.new_window(initial_index[activity], i, drifts_info[i], activity)
                         # save the initial of the processed window

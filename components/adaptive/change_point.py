@@ -15,7 +15,8 @@ import os
 from threading import RLock
 from components.adaptive.change_point_info import ChangePointInfo
 
-
+# created when considering the change detector analysis for all the activities combined
+# after we have changed to define change points per activity is not needed anymore
 class ChangePoint:
     def __init__(self, attribute_name, cp, metrics_path):
         self.attribute_name = attribute_name

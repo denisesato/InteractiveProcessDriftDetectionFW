@@ -371,11 +371,6 @@ class InteractiveProcessDriftDetectionFW:
                                 f'{activity}_{attribute}.png')
         return filename
 
-    def get_activity_plot_src_assets(self, user, activity, attribute):
-        filename = os.path.join(user, self.current_log.filename,
-                                f'{activity}_{attribute}.png')
-        return filename
-
     # method that verify if one execution of IPDD finished running
     # used by the command line interface
     def get_status_running(self):

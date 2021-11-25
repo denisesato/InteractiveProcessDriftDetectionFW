@@ -160,9 +160,11 @@ models_card = [
             dbc.CardImg(id='activity_plot', top=True),
             dbc.Card(
                 dbc.CardBody([
-                    html.H6('Activity', className='card-title'),
-                    dcc.Dropdown(id='activity', value=''),
-                    html.Hr(),
+                    html.Div([
+                        html.H6('Activity', id='activity_title', className='card-title'),
+                        dcc.Dropdown(id='activity', value='', clearable=False),
+                        html.Hr(id='activity_hr'),
+                    ], id='activity_div'),
                     html.H6('Similarity Information', className='card-title'),
                     html.Div(id='div-similarity-metrics-value', children=''),
                     html.Div(id='div-differences', children=''),
@@ -319,7 +321,7 @@ def type_and_options_selected(read_log_as, unity_value, winsize, attribute, appr
             # if the user have selected FIXED window and type, fill the options for window unity
             if approach and approach == Approach.FIXED.name and read_log_as:
                 for item in WindowUnityFixed:
-                    if item == WindowUnityFixed.UNITY.name:
+                    if item == WindowUnityFixed.UNITY:
                         if read_log_as == ReadLogAs.TRACE.name:
                             options.append({'label': 'Traces', 'value': item.name})
                         elif read_log_as == ReadLogAs.EVENT.name:
@@ -463,11 +465,9 @@ def update_slider_and_plot(activity, attribute):
                 marks[w] = {'label': label, 'style': {'color': '#f50'}}
             else:
                 marks[w] = {'label': label}
-        if activity and activity != '':
+        if activity and activity != '' and attribute:
             plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
-            print(f'Trying to show plot {plot_filename}')
-            # plot_assets = framework.get_activity_plot_src_assets(get_user_id(), activity, attribute)
-            # plot = app.get_asset_url(plot_assets)
+            # print(f'Trying to show plot {plot_filename}')
             encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
             plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
     return marks, max_slider, selected, plot
@@ -481,7 +481,7 @@ def update_slider_and_plot(activity, attribute):
                Output('div-status', 'children'),
                Output('activity', 'options'),
                Output('activity', 'value'),
-               Output('activity', 'style')],
+               Output('activity_div', 'style')],
               Input('check-ipdd-finished', 'n_intervals'),
               State('div-status', 'children'),
               State('activity', 'value'),
@@ -527,8 +527,9 @@ def update_status_and_drifts(n, div_status, activity, approach):
 @app.callback(Output('div-fscore', 'children'),
               [Input('submit-evaluation', 'n_clicks')],
               [State('input-real-drifts', 'value'),
-               State('window-size', 'children')])
-def evaluate(n_clicks, real_drifts, window_size):
+               State('window-size', 'children'),
+               State('activity', 'value')])
+def evaluate(n_clicks, real_drifts, window_size, activity):
     if n_clicks and real_drifts and real_drifts != '':
         f_score = ""
         if framework.get_status_framework() == IPDDProcessingStatus.NOT_STARTED:
@@ -547,7 +548,7 @@ def evaluate(n_clicks, real_drifts, window_size):
                         print(f'Input values must be integer - ignoring [{item}]')
                     list_real_drifts.append(item_int)
             print(f'Real drifts {list_real_drifts}')
-            window_candidates = framework.get_windows_candidates()
+            window_candidates = framework.get_windows_candidates(activity)
             f_score = framework.evaluate(window_candidates, list_real_drifts, window_size)
             print(f'IPDD f-score: {"{:.2f}".format(f_score)}')
         return f'F-score: {"{:.2f}".format(f_score)}'
