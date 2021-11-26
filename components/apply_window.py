@@ -16,11 +16,10 @@ from threading import Thread
 import numpy as np
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
-from datetime import datetime, date
+from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.objects.log.util import interval_lifecycle
-
+from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute
-from components.adaptive.change_point import ChangePoint
 from components.parameters import Approach
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
@@ -41,7 +40,7 @@ def threaded(fn):
 
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
-                 models_path, metrics_path, current_log, discovery, user, adaptive_path=None):
+                 models_path, metrics_path, logs_path, current_log, discovery, user, adaptive_path=None):
 
         self.current_parameters = current_parameters
         self.user = user
@@ -49,6 +48,7 @@ class AnalyzeDrift:
         self.input_path = input_path
         self.models_path = models_path
         self.metrics_path = metrics_path
+        self.logs_path = logs_path
         self.adaptive_path = adaptive_path
         self.model_type = model_type
 
@@ -251,33 +251,21 @@ class AnalyzeDrift:
         activities = np.unique(np.array(activities))
         adwin = {}
         attribute_values = {}
-        drifts_info = {}
         change_points = {}
         initial_index = {}
-        initial_indexes = {}
+        initial_case_ids = {}
         # initialize one detector for each activity
         for a in activities:
             adwin[a] = ADWIN()
             attribute_values[a] = {}
             change_points[a] = []
-            initial_indexes[a] = {}
+            initial_case_ids[a] = {}
             initial_index[a] = 0
             self.window_count[a] = 0
             self.previous_model[a] = None
             self.previous_sub_log[a] = None
-
-            # initialize similarity metrics manager, one per activity
-            # and the folders to store all the information (models, similarity metrics, values)
-            # models_aux = os.path.join(self.models_path, a)
-            # if os.path.exists(models_aux):
-            #     os.path.makedirs(models_aux)
-
-            metrics_path_aux = os.path.join(self.metrics_path, a)
-            # adaptive_path_aux = os.path.join(self.adaptive_path, a)
-            # self.metrics[a] = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-            #                                        self.models_path, metrics_path_aux, adaptive_path_aux)
             self.metrics[a] = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                                      self.models_path, metrics_path_aux)
+                                                      self.models_path, self.metrics_path, a)
 
         self.current_parameters.total_of_activities = len(activities)
         for i, item in enumerate(event_data):
@@ -286,7 +274,8 @@ class AnalyzeDrift:
             # save the first case id as the beginning of the first window
             if i == 0:
                 for a in activities:
-                    initial_indexes[a][i] = case_id
+                    initial_case_ids[a][i] = case_id
+                    initial_index[a] = 0
 
             # when reading the log trace by trace we need to iterate over the events
             if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
@@ -300,23 +289,10 @@ class AnalyzeDrift:
                         print(
                             f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
 
-                        # created when considering the change detector analysis for all the activities combined
-                        # after we have changed to define change points per activity is not needed anymore
-                        # save the change point
-                        # if i in drifts_info.keys():
-                        #     # if the change point os already detected for another activity recover it
-                        #     cp = drifts_info[i]
-                        # else:
-                        #     # if not create it
-                        #     cp = ChangePoint(attribute_class.name, i, self.metrics_path)
-                        #     drifts_info[i] = cp
-                        # # associate the current activity with the change point
-                        # cp.add_activity(activity)
-
                         # process new window
-                        self.new_window(initial_index[activity], i, drifts_info[i], activity)
+                        self.new_window(initial_index[activity], i, activity)
                         # save the initial of the processed window
-                        initial_indexes[activity][i] = case_id
+                        initial_case_ids[activity][i] = case_id
                         # update the beginning of the next window
                         initial_index[activity] = i
 
@@ -350,7 +326,7 @@ class AnalyzeDrift:
                     # set the final window used by metrics manager to identify all the metrics have been calculated
                     self.metrics[a].set_final_window(self.window_count[a])
                     # process final window for all activities where a drift has been detected
-                    self.new_window(initial_index[a], len(event_data), drifts_info[initial_index[a]], a)
+                    self.new_window(initial_index[a], len(event_data), a)
 
                 # save data and plot about the data
                 df = pd.DataFrame([attribute_values[a].keys(), attribute_values[a].values()]).T
@@ -361,7 +337,6 @@ class AnalyzeDrift:
                     os.makedirs(output_path)
                 output_filename = os.path.join(output_path, filename_attributes)
                 df.to_csv(output_filename, index=False)
-                # plt.figure()
                 sns.set_style("whitegrid")
                 plot = sns.lineplot(data=df, x='trace', y='value')
                 plot.set_ylabel(f'Activity {a}')
@@ -373,11 +348,7 @@ class AnalyzeDrift:
                 plt.close()
                 plt.cla()
                 plt.clf()
-
-        # saving the detected change points for each activity
-        # for k in drifts.keys():
-        #     drifts[k].save_drift_info()
-        return self.window_count, self.metrics, initial_indexes
+        return self.window_count, self.metrics, initial_case_ids
 
     def get_current_timestamp(self, item):
         timestamp_aux = None
@@ -402,7 +373,7 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
         return date_aux
 
-    def new_window(self, begin, end, change_point=None, activity=None):
+    def new_window(self, begin, end, activity=''):
         # increment the id of the window
         if activity: # when using a detector for an attribute of the activity
             print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count[activity]}] - activity [{activity}]')
@@ -419,9 +390,20 @@ class AnalyzeDrift:
             sub_log = EventLog(self.event_data[begin:end])
         else:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
-        self.execute_processes_for_window(sub_log, begin, change_point, activity)
 
-    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, change_point, activity):
+        # save the sub-log
+        output_path = os.path.join(self.logs_path, self.current_parameters.logname, activity)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        if activity and activity != '':
+            output_filename = os.path.join(output_path, f'sublog_w{self.window_count[activity]}_{begin}_{end-1}.xes')
+        else:
+            output_filename = os.path.join(output_path, f'sublog_w{self.window_count}_{begin}_{end - 1}.xes')
+        xes_exporter.apply(sub_log, output_filename)
+
+        self.execute_processes_for_window(sub_log, begin, activity)
+
+    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, activity):
         if activity:
             metrics = self.metrics[activity]
             window = self.window_count[activity]
@@ -442,9 +424,6 @@ class AnalyzeDrift:
         if window > 1:
             metrics.calculate_metrics(window, previous_sub_log, sub_log, previous_model,
                                            model, self.current_parameters, initial_trace_index)
-            # if self.current_parameters.approach == Approach.ADAPTIVE.name:
-            #     metrics.calculate_adaptive_metrics(window, change_point, self.current_parameters,
-            #                                             initial_trace_index)
 
         if activity:
             # save the current model and sub_log for the next window
@@ -457,10 +436,11 @@ class AnalyzeDrift:
 
     # after defining a window (fixed or adaptive) IPDD must mine the models and calculate the similarity metrics
     # between adjacent ones
-    def execute_processes_for_window(self, sub_log, initial_trace_index, change_point, activity):
+    # def execute_processes_for_window(self, sub_log, initial_trace_index, change_point, activity):
+    def execute_processes_for_window(self, sub_log, initial_trace_index, activity):
         model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
                                                       self.window_count, activity)
-        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index, change_point, activity)
+        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index, activity)
 
     # create for sliding windows
     def process_two_fixed_sliding_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):

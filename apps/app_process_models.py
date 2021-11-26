@@ -442,34 +442,50 @@ def update_figure(window_value, activity, file):
                Output('window-slider', 'value'),
                Output('activity_plot', 'src')],
               Input('activity', 'value'),
-              State('attribute', 'value'))
-def update_slider_and_plot(activity, attribute):
+              State('attribute', 'value'),
+              State('approach', 'value'))
+def update_slider_and_plot(activity, attribute, approach):
     marks = {}
     max_slider = 0
     selected = -1
     plot = ''
-    initial_indexes = framework.get_initial_trace_indexes(activity)
-    last_window = framework.get_total_of_windows(activity)
-    # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
-    if initial_indexes:
-        selected = 0
-        # get the number of windows generated
-        total_of_windows = framework.get_total_of_windows(activity)
-        max_slider = total_of_windows - 1
-        windows_with_drifts = framework.get_windows_candidates(activity)
-        for w in range(0, last_window):
-            label = str(w + 1) + '|' + str(initial_indexes[w])
-            marks[w] = {'label': label}
-
-            if windows_with_drifts and (w + 1) in windows_with_drifts:
-                marks[w] = {'label': label, 'style': {'color': '#f50'}}
+    if approach:
+        initial_indexes = None
+        if approach == Approach.FIXED.name:
+            initial_indexes = framework.get_initial_trace_indexes()
+            last_window = framework.get_total_of_windows()
+        elif approach == Approach.ADAPTIVE.name:
+            initial_indexes = framework.get_initial_trace_indexes(activity)
+            last_window = framework.get_total_of_windows(activity)
+        else:
+           print(f'Approach not identified {approach} in update_slider_and_plot')
+        # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
+        if initial_indexes:
+            selected = 0
+            # get the number of windows generated and the windows reported as containing drifts
+            if approach == Approach.FIXED.name:
+                total_of_windows = framework.get_total_of_windows()
+                windows_with_drifts = framework.get_windows_candidates()
+            elif approach == Approach.ADAPTIVE.name:
+                total_of_windows = framework.get_total_of_windows(activity)
+                windows_with_drifts = framework.get_windows_candidates(activity)
             else:
+                print(f'Approach not identified {approach} in update_slider_and_plot')
+
+            max_slider = total_of_windows - 1
+            for w in range(0, last_window):
+                label = str(w + 1) + '|' + str(initial_indexes[w])
                 marks[w] = {'label': label}
-        if activity and activity != '' and attribute:
-            plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
-            # print(f'Trying to show plot {plot_filename}')
-            encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
-            plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
+
+                if windows_with_drifts and (w + 1) in windows_with_drifts:
+                    marks[w] = {'label': label, 'style': {'color': '#f50'}}
+                else:
+                    marks[w] = {'label': label}
+            if approach == Approach.ADAPTIVE.name and activity and activity != '' and attribute:
+                plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
+                # print(f'Trying to show plot {plot_filename}')
+                encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
+                plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
     return marks, max_slider, selected, plot
 
 

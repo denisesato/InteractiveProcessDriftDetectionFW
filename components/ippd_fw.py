@@ -190,6 +190,7 @@ class InteractiveProcessDriftDetectionFW:
             print(f'Model type not implemented {self.model_type}')
         self.input_path = os.path.join('data', 'input')
         self.models_path = os.path.join('data', 'models')
+        self.logs_path = os.path.join('data', 'sublogs')
         self.metrics_path = os.path.join('data', 'metrics')
         self.adaptive_path = os.path.join('data', 'adaptive')
 
@@ -236,6 +237,9 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_metrics_path(self, user_id):
         return check_user_path(self.metrics_path, user_id)
+
+    def get_logs_path(self, user_id):
+        return check_user_path(self.logs_path, user_id)
 
     def get_adaptive_path(self, user_id):
         return check_user_path(self.adaptive_path, user_id)
@@ -310,7 +314,8 @@ class InteractiveProcessDriftDetectionFW:
         print(f'Starting windowing process...')
         analyze = AnalyzeDrift(self.model_type, parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
-                               self.get_metrics_path(user_id), self.current_log, self.discovery, user_id,
+                               self.get_metrics_path(user_id), self.get_logs_path(user_id),
+                               self.current_log, self.discovery, user_id,
                                self.get_adaptive_path(user_id))
         self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
         if parameters.approach == Approach.ADAPTIVE.name:
@@ -333,7 +338,7 @@ class InteractiveProcessDriftDetectionFW:
         metric = EvaluationMetric(real_drifts, windows_drifts, win_size)
         return metric.calculate_fscore()
 
-    def get_initial_trace_indexes(self, activity):
+    def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:
             if activity:
                 return list(self.initial_indexes[activity].keys())
@@ -405,27 +410,17 @@ class InteractiveProcessDriftDetectionFW:
             self.status_similarity_metrics = ''
         if self.get_metrics_status() == MetricsProcessingStatus.RUNNING:
             self.status_similarity_metrics = 'Calculating similarity metrics...'
-        # check if the metrics' calculation finished by timeout
-        # and correctly define the status message for the web interface
-        # windows_ok = True
-        # if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
-        #     windows_ok = self.total_of_windows > 0
-        # elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
-        #     windows_ok = len(self.total_of_windows.keys()) > 0
-        # elif self.current_parameters:
-        #     print(f'Invalid approach {self.current_parameters.approach} in get_status_similarity_metrics_text')
         if (self.get_metrics_status() == MetricsProcessingStatus.FINISHED
-            or self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT): #   and windows_ok:
+                or self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT):
             if self.get_metrics_status() == MetricsProcessingStatus.FINISHED:
                 self.status_similarity_metrics = f'Similarity metrics calculated.'
             elif self.get_metrics_status() == MetricsProcessingStatus.TIMEOUT:
                 self.status_similarity_metrics = f'Similarity metrics TIMEOUT. Some metrics will not be presented...'
             self.reset_metrics_calculation()
 
-        # return self.status_similarity_metrics, self.total_of_windows, self.windows_with_drifts
         return self.status_similarity_metrics
 
-    def get_windows_candidates(self, activity):
+    def get_windows_candidates(self, activity=''):
         if self.get_approach() == Approach.ADAPTIVE.name and activity != '':
             return self.get_metrics_manager(activity).get_window_candidates()
         elif self.get_approach() == Approach.FIXED.name:
@@ -440,6 +435,9 @@ class InteractiveProcessDriftDetectionFW:
         models_path = self.get_models_path(user_id)
         if os.path.exists(models_path):
             shutil.rmtree(models_path)
+        logs_path = self.get_logs_path(user_id)
+        if os.path.exists(logs_path):
+            shutil.rmtree(logs_path)
         metrics_path = self.get_metrics_path(user_id)
         if os.path.exists(metrics_path):
             shutil.rmtree(metrics_path)

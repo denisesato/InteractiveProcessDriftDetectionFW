@@ -32,7 +32,7 @@ def threaded(fn):
 
 class ManageSimilarityMetrics:
     def __init__(self, model_type, current_parameters, control, models_path, metrics_path,
-                 adaptive_path=None):
+                 activity=''):
         print(f'**************************************************************************')
         print(f'*************** Similarity metrics calculation started *******************')
         print(f'**************************************************************************')
@@ -40,6 +40,7 @@ class ManageSimilarityMetrics:
         self.current_parameters = current_parameters
         self.final_window = 0
         self.metrics_count = 0
+        self.activity = activity
         self.control = control
         self.models_path = models_path
         self.model_type = model_type
@@ -61,18 +62,13 @@ class ManageSimilarityMetrics:
         self.locks = {}
         for m in self.metrics_list:
             self.locks[m] = RLock()
-        # if self.current_parameters.approach == Approach.ADAPTIVE.name:
-        #     self.locks[self.current_parameters.attribute] = RLock()
-        #     # Define the path for the adaptive metrics file
-        #     self.adaptive_path = os.path.join(adaptive_path, self.current_parameters.logname)
-        #     # Check if the folder already exists, and create it if not
-        #     if not os.path.exists(self.adaptive_path):
-        #         os.makedirs(self.adaptive_path)
 
         # Define the path for the metrics file
         # IPDD creates one file by each implemented metric
         self.metrics_path = self.model_type_definitions.get_metrics_path(metrics_path,
-                                                                         self.current_parameters.logname)
+                                                              self.current_parameters.logname)
+        if activity != '':
+            self.metrics_path = os.path.join(self.metrics_path, activity)
         # Check if the folder already exists, and create it if not
         if not os.path.exists(self.metrics_path):
             os.makedirs(self.metrics_path)
@@ -100,19 +96,6 @@ class ManageSimilarityMetrics:
             with open(self.filenames[metric], 'w+') as fp:
                 pass
 
-        # if self.current_parameters.approach == Approach.ADAPTIVE.name:
-        #     attribute = self.current_parameters.attribute
-        #     self.filenames[attribute] = os.path.join(self.adaptive_path, f'{attribute}.txt')
-        #
-        #     # if the file already exists, IPDD deletes it
-        #     if os.path.exists(self.filenames[metric]):
-        #         print(f'Deleting file {self.filenames[metric]}')
-        #         os.remove(self.filenames[metric])
-        #
-        #     # create the file
-        #     with open(self.filenames[metric], 'w+') as fp:
-        #         pass
-
     def set_final_window(self, w):
         print(f'Setting final window value {w}')
         self.final_window = w
@@ -123,13 +106,6 @@ class ManageSimilarityMetrics:
         print(f'calculate_metrics - current window {current_window} - initial_trace = {initial_trace}')
         self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2,
                                                      parameters)
-
-    def calculate_adaptive_metrics(self, current_window, change_point, parameters, initial_trace=None):
-        print(
-            f'Starting to calculate adaptive similarity metrics between windows [{current_window - 1}]-[{current_window}] ...')
-        # calculate the chosen metrics and save the values on the file
-        print(f'calculate_metrics - current window {current_window} - initial_trace = {initial_trace}')
-        self.calculate_adaptive_similarity_metrics(current_window, initial_trace, change_point, parameters)
 
     def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2, parameters):
         self.model_type_definitions.set_current_parameters(self.current_parameters)
@@ -142,35 +118,12 @@ class ManageSimilarityMetrics:
                                           self)
             metric.start()
 
-    def calculate_adaptive_similarity_metrics(self, current_window, initial_trace, change_point, parameters):
-        print(
-            f'Starting [{parameters.attribute}] calculation between windows [{current_window - 1}-{current_window}] - '
-            f'change point [{change_point}]')
-        metric = self.model_type_definitions.adaptive_metrics_factory(parameters.attribute, current_window,
-                                                                      initial_trace, change_point,
-                                                                      parameters.total_of_activities)
-
-        metric.set_saving_definitions(self.filenames[parameters.attribute], self.current_parameters,
-                                      self.locks[parameters.attribute], self)
-        metric.start()
-
     def increment_metrics_count(self):
         self.metrics_count += 1
 
     def check_finish(self):
         print(
             f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
-        # if self.current_parameters.approach == Approach.FIXED.name:
-        #     # check for tumbling windows
-        #     if self.final_window != 0 and self.metrics_count == (
-        #             self.final_window * len(self.metrics_list)):
-        #     # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
-        #         self.finish()
-        # elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-        #     # check for tumbling windows, + 1 because of the adaptive metric
-        #     if self.final_window != 0 and self.metrics_count == (
-        #             self.final_window * (len(self.metrics_list) + 1)):
-        #         self.finish()
         # check for tumbling windows
         if self.final_window != 0 and self.metrics_count == (
                 self.final_window * len(self.metrics_list)):
@@ -205,23 +158,18 @@ class ManageSimilarityMetrics:
         self.running = False
         self.control.finish_metrics_calculation()
 
-    def consider_metric(self, m, candidates):
-        self.locks[m].acquire()
-        with open(self.filenames[m], "r") as file:
-            for line in file:
-                metrics_info = loads(line, ignore_comments=True)
-                if metrics_info.is_dissimilar():
-                    candidates.add(metrics_info.window)
-        self.locks[m].release()
-
     def get_window_candidates(self):
         candidates = set()
         # avoiding errors when the process model does not have any similarity metric implemented yet
         if self.metrics_list:
             for m in self.metrics_list:
-                self.consider_metric(m, candidates)
-            # if self.current_parameters.approach == Approach.ADAPTIVE.name:
-            #     self.consider_metric(self.current_parameters.attribute, candidates)
+                self.locks[m].acquire()
+                with open(self.filenames[m], "r") as file:
+                    for line in file:
+                        metrics_info = loads(line, ignore_comments=True)
+                        if metrics_info.is_dissimilar():
+                            candidates.add(metrics_info.window)
+                self.locks[m].release()
 
             if self.current_parameters.approach == Approach.FIXED.name:
                 filename = os.path.join(self.metrics_path,
@@ -252,6 +200,4 @@ class ManageSimilarityMetrics:
         if self.metrics_list:
             for m in self.metrics_list:
                 self.get_info(m, window, metrics)
-        # if self.current_parameters.approach == Approach.ADAPTIVE.name:
-        #     self.get_info(self.current_parameters.attribute, window, metrics)
         return metrics
