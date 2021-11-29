@@ -460,15 +460,18 @@ def update_slider_and_plot(activity, attribute, approach):
         else:
            print(f'Approach not identified {approach} in update_slider_and_plot')
         # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
+        windows_with_drifts = ()
         if initial_indexes:
             selected = 0
             # get the number of windows generated and the windows reported as containing drifts
             if approach == Approach.FIXED.name:
                 total_of_windows = framework.get_total_of_windows()
-                windows_with_drifts = framework.get_windows_candidates()
+                if total_of_windows > 1:
+                    windows_with_drifts = framework.get_windows_candidates()
             elif approach == Approach.ADAPTIVE.name:
                 total_of_windows = framework.get_total_of_windows(activity)
-                windows_with_drifts = framework.get_windows_candidates(activity)
+                if total_of_windows > 1:
+                    windows_with_drifts = framework.get_windows_candidates(activity)
             else:
                 print(f'Approach not identified {approach} in update_slider_and_plot')
 

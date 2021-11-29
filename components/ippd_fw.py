@@ -217,7 +217,7 @@ class InteractiveProcessDriftDetectionFW:
         return ''
 
     def get_total_of_windows(self, activity=None):
-        if self.total_of_windows and self.get_approach() == Approach.ADAPTIVE.name and activity != '':
+        if self.total_of_windows and self.get_approach() == Approach.ADAPTIVE.name and activity and activity != '':
             return self.total_of_windows[activity]
         elif self.total_of_windows and self.get_approach() == Approach.FIXED.name:
             return self.total_of_windows
@@ -364,10 +364,14 @@ class InteractiveProcessDriftDetectionFW:
     def get_metrics_status(self):
         return self.control.get_metrics_status()
 
-    def get_metrics_manager(self, activity=None):
-        if activity and activity != '':
+    def get_metrics_manager(self, activity=''):
+        if self.get_approach() == Approach.ADAPTIVE.name and activity != '':
             return self.control.get_metrics_manager(activity)
-        return self.control.get_metrics_manager()
+        elif self.get_approach() == Approach.FIXED.name:
+            return self.control.get_metrics_manager()
+        else:
+            print(f'No metrics manager instantiated...')
+            return None
 
     def get_mining_status(self):
         return self.control.get_mining_status()
