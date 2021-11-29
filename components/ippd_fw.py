@@ -198,9 +198,9 @@ class InteractiveProcessDriftDetectionFW:
         # workaround for pygraphviz problem - the library do not release file handlers
         # in windows - this should be verified again
         # change the maximum number of open files
-        import win32file as wfile
-        wfile._setmaxstdio(4096)
-        print(f'NEW max open files: {[wfile._getmaxstdio()]}')
+        # import win32file as wfile
+        # wfile._setmaxstdio(4096)
+        # print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
     # return the activities from the event log of the last run
     def get_activities(self):
