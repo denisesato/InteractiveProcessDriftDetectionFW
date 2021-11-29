@@ -66,11 +66,12 @@ class Control:
         self.metrics_status = MetricsProcessingStatus.NOT_STARTED
         self.mining_status = IPDDProcessingStatus.NOT_STARTED
 
+    # applied for CLI
     def finished_run(self):
         if self.metrics_manager is not None:
             result = self.tasks_completed >= 2  # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
         else:
-            result = self.tasks_completed == 1
+            result = self.tasks_completed >= 1
         return result
 
     def reset_tasks_counter(self):
@@ -281,6 +282,10 @@ class InteractiveProcessDriftDetectionFW:
         if self.script:
             complete_filename = parameters.logname
             parameters.logname = self.copy_event_log(complete_filename)
+            if parameters.logname is None:
+                self.control.finish_mining_calculation()
+                self.control.finish_metrics_calculation()
+                return
             print(f'Importing event log: {parameters.logname}')
             # import the event log from the XES file and save it into self.current_log object
             # if the user is using the web interface, the log was imported by the app_preview_file
@@ -331,7 +336,15 @@ class InteractiveProcessDriftDetectionFW:
         path, log = os.path.split(event_log)
         new_filepath = os.path.join(self.get_input_path(self.user_id), log)
         print(f'Copying event log to input_folder: {new_filepath}')
-        shutil.copyfile(event_log, new_filepath)
+        try:
+            shutil.copyfile(event_log, new_filepath)
+            print(f'Event log successfully copied {new_filepath}')
+        except OSError as err:
+            print(f'Error occurred while copying file. {err}')
+            log = None
+        except:
+            print(f'Unknown error occurred while copying file.')
+            log = None
         return log
 
     def evaluate(self, windows_drifts, real_drifts, win_size):
