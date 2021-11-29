@@ -25,4 +25,5 @@ class TimeMetricInfo(MetricInfo):
 
     def set_activities(self, activities):
         self.include_complete_info(activities)
+        self.add_additional_info(AdditionalInfo('Activity with time difference', activities))
 

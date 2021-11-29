@@ -16,6 +16,7 @@ from enum import Enum
 
 from components.compare_conformance.compare_conformance_pn import ConformanceSimilarityMetric
 from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric
+from components.parameters import Approach
 
 
 class Metric(str, Enum):
@@ -27,12 +28,6 @@ class PnDefinitions:
     def __init__(self):
         self.model_path = 'pn'
         self.current_parameters = None
-
-        # aqui define as métrics disponíveis para o modelo de processo
-        # chave é o nome utilizado na interface, e o valor é o nome da classe
-        # todas obrigatoriamente devem ser instanciadas no método metrics_factory
-        self.all_metrics = {Metric.SOJOURN_TIME: 'SojournTimeSimilarityMetric',
-                            Metric.CONFORMANCE: 'ConformanceSimilarityMetric'}
 
     def set_current_parameters(self, current_parameters):
         self.current_parameters = current_parameters
@@ -49,10 +44,17 @@ class PnDefinitions:
         path = os.path.join(generic_metrics_path, self.model_path, original_filename)
         return path
 
-    def get_models_path(self, generic_models_path, original_filename):
-        model_path = os.path.join(generic_models_path, self.model_path, original_filename,
-                                  f'winsize_{self.current_parameters.winsize}')
-        return model_path
+    def get_models_path(self, generic_models_path, original_filename, activity):
+        if self.current_parameters.approach == Approach.FIXED.name:
+            models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
+                                           f'winsize_{self.current_parameters.win_size}')
+        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+            models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
+                                           f'adaptive_{self.current_parameters.attribute}')
+        else:
+            print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
+            models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity)
+        return models_path
 
     def get_implemented_metrics(self):
         return Metric
@@ -64,10 +66,10 @@ class PnDefinitions:
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            'SojournTimeSimilarityMetric': SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
-            'ConformanceSimilarityMetric': ConformanceSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
+            Metric.SOJOURN_TIME.value: SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
+            Metric.CONFORMANCE.value: ConformanceSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
         }
-        return classes[self.all_metrics[metric_name]]
+        return classes[metric_name]
 
 
 class PNModel:

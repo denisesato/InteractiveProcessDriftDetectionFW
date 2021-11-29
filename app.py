@@ -13,8 +13,8 @@
 """
 import dash
 import dash_bootstrap_components as dbc
-from flask import session
 import dash_uploader as du
+from flask import session
 from components.ippd_fw import InteractiveProcessDriftDetectionFW
 import uuid
 
@@ -28,7 +28,7 @@ app.title = 'IPDD Framework'
 # configure the upload folder
 du.configure_upload(app, framework.get_input_path())
 server = app.server
-server.secret_key = b'e\x19\xf5\xcaZ\x89\xff\xf4\xbf\x15\x14S.\x931\xbd'
+app.server.secret_key = b'e\x19\xf5\xcaZ\x89\xff\xf4\xbf\x15\x14S.\x931\xbd'
 
 
 def get_user_id():
