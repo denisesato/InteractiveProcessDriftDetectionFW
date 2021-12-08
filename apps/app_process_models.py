@@ -18,6 +18,7 @@ from dash import html
 import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
 from app import app, get_user_id, framework, dash
+from components.adaptive.attributes import Activity
 from components.parameters import WindowUnityFixed, ReadLogAs, AttributeAdaptive, Approach
 from components.ippd_fw import IPDDProcessingStatus, IPDDParametersFixed, IPDDParametersAdaptive
 
@@ -56,6 +57,30 @@ status_panel = [
     html.Div(id='div-status-mining', children='Not started',
              style={'display': 'inline'}),
     html.Div(id='div-status-similarity', children='', style={'display': 'inline'})
+]
+
+modal_extended_adaptive_options = [
+    dbc.Button("+", id="extended_adaptive_options", n_clicks=0, outline=True),
+    dbc.Modal(
+        [
+            dbc.ModalHeader(dbc.ModalTitle("ADWIN parameters")),
+            dbc.ModalBody(
+                dbc.FormFloating(
+                    [
+                        dbc.Input(id='input-delta', type='number', value=0.002),
+                        dbc.Label('Delta'),
+                    ]
+                )),
+            dbc.ModalFooter(
+                dbc.Button(
+                    "Close", id="close", className="ms-auto", n_clicks=0
+                )
+            ),
+        ],
+        id="modal",
+        size="sm",
+        is_open=False,
+    ),
 ]
 
 parameters_panel = [
@@ -100,48 +125,51 @@ parameters_panel = [
         dbc.CardBody([
             dbc.Row([
                 dbc.Col([
-                    html.Span('Approach'),
+                    dbc.Label('Approach', width='auto'),
                     dcc.Dropdown(id='approach',
                                  options=[{'label': item.value, 'value': item.name}
                                           for item in Approach],
                                  ),
                 ]),
                 dbc.Col([
-                    html.Span('Read the log as'),
+                    dbc.Label('Read the log as', width='auto'),
                     dcc.Dropdown(id='window-type',
                                  options=[{'label': item.value, 'value': item.name}
                                           for item in ReadLogAs],
                                  disabled=True),
                 ]),
                 dbc.Col([
-                    html.Span('Attribute'),
+                    dbc.Label('Attribute', width='auto'),
                     dcc.Dropdown(id='attribute',
                                  options=[{'label': item.value, 'value': item.name}
                                           for item in AttributeAdaptive],
                                  disabled=True),
                 ], id='col-attribute', style={'display': 'None'}),
                 dbc.Col([
-                    html.Span('Split sub-logs based on'),
+                    dbc.Label('Split sub-logs based on', width='auto'),
                     dcc.Dropdown(id='window-unity',
                                  options=[],
                                  disabled=True,
                                  ),
                 ], id='col-window-unity', style={'display': 'none'}),
                 dbc.Col([
-                    html.Span('Window size'),
+                    dbc.Label('Window size', width='auto'),
                     dbc.Input(id='input-window-size', type='number', min=1,
                               placeholder='Size', disabled=True, value=30),
                     html.Div(id='window-size', style={'display': 'none'}),
                 ], id='col-window-size', style={'display': 'none'}),
+                dbc.Col(
+                    modal_extended_adaptive_options,
+                    id='col-extended_adaptive_options', align="end", width='auto'),
                 dbc.Col([
                     dbc.Button(children=['Analyze Process Drifts'],
                                id='mine_models_btn', n_clicks=0, disabled=True,
-                               className='btn btn-secondary', style={"margin-top": "1.4rem"})
-                ])
+                               className='btn btn-secondary')
+                ], align="end", width='auto')
             ]),
             dbc.Row([
                 dbc.Col([
-                    html.Span('Similarity metrics for control-flow'),
+                    dbc.Label('Similarity metrics for control-flow', width='auto'),
                     dbc.Checklist(id='metrics',
                                   options=[{'label': item.value, 'value': item.value}
                                            for item in framework.get_implemented_metrics()],
@@ -234,6 +262,17 @@ def get_layout():
 )
 def toggle_collapse(n, is_open):
     if n:
+        return not is_open
+    return is_open
+
+
+@app.callback(
+    Output("modal", "is_open"),
+    [Input("extended_adaptive_options", "n_clicks"), Input("close", "n_clicks")],
+    [State("modal", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
         return not is_open
     return is_open
 
@@ -383,8 +422,10 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
                State('window-unity', 'value'),
                State('attribute', 'value'),
                State('hidden-filename', 'children'),
-               State('metrics', 'value')])
-def run_framework(n_clicks, approach, input_window_size, window_type, window_unity, attribute, file, metrics):
+               State('metrics', 'value'),
+               State('input-delta', 'value')])
+def run_framework(n_clicks, approach, input_window_size, window_type, window_unity, attribute, file, metrics,
+                  deltaAdwin):
     if n_clicks > 0:
         int_input_size = 0
         if input_window_size is not None:
@@ -396,7 +437,10 @@ def run_framework(n_clicks, approach, input_window_size, window_type, window_uni
                 parameters = IPDDParametersFixed(file, approach, window_type, metrics, window_unity, int_input_size)
                 framework.run(parameters, user_id=user)
             elif approach == Approach.ADAPTIVE.name:
-                parameters = IPDDParametersAdaptive(file, approach, window_type, metrics, attribute)
+                if deltaAdwin:
+                    parameters = IPDDParametersAdaptive(file, approach, window_type, metrics, attribute, deltaAdwin)
+                else:
+                    parameters = IPDDParametersAdaptive(file, approach, window_type, metrics, attribute)
                 framework.run(parameters, user_id=user)
             else:
                 print(f'Incorrect approach {approach}')
@@ -421,7 +465,8 @@ def update_figure(window_value, activity, file):
         process_map = framework.get_model(file, window_value, get_user_id(), activity)
         if window_value > 1:
             previous_process_map = framework.get_model(file, window_value - 1, get_user_id(), activity)
-        if framework.get_total_of_windows(activity) > 1:  # if there is only one window the metrics manager is not initialized
+        if framework.get_total_of_windows(
+                activity) > 1:  # if there is only one window the metrics manager is not initialized
             if framework.get_metrics_status() == IPDDProcessingStatus.IDLE:
                 metrics = framework.get_metrics_manager(activity).get_metrics_info(window_value)
                 for metric in metrics:
@@ -458,7 +503,7 @@ def update_slider_and_plot(activity, attribute, approach):
             initial_indexes = framework.get_initial_trace_indexes(activity)
             last_window = framework.get_total_of_windows(activity)
         else:
-           print(f'Approach not identified {approach} in update_slider_and_plot')
+            print(f'Approach not identified {approach} in update_slider_and_plot')
         # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
         windows_with_drifts = ()
         if initial_indexes:
@@ -484,7 +529,8 @@ def update_slider_and_plot(activity, attribute, approach):
                     marks[w] = {'label': label, 'style': {'color': '#f50'}}
                 else:
                     marks[w] = {'label': label}
-            if approach == Approach.ADAPTIVE.name and activity and activity != '' and attribute:
+            if approach == Approach.ADAPTIVE.name and activity and activity != '' and \
+                    activity != Activity.ALL.value and attribute:
                 plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
                 # print(f'Trying to show plot {plot_filename}')
                 encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
@@ -534,10 +580,13 @@ def update_status_and_drifts(n, div_status, activity, approach):
         display_evaluation = {'display': 'block'}
 
         if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name:
-            style_activity = {'display': 'block'}
             activities = [{'label': item, 'value': item} for item in framework.get_activities()]
-            first_activity = framework.get_first_activity()
-            print(f'Activities with drifts {activities} - selected activity {first_activity}')
+            if len(activities) == 0:  # no drift is detected
+                first_activity = Activity.ALL.value
+            else:
+                style_activity = {'display': 'block'}
+                first_activity = framework.get_first_activity()
+                print(f'Activities with drifts {activities} - selected activity {first_activity}')
 
     return div_similarity_status, div_status_mining, display_evaluation, display_evaluation, ipdd_status, \
            div_status, activities, first_activity, style_activity

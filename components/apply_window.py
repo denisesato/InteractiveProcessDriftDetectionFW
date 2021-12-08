@@ -19,7 +19,8 @@ from pm4py.objects.log.obj import EventStream, EventLog
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.objects.log.util import interval_lifecycle
 from datetime import datetime, date
-from components.adaptive.attributes import SelectAttribute
+from components.adaptive.attributes import SelectAttribute, Activity
+from components.adaptive.change_points_info import ChangePointInfo
 from components.parameters import Approach
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
@@ -63,9 +64,9 @@ class AnalyzeDrift:
         # convert to interval time log if needed
         self.converted_log = interval_lifecycle.to_interval(self.current_log.log)
         # set the event_data as requested by the user (read event by event or trace by trace)
-        if self.current_parameters.read_log_as == ReadLogAs.TRACE.value:
+        if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
             self.event_data = self.converted_log
-        if self.current_parameters.read_log_as == ReadLogAs.EVENT.value:
+        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             # convert the log into an event stream
             self.event_data = log_converter.apply(self.converted_log, variant=log_converter.Variants.TO_EVENT_STREAM)
         else:
@@ -74,7 +75,6 @@ class AnalyzeDrift:
                 f'The window type received is not defined for IPDD {self.current_parameters.read_log_as}, assuming STREAM OF TRACES')
         # class that implements the discovery method for the current model
         self.discovery = discovery
-
 
     # generate all the process models based on the windowing strategy
     # selected by the user and start the metrics calculation between
@@ -99,7 +99,8 @@ class AnalyzeDrift:
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector(self.event_data,
                                         SelectAttribute.get_selected_attribute_class(
-                                            self.current_parameters.attribute), self.user)
+                                            self.current_parameters.attribute),
+                                        self.current_parameters.delta, self.user)
 
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
@@ -244,21 +245,23 @@ class AnalyzeDrift:
             print(f'Incorrent windowing unity [{self.current_parameters.win_unity}].')
         return False
 
-    def apply_detector(self, event_data, attribute_class, user):
+    def apply_detector(self, event_data, attribute_class, delta, user):
         # get the activities
         activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
-        print(f'Applying ADWIN to log {self.current_log.filename}')
+        print(f'Applying ADWIN to log {self.current_log.filename} attribute {attribute_class.name} delta {delta}')
         activities = np.unique(np.array(activities))
         adwin = {}
         attribute_values = {}
         change_points = {}
+        change_points_info = {}
         initial_index = {}
         initial_case_ids = {}
         # initialize one detector for each activity
         for a in activities:
-            adwin[a] = ADWIN()
+            adwin[a] = ADWIN(delta=delta)
             attribute_values[a] = {}
             change_points[a] = []
+            change_points_info[a] = ChangePointInfo('ADWIN', a)
             initial_case_ids[a] = {}
             initial_index[a] = 0
             self.window_count[a] = 0
@@ -286,6 +289,7 @@ class AnalyzeDrift:
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
                         change_points[activity].append(i)
+                        change_points_info[activity].add_change_point(i)
                         print(
                             f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
 
@@ -295,31 +299,31 @@ class AnalyzeDrift:
                         initial_case_ids[activity][i] = case_id
                         # update the beginning of the next window
                         initial_index[activity] = i
-
             else:
                 print(f'Adaptive approach not implemented yet for EVENT STREAM')
-                # problema, se mais de uma atividade reportar drift corre o risco de ter janelas muito pequenas
-                # pensar como implementar
-                # # for each new event, collect the duration per activity
-                # activity = item['concept:name']
-                # value = attribute_class.get_value(item)
-                # # for debug
-                # # attribute_values[activity].append(value)
-                # adwin[activity].add_element(value)
-                # if adwin[activity].detected_change():
-                #     print(
-                #         f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
-                #     # save the change point
-                #     drifts[activity].add_cp(i)
-                #     # process new window
-                #     self.new_window(initial_index, i)
-                #     # save the initial of the processed window
-                #     initial_indexes[i] = case_id
-                #     # update the beginning of the next window
-                #     initial_index = i
+                # for each new event, collect the duration per activity
+                activity = item['concept:name']
+                value = attribute_class.get_value(item)
+                attribute_values[activity][i] = value
+                adwin[activity].add_element(value)
+                if adwin[activity].detected_change():
+                    change_points[activity].append(i)
+                    change_points_info[activity].add_change_point(i)
+                    print(
+                        f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+
+                    # process new window
+                    self.new_window(initial_index[activity], i, activity)
+                    # save the initial of the processed window
+                    initial_case_ids[activity][i] = case_id
+                    # update the beginning of the next window
+                    initial_index[activity] = i
+
         # process remaining items as the last window
+        find_any_drift = False
         for a in activities:
             if len(change_points[a]) > 0:
+                find_any_drift = True
                 if initial_index[a] < len(event_data):
                     size = len(event_data) - initial_index[a]
                     print(f'Analyzing final window... size {size} window_count {self.window_count[a]} activity {a}')
@@ -345,9 +349,27 @@ class AnalyzeDrift:
                 # save the plot
                 filename = os.path.join(output_path, f'{a}_{self.current_parameters.attribute}.png')
                 plt.savefig(filename)
+                print(f'Saving plot for activity [{a}]')
                 plt.close()
                 plt.cla()
                 plt.clf()
+        if find_any_drift:
+            # save the change points for the activity
+            filename = os.path.join(output_path, f'Change_points_{self.current_parameters.attribute}.txt')
+            with open(filename, 'a+') as file:
+                for a in activities:
+                    if len(change_points[a]) > 0:
+                        file.write(change_points_info[a].serialize())
+                        file.write('\n')
+            print(f'Saving change points...')
+        else: # if no drift is detected, generate the complete model
+            print(f'Analyzing unique window because no drift is detected...')
+            # process the unique window
+            initial_index[Activity.ALL.value] = 0
+            initial_case_ids[Activity.ALL.value] = {}
+            initial_case_ids[Activity.ALL.value][0] = case_id
+            self.window_count[Activity.ALL.value] = 0
+            self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
         return self.window_count, self.metrics, initial_case_ids
 
     def get_current_timestamp(self, item):
@@ -405,6 +427,8 @@ class AnalyzeDrift:
 
     def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, activity):
         if activity:
+            if activity == Activity.ALL.value:  # adaptive approach with no drift detected, nothing to be done
+                return
             metrics = self.metrics[activity]
             window = self.window_count[activity]
             previous_model = self.previous_model[activity]

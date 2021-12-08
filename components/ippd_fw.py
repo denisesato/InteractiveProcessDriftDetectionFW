@@ -134,9 +134,10 @@ class IPDDParametersFixed(IPDDParameters):
 
 
 class IPDDParametersAdaptive(IPDDParameters):
-    def __init__(self, logname, approach, read_log_as, metrics, attribute):
+    def __init__(self, logname, approach, read_log_as, metrics, attribute, delta=None):
         super().__init__(logname, approach, read_log_as, metrics)
         self.attribute = attribute
+        self.delta = delta
 
 
 def check_user_path(generic_path, user_id):

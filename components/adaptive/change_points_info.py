@@ -11,18 +11,24 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-from components.metric_info import MetricInfo, AdditionalInfo
+from json_tricks import dumps
 
 
-class TimeMetricInfo(MetricInfo):
-    def __init__(self, window, trace, metric_name):
-        super().__init__(window, trace, metric_name)
+class ChangePointInfo:
+    def __init__(self, detector, activity):
+        self.detector = detector
+        self.activity = activity
+        self.change_points = []
 
-    def set_significant_difference(self, diff):
-        if len(diff) > 0:
-            self.add_additional_info(AdditionalInfo('Significant difference', diff))
+    def add_change_point(self, cp):
+        self.change_points.append(cp)
 
-    def set_activities(self, activities):
-        self.include_complete_info(activities)
-        self.add_additional_info(AdditionalInfo('Activity with time difference', activities))
+    def serialize(self):
+        result = dumps(self)
+        return result
 
+    def __str__(self):
+        info = f'Change points detected using detector {self.detector}\n'
+        info += f'Activity: {self.activity}\n'
+        info += f'Change points: {self.change_points}'
+        return info
