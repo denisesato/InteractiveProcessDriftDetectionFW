@@ -47,6 +47,8 @@ def main():
     # options for adaptive approach
     parser.add_argument('--attribute', '-at', help='Attribute for the change detector: st - sojourn time activity',
                         default='st')
+    parser.add_argument('--delta', '-dt', help='Delta parameter - ADWIN cganhe detector', type=float,
+                        default=0.002)
 
     args = parser.parse_args()
     approach = ''
@@ -90,11 +92,12 @@ def main():
     print('----------------------------------------------')
     print(f'Approach: {approach}')
     print(f'Read log as: {win_type}')
-    if approach == Approach.FIXED:
+    if approach == Approach.FIXED.name:
         print(f'Window unity: {win_unity}')
         print(f'Window size: {win_size}')
-    elif approach == Approach.ADAPTIVE:
+    elif approach == Approach.ADAPTIVE.name:
         print(f'Attribute: {attribute}')
+        print(f'Delta - ADWIN detector: {args.delta}')
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
 
@@ -107,7 +110,7 @@ def main():
         parameters = IPDDParametersFixed(event_log, approach, win_type, metrics, win_unity, win_size)
         framework.run(parameters, user_id='script')
     elif approach == Approach.ADAPTIVE.name:
-        parameters = IPDDParametersAdaptive(event_log, approach, win_type, metrics, attribute)
+        parameters = IPDDParametersAdaptive(event_log, approach, win_type, metrics, attribute, args.delta)
         framework.run(parameters, user_id='script')
 
     running = framework.get_status_running()
