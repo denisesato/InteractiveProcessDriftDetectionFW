@@ -25,7 +25,12 @@ from components.parameters import Approach, AttributeAdaptive
 class Metric(str, Enum):
     NODES = 'Nodes'
     EDGES = 'Edges'
+    # commented out because it costs too many processing time and the the nodes and edges
+    # similarity metrics combined allow the same analysis
     # EDIT_DISTANCE = 'Edit distance'
+
+    # first approach using statistical hypothesis test between adjacent fixed windows
+    # not used anymore
     # SOJOURN_TIME = 'Sojourn time'
     # WAITING_TIME = 'Waiting time'
 
@@ -91,10 +96,12 @@ class DfgDefinitions:
         }
         return classes[metric_name]
 
+    # created for the first implementation of adaptive windowing
+    # not used anymore because when comparing attributes by activity it does not make sense anymore
     def adaptive_metrics_factory(self, metric_name, window, initial_trace, change_point, total_of_activities):
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            AttributeAdaptive.SOJOURN_ACTIVITY_TIME.name: SojournTimeSimilarityAdaptiveMetric(window, initial_trace, metric_name, change_point, total_of_activities),
+            AttributeAdaptive.SOJOURN_TIME.name: SojournTimeSimilarityAdaptiveMetric(window, initial_trace, metric_name, change_point, total_of_activities),
         }
         return classes[metric_name]

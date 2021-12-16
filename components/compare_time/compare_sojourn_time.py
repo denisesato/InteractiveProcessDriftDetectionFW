@@ -21,6 +21,27 @@ from components.compare_time.time_metric import TimeMetric, TimeAdaptiveMetric
 import math
 
 
+# for adaptive window
+# not used anymore
+# when combining the change points for all activities this metric is used to indicate
+# how many activities genereated the change point
+# when changing to detect the change points for each activity it does not make sense anymore
+class SojournTimeSimilarityAdaptiveMetric(TimeAdaptiveMetric):
+    def __init__(self, window, trace, metric_name, change_point, total_of_activities):
+        super().__init__(window, trace, metric_name, change_point, total_of_activities)
+
+    def is_dissimilar(self):
+        return self.value < 1
+
+    def calculate(self):
+        self.activities = self.change_point.activities
+        self.value = 1.0 - (len(self.change_point.activities) / self.total_of_activities)
+        self.diff = self.change_point.activities
+        return self.value, self.diff, self.activities
+
+
+# created for applying statistical tests pairwise between adjacent fixed windows
+# not used anymore
 def print_event(event):
     print(event)
 
@@ -48,7 +69,8 @@ def print_log(log, name='', time=False):
                 print_event(event)
 
 
-# approach using statistical hypothesis test
+# created for applying statistical tests pairwise between adjacent fixed windows
+# not used anymore
 class SojournTime:
     @staticmethod
     # Remove activities not listed in list_activities
@@ -198,7 +220,8 @@ class SojournTime:
         return 1 - percentual_of_difference, activities_with_difference, activities
 
 
-# for fixed window size
+# created for applying statistical tests pairwise between adjacent fixed windows
+# not used anymore
 class SojournTimeSimilarityMetric(TimeMetric):
     def __init__(self, window, trace, metric_name, sublog1, sublog2, parameters):
         super().__init__(window, trace, metric_name, sublog1, sublog2, parameters)
@@ -214,21 +237,8 @@ class SojournTimeSimilarityMetric(TimeMetric):
         return self.value, self.diff, self.activities
 
 
-# for adaptive window
-class SojournTimeSimilarityAdaptiveMetric(TimeAdaptiveMetric):
-    def __init__(self, window, trace, metric_name, change_point, total_of_activities):
-        super().__init__(window, trace, metric_name, change_point, total_of_activities)
-
-    def is_dissimilar(self):
-        return self.value < 1
-
-    def calculate(self):
-        self.activities = self.change_point.activities
-        self.value = 1.0 - (len(self.change_point.activities) / self.total_of_activities)
-        self.diff = self.change_point.activities
-        return self.value, self.diff, self.activities
-
-
+# created for applying statistical tests pairwise between adjacent fixed windows
+# not used anymore
 class WaitingTime:
     @staticmethod
     # accept an interval log as input
@@ -321,6 +331,8 @@ class WaitingTime:
         return 1 - percentual_of_difference, activities_with_difference, activities
 
 
+# created for applying statistical tests pairwise between adjacent fixed windows
+# not used anymore
 class WaitingTimeSimilarityMetric(TimeMetric):
     def __init__(self, window, trace, metric_name, sublog1, sublog2, parameters):
         super().__init__(window, trace, metric_name, sublog1, sublog2, parameters)

@@ -75,7 +75,7 @@ def main():
         win_size = args.win_size
     elif approach == Approach.ADAPTIVE.name:
         if args.attribute == 'st':
-            attribute = AttributeAdaptive.SOJOURN_ACTIVITY_TIME.name
+            attribute = AttributeAdaptive.SOJOURN_TIME.name
 
     event_log = args.event_log
     real_drifts = args.real_drifts

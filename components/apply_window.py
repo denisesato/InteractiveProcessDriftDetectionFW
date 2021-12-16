@@ -261,7 +261,9 @@ class AnalyzeDrift:
             adwin[a] = ADWIN(delta=delta)
             attribute_values[a] = {}
             change_points[a] = []
-            change_points_info[a] = ChangePointInfo('ADWIN', a)
+            detector_info = ChangePointInfo('ADWIN', a)
+            detector_info.add_detector_attribute('delta', delta)
+            change_points_info[a] = detector_info
             initial_case_ids[a] = {}
             initial_index[a] = 0
             self.window_count[a] = 0

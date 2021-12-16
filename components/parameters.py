@@ -13,7 +13,8 @@ class WindowUnityFixed(str, Enum):
 
 
 class AttributeAdaptive(str, Enum):
-    SOJOURN_ACTIVITY_TIME = 'Sojourn Activity Time'
+    SOJOURN_TIME = 'Sojourn Time'
+    WAITING_TIME = 'Waiting time'
 
 
 class Approach(str, Enum):

@@ -17,8 +17,12 @@ from json_tricks import dumps
 class ChangePointInfo:
     def __init__(self, detector, activity):
         self.detector = detector
+        self.detector_attributes = {}
         self.activity = activity
         self.change_points = []
+
+    def add_detector_attribute(self, name, value):
+        self.detector_attributes[name] = value
 
     def add_change_point(self, cp):
         self.change_points.append(cp)
@@ -29,6 +33,12 @@ class ChangePointInfo:
 
     def __str__(self):
         info = f'Change points detected using detector {self.detector}\n'
+        if len(self.detector_attributes) > 0: # if the detector set attributes
+            info = f'Detector attributes: \n'
+            info = f'------------------------'
+            for k in self.detector_attributes.keys():
+                info = f'{k}: {self.detector_attributes[k]}\n'
+            info = f'------------------------'
         info += f'Activity: {self.activity}\n'
         info += f'Change points: {self.change_points}'
         return info

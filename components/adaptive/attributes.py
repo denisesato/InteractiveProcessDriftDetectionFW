@@ -23,15 +23,17 @@ class Activity(str, Enum):
 class SelectAttribute:
     @staticmethod
     def get_selected_attribute_class(attribute_name):
-        # define todas as classes de atributo disponíveis
-        # porém só será retornada aquela escolhida pelo usuário
+        # define the class for each available attribute for applying the change detector
+        # the one selected by the user is returned
         classes = {
-            AttributeAdaptive.SOJOURN_ACTIVITY_TIME.name: SojournActivityTime(attribute_name),
+            AttributeAdaptive.SOJOURN_TIME.name: SojournTime(attribute_name),
+            AttributeAdaptive.WAITING_TIME.name: WaitingTime(attribute_name)
         }
         return classes[attribute_name]
 
 
-class SojournActivityTime:
+# classes for the specific attribute that can be used for the change detector
+class SojournTime:
     def __init__(self, name):
         self.name = name
 
@@ -42,3 +44,14 @@ class SojournActivityTime:
         complete_time = event['time:timestamp'].timestamp()
         duration = complete_time - start_time
         return duration
+
+
+class WaitingTime:
+    def __init__(self, name):
+        self.name = name
+
+    def get_value(self, event):
+        # the input must be an interval log
+        # return the wasted time ONLY with regards to the activity described by the ‘interval’ event
+        waiting_time = event['@@approx_bh_this_wasted_time']
+        return waiting_time
