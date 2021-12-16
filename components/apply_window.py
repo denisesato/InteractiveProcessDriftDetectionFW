@@ -279,6 +279,7 @@ class AnalyzeDrift:
         change_points_info = {}
         initial_index = {}
         initial_case_ids = {}
+        self.metrics = {}
         # initialize one detector for each activity
         for a in activities:
             adwin[a] = ADWIN(delta=delta)
@@ -312,6 +313,13 @@ class AnalyzeDrift:
                     attribute_values[activity][i] = value
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
+                        # create the manager for similarity metrics if a change is detected
+                        if activity not in self.metrics.keys():
+                            self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters,
+                                                                             self.control,
+                                                                             self.models_path, self.metrics_path,
+                                                                             activity)
+
                         change_points[activity].append(i)
                         change_points_info[activity].add_change_point(i)
                         print(
@@ -332,7 +340,7 @@ class AnalyzeDrift:
                 adwin[activity].add_element(value)
                 if adwin[activity].detected_change():
                     # create the manager for similarity metrics if a change is detected
-                    if not self.metrics[activity]:
+                    if activity not in self.metrics.keys():
                         self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
                                                               self.models_path, self.metrics_path, activity)
                     change_points[activity].append(i)
@@ -347,7 +355,7 @@ class AnalyzeDrift:
                     # update the beginning of the next window
                     initial_index[activity] = i
         # define the output_path for saving plots and attribute values
-        output_path = os.path.join(self.adaptive_path, self.current_parameters.logname)
+        output_path = os.path.join(self.adaptive_path, self.current_parameters.logname, f'delta{delta}')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         # process remaining items as the last window
