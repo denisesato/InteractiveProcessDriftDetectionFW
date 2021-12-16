@@ -371,6 +371,8 @@ class AnalyzeDrift:
                     # process final window for all activities where a drift has been detected
                     self.new_window(initial_index[a], len(event_data), a)
                 self.plot_signal(attribute_values[a], a, output_path, change_points[a])
+            else:
+                self.plot_signal(attribute_values[a], a, output_path)
         if find_any_drift:
             # save the change points for the activity
             filename = os.path.join(output_path, f'Change_points_{self.current_parameters.attribute}.txt')
