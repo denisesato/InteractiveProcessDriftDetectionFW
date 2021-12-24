@@ -83,7 +83,7 @@ def main():
 
     event_log = args.event_log
     real_drifts = args.real_drifts
-    if len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
+    if real_drifts and len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
         real_drifts = []
     error_tolerance = args.error_tolerance
 
