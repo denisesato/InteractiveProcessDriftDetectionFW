@@ -41,7 +41,8 @@ def threaded(fn):
 
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
-                 models_path, metrics_path, logs_path, current_log, discovery, user, adaptive_path=None):
+                 models_path, metrics_path, logs_path, current_log, discovery, user,
+                 drifts_output_path):
 
         self.current_parameters = current_parameters
         self.user = user
@@ -50,7 +51,7 @@ class AnalyzeDrift:
         self.models_path = models_path
         self.metrics_path = metrics_path
         self.logs_path = logs_path
-        self.adaptive_path = adaptive_path
+        self.drifts_output_path = drifts_output_path
         self.model_type = model_type
 
         # instance of the MetricsManager
@@ -78,12 +79,12 @@ class AnalyzeDrift:
 
     # generate the plot with the attribute selected for a specific activity
     # used for adaptive change detection in an activity attribute
-    def plot_signal(self, values_for_activity, activity_name, output_path, change_points=None):
+    def plot_signal(self, values_for_activity, activity_name, change_points=None):
         # save data and plot about the data
         df = pd.DataFrame([values_for_activity.keys(), values_for_activity.values()]).T
         df.columns = ['trace', 'value']
         filename_attributes = f'{activity_name}_{self.current_parameters.attribute}.csv'
-        output_filename = os.path.join(output_path, filename_attributes)
+        output_filename = os.path.join(self.drifts_output_path, filename_attributes)
         df.to_csv(output_filename, index=False)
         sns.set_style("whitegrid")
         plot = sns.lineplot(data=df, x='trace', y='value')
@@ -92,7 +93,7 @@ class AnalyzeDrift:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
-        filename = os.path.join(output_path, f'{activity_name}_{self.current_parameters.attribute}.png')
+        filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute}.png')
         plt.savefig(filename)
         print(f'Saving plot for activity [{activity_name}]')
         plt.close()
@@ -114,6 +115,8 @@ class AnalyzeDrift:
 
         metrics_manager = None
         if self.event_data is not None:
+            # get the activities
+            activities = self.get_all_activities()
             # call for the implementation of the different windowing strategies
             if self.current_parameters.approach == Approach.FIXED.name:
                 window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
@@ -123,7 +126,7 @@ class AnalyzeDrift:
                     self.apply_detector(self.event_data,
                                         SelectAttribute.get_selected_attribute_class(
                                             self.current_parameters.attribute),
-                                        self.current_parameters.delta, self.user)
+                                        self.current_parameters.delta, activities, self.user)
 
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
@@ -133,7 +136,7 @@ class AnalyzeDrift:
             # no metrics manager instantiated when IPDD calculates one window
             if metrics_manager:
                 self.control.set_metrics_manager(metrics_manager)
-            return window_count, initial_indexes
+            return window_count, initial_indexes, activities
 
     # get the current case id from the trace or event
     def get_case_id(self, item):
@@ -268,11 +271,14 @@ class AnalyzeDrift:
             print(f'Incorrent windowing unity [{self.current_parameters.win_unity}].')
         return False
 
-    def apply_detector(self, event_data, attribute_class, delta, user):
+    def get_all_activities(self):
         # get the activities
         activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
-        print(f'Applying ADWIN to log {self.current_log.filename} attribute {attribute_class.name} delta {delta}')
         activities = np.unique(np.array(activities))
+        return activities
+
+    def apply_detector(self, event_data, attribute_class, delta, activities, user):
+        print(f'Applying ADWIN to log {self.current_log.filename} attribute {attribute_class.name} delta {delta}')
         adwin = {}
         attribute_values = {}
         change_points = {}
@@ -293,7 +299,6 @@ class AnalyzeDrift:
             self.window_count[a] = 0
             self.previous_model[a] = None
             self.previous_sub_log[a] = None
-
 
         self.current_parameters.total_of_activities = len(activities)
         for i, item in enumerate(event_data):
@@ -341,8 +346,9 @@ class AnalyzeDrift:
                 if adwin[activity].detected_change():
                     # create the manager for similarity metrics if a change is detected
                     if activity not in self.metrics.keys():
-                        self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
-                                                              self.models_path, self.metrics_path, activity)
+                        self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters,
+                                                                         self.control,
+                                                                         self.models_path, self.metrics_path, activity)
                     change_points[activity].append(i)
                     change_points_info[activity].add_change_point(i)
                     print(
@@ -354,10 +360,6 @@ class AnalyzeDrift:
                     initial_case_ids[activity][i] = case_id
                     # update the beginning of the next window
                     initial_index[activity] = i
-        # define the output_path for saving plots and attribute values
-        output_path = os.path.join(self.adaptive_path, self.current_parameters.logname, f'delta{delta}')
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
         # process remaining items as the last window
         find_any_drift = False
         for a in activities:
@@ -370,13 +372,13 @@ class AnalyzeDrift:
                     self.metrics[a].set_final_window(self.window_count[a])
                     # process final window for all activities where a drift has been detected
                     self.new_window(initial_index[a], len(event_data), a)
-                self.plot_signal(attribute_values[a], a, output_path, change_points[a])
+                self.plot_signal(attribute_values[a], a, change_points[a])
             else:
-                self.plot_signal(attribute_values[a], a, output_path)
+                self.plot_signal(attribute_values[a], a)
         if find_any_drift:
             # save the change points for the activity
-            filename = os.path.join(output_path, f'Change_points_{self.current_parameters.attribute}.txt')
-            with open(filename, 'a+') as file:
+            filename = os.path.join(self.drifts_output_path, f'Change_points_{self.current_parameters.attribute}.txt')
+            with open(filename, 'w+') as file:
                 for a in activities:
                     if len(change_points[a]) > 0:
                         file.write(change_points_info[a].serialize())
@@ -387,7 +389,7 @@ class AnalyzeDrift:
             print(f'Analyzing unique window because no drift is detected...')
             # save the plot with attribute values for each activity
             for a in activities:
-                self.plot_signal(attribute_values[a], a, output_path)
+                self.plot_signal(attribute_values[a], a)
             # process the unique window
             initial_index[Activity.ALL.value] = 0
             initial_case_ids[Activity.ALL.value] = {}
@@ -421,8 +423,9 @@ class AnalyzeDrift:
 
     def new_window(self, begin, end, activity=''):
         # increment the id of the window
-        if activity: # when using a detector for an attribute of the activity
-            print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count[activity]}] - activity [{activity}]')
+        if activity:  # when using a detector for an attribute of the activity
+            print(
+                f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count[activity]}] - activity [{activity}]')
             self.window_count[activity] += 1
         else:
             print(f'Generating model for sub-log [{begin} - {end - 1}] - window [{self.window_count}]')
@@ -442,7 +445,7 @@ class AnalyzeDrift:
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         if activity and activity != '':
-            output_filename = os.path.join(output_path, f'sublog_w{self.window_count[activity]}_{begin}_{end-1}.xes')
+            output_filename = os.path.join(output_path, f'sublog_w{self.window_count[activity]}_{begin}_{end - 1}.xes')
         else:
             output_filename = os.path.join(output_path, f'sublog_w{self.window_count}_{begin}_{end - 1}.xes')
         xes_exporter.apply(sub_log, output_filename)
@@ -471,7 +474,7 @@ class AnalyzeDrift:
         # calculate the similarity metrics between consecutive windows
         if window > 1:
             metrics.calculate_metrics(window, previous_sub_log, sub_log, previous_model,
-                                           model, self.current_parameters, initial_trace_index)
+                                      model, self.current_parameters, initial_trace_index)
 
         if activity:
             # save the current model and sub_log for the next window

@@ -158,8 +158,9 @@ class ManageSimilarityMetrics:
         self.running = False
         self.control.finish_metrics_calculation()
 
-    def get_window_candidates(self):
-        candidates = set()
+    def get_drifts_info(self):
+        windows = []
+        traces = []
         # avoiding errors when the process model does not have any similarity metric implemented yet
         if self.metrics_list:
             for m in self.metrics_list:
@@ -168,7 +169,12 @@ class ManageSimilarityMetrics:
                     for line in file:
                         metrics_info = loads(line, ignore_comments=True)
                         if metrics_info.is_dissimilar():
-                            candidates.add(metrics_info.window)
+                            # only include the window once
+                            if metrics_info.window not in windows:
+                                windows.append(metrics_info.window)
+                            # only include the trace once
+                            if metrics_info.initial_trace not in traces:
+                                traces.append(metrics_info.initial_trace)
                 self.locks[m].release()
 
             if self.current_parameters.approach == Approach.FIXED.name:
@@ -181,8 +187,8 @@ class ManageSimilarityMetrics:
                 filename = os.path.join(self.metrics_path, f'_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
             with open(filename, 'w+') as file_drift_windows:
-                file_drift_windows.write(str(candidates))
-        return candidates
+                file_drift_windows.write(str(windows))
+        return windows, traces
 
     def get_info(self, m, window, metrics):
         self.locks[m].acquire()

@@ -13,15 +13,14 @@
 """
 import os
 import shutil
-from enum import Enum
 from pm4py.objects.log.util import interval_lifecycle
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
-from components.parameters import Approach
+from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
+from components.parameters import Approach, ReadLogAs
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
-from components.evaluate.calculate_fscore import EvaluationMetric
 from threading import Thread
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
@@ -181,6 +180,7 @@ class InteractiveProcessDriftDetectionFW:
         self.windows_with_drifts = None
         self.initial_indexes = None
         self.activities = []
+        self.all_activities = []
         # mine the process model and save it
         if self.model_type == 'dfg':
             self.discovery = DiscoveryDfg()
@@ -203,9 +203,13 @@ class InteractiveProcessDriftDetectionFW:
         wfile._setmaxstdio(4096)
         # print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
-    # return the activities from the event log of the last run
-    def get_activities(self):
+    # return the activities where a drift was detected in the last run
+    def get_activities_with_drifts(self):
         return self.activities
+
+    # return all the activities from the event log used on the last run
+    def get_all_activities(self):
+        return self.all_activities
 
     def get_approach(self):
         if self.current_parameters:
@@ -230,6 +234,9 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_default_metrics(self):
         return self.model_type_definitions.get_default_metrics()
+
+    def get_implemented_evaluation_metrics(self):
+        return [item for item in EvaluationMetricList]
 
     def get_input_path(self, user_id=''):
         return check_user_path(self.input_path, user_id)
@@ -262,6 +269,7 @@ class InteractiveProcessDriftDetectionFW:
                                                                                                 case_statistics.Parameters.TIMESTAMP_KEY: "time:timestamp"})
             self.current_log.median_case_duration_in_hours = self.current_log.median_case_duration / 60 / 60
             self.current_log.total_of_cases = len(self.current_log.log)
+            self.current_log.total_of_events = len(self.current_log.log)
             print(
                 f'Log [{filename}] - total of cases [{self.current_log.total_of_cases}] - median case duration '
                 f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
@@ -305,11 +313,22 @@ class InteractiveProcessDriftDetectionFW:
         if parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
+            self.outputpath_changepoints = os.path.join(self.get_adaptive_path(user_id),
+                                                        self.current_parameters.logname,
+                                                        f'delta{self.current_parameters.delta}')
         elif parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
+            # only working for ADWIN parameters, TODO make it generic
+            # output_path for saving plots, attribute values, change points, and evaluation metrics
+            self.outputpath_drifts = os.path.join(self.get_adaptive_path(user_id),
+                                                        parameters.logname,
+                                                        f'delta{parameters.delta}')
+            if not os.path.exists(self.outputpath_drifts):
+                os.makedirs(self.outputpath_drifts)
+
         else:
-            print(f'Approach not defined {parameters.approach}')
+            print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
 
         # set the parameters selected for the current run
         self.current_parameters = parameters
@@ -321,9 +340,8 @@ class InteractiveProcessDriftDetectionFW:
         analyze = AnalyzeDrift(self.model_type, parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
                                self.get_metrics_path(user_id), self.get_logs_path(user_id),
-                               self.current_log, self.discovery, user_id,
-                               self.get_adaptive_path(user_id))
-        self.total_of_windows, self.initial_indexes = analyze.start_drift_analysis()
+                               self.current_log, self.discovery, user_id, self.outputpath_drifts)
+        self.total_of_windows, self.initial_indexes, self.all_activities = analyze.start_drift_analysis()
         if parameters.approach == Approach.ADAPTIVE.name:
             self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
             print(f'Setting the activities with drifts: {self.activities}')
@@ -348,9 +366,19 @@ class InteractiveProcessDriftDetectionFW:
             log = None
         return log
 
-    def evaluate(self, windows_drifts, real_drifts, win_size):
-        metric = EvaluationMetric(real_drifts, windows_drifts, win_size)
-        return metric.calculate_fscore()
+    def get_number_of_items(self):
+        # return the total of traces or events of the event log applied in the last run
+        # according to the parameter Read log as selected by the user
+        if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+            return self.current_log.total_of_cases
+        elif self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+            return self.current_log.total_of_events
+        else:
+            print(f'Parameter ReadLogAs not identified in ipdd_fw.get_number_of_items(): {self.current_parameters.read_log_as}')
+
+    def evaluate(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
+        manage_evaluation = ManageEvaluationMetrics(self.get_implemented_evaluation_metrics(), self.outputpath_drifts, activity)
+        manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts, error_tolerance, items)
 
     def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:
@@ -438,11 +466,11 @@ class InteractiveProcessDriftDetectionFW:
 
         return self.status_similarity_metrics
 
-    def get_windows_candidates(self, activity=''):
+    def get_drifts_info(self, activity=''):
         if self.get_approach() == Approach.ADAPTIVE.name and activity != '':
-            return self.get_metrics_manager(activity).get_window_candidates()
+            return self.get_metrics_manager(activity).get_drifts_info()
         elif self.get_approach() == Approach.FIXED.name:
-            return self.get_metrics_manager().get_window_candidates()
+            return self.get_metrics_manager().get_drifts_info()
         else:
             print(f'Approach not identified {self.get_approach()} in self.get_approach()')
             return ()

@@ -512,11 +512,11 @@ def update_slider_and_plot(activity, attribute, approach):
             if approach == Approach.FIXED.name:
                 total_of_windows = framework.get_total_of_windows()
                 if total_of_windows > 1:
-                    windows_with_drifts = framework.get_windows_candidates()
+                    windows_with_drifts = framework.get_drifts_info()
             elif approach == Approach.ADAPTIVE.name:
                 total_of_windows = framework.get_total_of_windows(activity)
                 if total_of_windows > 1:
-                    windows_with_drifts = framework.get_windows_candidates(activity)
+                    windows_with_drifts = framework.get_drifts_info(activity)
             else:
                 print(f'Approach not identified {approach} in update_slider_and_plot')
 
@@ -580,7 +580,7 @@ def update_status_and_drifts(n, div_status, activity, approach):
         display_evaluation = {'display': 'block'}
 
         if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name:
-            activities = [{'label': item, 'value': item} for item in framework.get_activities()]
+            activities = [{'label': item, 'value': item} for item in framework.get_activities_with_drifts()]
             if len(activities) == 0:  # no drift is detected
                 first_activity = Activity.ALL.value
             else:
@@ -616,8 +616,8 @@ def evaluate(n_clicks, real_drifts, window_size, activity):
                         print(f'Input values must be integer - ignoring [{item}]')
                     list_real_drifts.append(item_int)
             print(f'Real drifts {list_real_drifts}')
-            window_candidates = framework.get_windows_candidates(activity)
-            f_score = framework.evaluate(window_candidates, list_real_drifts, window_size)
+            windows, traces = framework.get_drifts_info(activity)
+            f_score = framework.evaluate(list_real_drifts, traces, window_size, framework.get_number_of_items())
             print(f'IPDD f-score: {"{:.2f}".format(f_score)}')
         return f'F-score: {"{:.2f}".format(f_score)}'
     return ''

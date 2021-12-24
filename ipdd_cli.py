@@ -29,12 +29,16 @@ def main():
 
     parser = argparse.ArgumentParser(description='IPDD FW command line')
     parser.add_argument('--approach', '-a', help='Approach: f - fixed window or a - adaptive window', default='a')
-    parser.add_argument('--read_as', '-wt', help='Read the log as: t - stream of traces or e - event stream', default='t')
+    parser.add_argument('--read_as', '-wt', help='Read the log as: t - stream of traces or e - event stream',
+                        default='t')
     parser.add_argument('--event_log', '-l', required=True,
                         help='Event log: path and name of the event log using XES format')
     parser.add_argument('--real_drifts', '-rd', type=int, nargs='+',
-                        help='Real drifts: list of trace indexes from actual drifts (separated by a space), used for '
-                             'evaluation')
+                        help='Real drifts: list of trace indexes (starting from 1) of the real drifts (separated by a '
+                             'space), used for evaluation. If no real drift exists, then fill with 0.')
+    parser.add_argument('--error_tolerance', '-et', type=int,
+                        help='Error tolerance: the interval os tolerance considered when evaluating the F-score metric',
+                        default=100)
     parser.add_argument('--metrics', '-mt', nargs='+',
                         help=f'Similarity Metrics: list of similarity metrics that IPDD should '
                              f'calculate. Possible options: {[m.name for m in framework.get_implemented_metrics()]}',
@@ -47,7 +51,7 @@ def main():
     # options for adaptive approach
     parser.add_argument('--attribute', '-at', help='Attribute for the change detector: st - sojourn time activity',
                         default='st')
-    parser.add_argument('--delta', '-dt', help='Delta parameter - ADWIN cganhe detector', type=float,
+    parser.add_argument('--delta', '-dt', help='Delta parameter - ADWIN change detector', type=float,
                         default=0.002)
 
     args = parser.parse_args()
@@ -79,6 +83,9 @@ def main():
 
     event_log = args.event_log
     real_drifts = args.real_drifts
+    if len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
+        real_drifts = []
+    error_tolerance = args.error_tolerance
 
     # get enum from metrics
     metrics = []
@@ -103,6 +110,7 @@ def main():
 
     if args.real_drifts is not None:
         print(f'Real drifts: {real_drifts}')
+        print(f'Error tolerance: {error_tolerance}')
     print('----------------------------------------------')
 
     print(f'Starting analyzing process drifts ...')
@@ -120,21 +128,43 @@ def main():
         running = framework.get_status_running()
     print(f'IPDD finished drift analysis')
 
+    detected_drifts = None
+    total_of_itens = framework.get_number_of_items()
     if approach == Approach.FIXED.name:
-        window_candidates = framework.get_windows_candidates()
-        print(f'IPDD detect drift in windows {window_candidates}')
+        windows, detected_drifts = framework.get_drifts_info()
+        print(f'IPDD detect control-flow drift in windows {windows} - traces {detected_drifts}')
     elif approach == Approach.ADAPTIVE.name:
-        for activity in framework.get_activities():
+        detected_drifts = {}
+        # get the activities that report a drift using the change detector
+        for activity in framework.get_activities_with_drifts():
             indexes = framework.initial_indexes[activity]
-            if len(indexes) > 0:
-                print(f'IPDD detect sojourn time drift for activity {activity} in indexes {indexes}')
-            window_candidates = framework.get_windows_candidates(activity)
-            if len(window_candidates) > 0:
-                print(f'IPDD detect control-flow drift for activity {activity} in windows {window_candidates}')
+            detected_drifts[activity] = list(indexes.keys())[1:]
+            print(f'IPDD detect sojourn time drift for activity {activity} in indexes {detected_drifts}')
+            # get information about control-flow metrics
+            windows, traces = framework.get_drifts_info(activity)
+            if len(traces) > 0:
+                print(f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+    else:
+        print(f'Approach not identified: {approach}')
 
-    if args.real_drifts is not None:
-        f_score = framework.evaluate(window_candidates, real_drifts, win_size)
-        print(f'IPDD f-score: {f_score}')
+    if approach == Approach.FIXED.name:
+        if args.real_drifts is not None:
+            f_score = framework.evaluate(real_drifts, detected_drifts, error_tolerance, total_of_itens)
+            print(f'IPDD F-score: {f_score}')
+    elif approach == Approach.ADAPTIVE.name:
+        if args.real_drifts is not None:
+            if len(detected_drifts) > 0:
+                print(f'********* IPDD F-score results *********')
+                for activity in framework.get_all_activities():
+                    if activity in detected_drifts.keys():
+                        framework.evaluate(real_drifts, detected_drifts[activity], error_tolerance, total_of_itens, activity)
+                    else:
+                        # if IPDD do not detect any drift in the activity
+                        framework.evaluate(real_drifts, [], error_tolerance, total_of_itens, activity)
+            else:
+                print(f'********* IPDD did not detect any drift. No F-score results *********')
+    else:
+        print(f'Approach not identified: {approach}')
 
 
 if __name__ == '__main__':
