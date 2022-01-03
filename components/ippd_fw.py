@@ -58,8 +58,6 @@ class Control:
         self.metrics_status = MetricsProcessingStatus.NOT_STARTED
         self.mining_status = IPDDProcessingStatus.NOT_STARTED
         self.metrics_manager = None
-        self.tasks_completed = 0
-        # self.total_of_windows = 0
 
     def restart_status(self):
         self.metrics_status = MetricsProcessingStatus.NOT_STARTED
@@ -68,17 +66,14 @@ class Control:
     # applied for CLI
     def finished_run(self):
         if self.metrics_manager is not None:
-            result = self.tasks_completed >= 2  # for some reason sometimes it goes to 3 (maybe it is the TIMEOUT)
+            result = self.metrics_status == MetricsProcessingStatus.FINISHED and \
+                     self.mining_status == IPDDProcessingStatus.FINISHED
         else:
-            result = self.tasks_completed >= 1
+            result = self.mining_status == IPDDProcessingStatus.FINISHED
         return result
-
-    def reset_tasks_counter(self):
-        self.tasks_completed = 0
 
     def finish_mining_calculation(self):
         self.mining_status = IPDDProcessingStatus.FINISHED
-        self.tasks_completed += 1
         print(f'Finished mining calculation')
 
     def start_mining_calculation(self):
@@ -92,7 +87,6 @@ class Control:
 
     def finish_metrics_calculation(self):
         self.metrics_status = MetricsProcessingStatus.FINISHED
-        self.tasks_completed += 1
         print(f'Finished metrics calculation')
 
     def start_metrics_calculation(self):
@@ -133,9 +127,10 @@ class IPDDParametersFixed(IPDDParameters):
 
 
 class IPDDParametersAdaptive(IPDDParameters):
-    def __init__(self, logname, approach, read_log_as, metrics, attribute, delta=None):
+    def __init__(self, logname, approach, read_log_as, metrics, attribute, attribute_name=None, delta=None):
         super().__init__(logname, approach, read_log_as, metrics)
         self.attribute = attribute
+        self.attribute_name = attribute_name
         self.delta = delta
 
 
@@ -190,11 +185,15 @@ class InteractiveProcessDriftDetectionFW:
             self.model_type_definitions = PnDefinitions()
         else:
             print(f'Model type not implemented {self.model_type}')
+        self.manage_evaluation = None  # evaluation module
+
+        # paths for saving the results
         self.input_path = os.path.join('data', 'input')
         self.models_path = os.path.join('data', 'models')
         self.logs_path = os.path.join('data', 'sublogs')
         self.metrics_path = os.path.join('data', 'metrics')
         self.adaptive_path = os.path.join('data', 'adaptive')
+        self.evaluation_path = os.path.join('data', 'evaluation')
 
         # workaround for pygraphviz problem - the library do not release file handlers
         # in windows - this should be verified again
@@ -246,6 +245,9 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_metrics_path(self, user_id):
         return check_user_path(self.metrics_path, user_id)
+
+    def get_evaluation_path(self, user_id):
+        return check_user_path(self.evaluation_path, user_id)
 
     def get_logs_path(self, user_id):
         return check_user_path(self.logs_path, user_id)
@@ -313,34 +315,40 @@ class InteractiveProcessDriftDetectionFW:
         if parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
-            self.outputpath_changepoints = os.path.join(self.get_adaptive_path(user_id),
-                                                        self.current_parameters.logname,
-                                                        f'delta{self.current_parameters.delta}')
+            evaluation_path = os.path.join(self.get_evaluation_path(user_id),
+                                                parameters.logname, parameters.approach,
+                                                parameters.read_log_as,
+                                                f'win_{parameters.win_size}')
         elif parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
             # only working for ADWIN parameters, TODO make it generic
             # output_path for saving plots, attribute values, change points, and evaluation metrics
-            self.outputpath_drifts = os.path.join(self.get_adaptive_path(user_id),
-                                                        parameters.logname,
-                                                        f'delta{parameters.delta}')
-            if not os.path.exists(self.outputpath_drifts):
-                os.makedirs(self.outputpath_drifts)
-
+            outputpath_adaptive = os.path.join(self.get_adaptive_path(user_id),
+                                                    parameters.logname, parameters.read_log_as,
+                                                    f'delta{parameters.delta}')
+            evaluation_path = os.path.join(self.get_evaluation_path(user_id),
+                                                parameters.logname, parameters.approach,
+                                                f'delta{parameters.delta}')
+            if not os.path.exists(outputpath_adaptive):
+                os.makedirs(outputpath_adaptive)
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
+
+        # initialize evaluation module
+        self.manage_evaluation = ManageEvaluationMetrics(self.get_implemented_evaluation_metrics(),
+                                                         evaluation_path)
 
         # set the parameters selected for the current run
         self.current_parameters = parameters
         self.discovery.set_current_parameters(parameters)
-        self.control.reset_tasks_counter()
         print(f'User selected approach={parameters.approach} reading log as={parameters.read_log_as}')
         print(f'Metrics={parameters.metrics}')
         print(f'Starting windowing process...')
         analyze = AnalyzeDrift(self.model_type, parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
                                self.get_metrics_path(user_id), self.get_logs_path(user_id),
-                               self.current_log, self.discovery, user_id, self.outputpath_drifts)
+                               self.current_log, self.discovery, user_id, outputpath_adaptive)
         self.total_of_windows, self.initial_indexes, self.all_activities = analyze.start_drift_analysis()
         if parameters.approach == Approach.ADAPTIVE.name:
             self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
@@ -377,8 +385,7 @@ class InteractiveProcessDriftDetectionFW:
             print(f'Parameter ReadLogAs not identified in ipdd_fw.get_number_of_items(): {self.current_parameters.read_log_as}')
 
     def evaluate(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
-        manage_evaluation = ManageEvaluationMetrics(self.get_implemented_evaluation_metrics(), self.outputpath_drifts, activity)
-        manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts, error_tolerance, items)
+        self.manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts, error_tolerance, items, activity)
 
     def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:
@@ -490,3 +497,6 @@ class InteractiveProcessDriftDetectionFW:
         adaptive_path = self.get_adaptive_path(user_id)
         if os.path.exists(adaptive_path):
             shutil.rmtree(adaptive_path)
+        evaluation_path = self.get_evaluation_path(user_id)
+        if os.path.exists(evaluation_path):
+            shutil.rmtree(evaluation_path)

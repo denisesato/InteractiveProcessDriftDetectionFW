@@ -61,7 +61,7 @@ class EvaluationMetric:
                 fns.append(real_drift)
         self.tp = len(tps)
         self.fn = len(fns)
-        self.fp = len(self.detected_drifts) - self.tp
+        self.fp = len(self.detected_drifts)  # the true positives are removed from the list
         self.tn = self.number_of_items - len(self.real_drifts)
 
     def calculate(self):
@@ -81,9 +81,8 @@ class Fscore(EvaluationMetric):
         recall = self.calculate_recall()
         fscore = 0
         if precision + recall > 0:
-            fscore = (2 * precision * recall) / (precision + recall)
-
-        self.value = fscore
+            fscore = 2 * ((precision * recall) / (precision + recall))
+        return fscore
 
     def calculate_precision(self):
         precision = 0
@@ -110,41 +109,45 @@ class FPR(EvaluationMetric):
 
 
 class ManageEvaluationMetrics:
-    def __init__(self, evaluation_metrics, evaluation_path, activity):
+    def __init__(self, evaluation_metrics, evaluation_path):
         # get the metrics selected by the user
         self.metrics_list = evaluation_metrics
         # create the path if it does not exist
         self.path = evaluation_path
+        self.filename = os.path.join(self.path, f'Evaluation_metrics.txt')
         if not os.path.exists(self.path):
             print(f'Creating evaluation path {self.path}')
             os.makedirs(self.path)
-        # used when the user selected an adaptive approach
-        self.activity = activity
+        else:
+            # remove file that contains the evaluation metrics calculated from previous run
+            if os.path.isfile(self.filename):
+                print(f'Remove file {self.filename}')
+                os.remove(self.filename)
 
     def add_real_drift(self, trace_index):
         self.real_drifts.append(trace_index)
 
-    def add_detected_drif(self, drift):
+    def add_detected_drift(self, drift):
         self.detected_drifts.append(drift)
 
     def save_metrics(self, metrics_info):
         # save the calculated metrics
-        filename = os.path.join(self.path, f'Evaluation_metrics.txt')
-        with open(filename, 'w+') as file:
+        with open(self.filename, 'a+') as file:
             for info in metrics_info:
                 file.write(info.serialize())
                 file.write('\n')
         print(f'Saving evaluation metrics...')
 
-    def calculate_selected_evaluation_metrics(self, real_drifts, detected_drifts, error_tolerance, items):
+    def calculate_selected_evaluation_metrics(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
         metrics_info = []
         for metric_name in self.metrics_list:
             print(f'Calculating evaluation metric [{metric_name}]')
             metric = ManageEvaluationMetrics.evaluation_metrics_factory(metric_name, real_drifts, detected_drifts,
                                                                  error_tolerance, items)
-            metric_info = EvaluationMetricInfo(metric_name, metric.calculate())
-            if self.activity:
-                metric_info.add_attribute('activity', self.activity)
+            value = metric.calculate()
+            metric_info = EvaluationMetricInfo(metric_name, value)
+            if activity:  # used when the user selected the ADAPTIVE approach
+                metric_info.add_attribute('activity', activity)
             metrics_info.append(metric_info)
         self.save_metrics(metrics_info)
 

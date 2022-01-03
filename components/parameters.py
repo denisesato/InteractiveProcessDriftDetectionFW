@@ -15,6 +15,7 @@ class WindowUnityFixed(str, Enum):
 class AttributeAdaptive(str, Enum):
     SOJOURN_TIME = 'Sojourn Time'
     WAITING_TIME = 'Waiting time'
+    OTHER = 'Other attribute'
 
 
 class Approach(str, Enum):

@@ -22,12 +22,13 @@ class Activity(str, Enum):
 
 class SelectAttribute:
     @staticmethod
-    def get_selected_attribute_class(attribute_name):
+    def get_selected_attribute_class(attribute_name, other_name=None):
         # define the class for each available attribute for applying the change detector
         # the one selected by the user is returned
         classes = {
             AttributeAdaptive.SOJOURN_TIME.name: SojournTime(attribute_name),
-            AttributeAdaptive.WAITING_TIME.name: WaitingTime(attribute_name)
+            AttributeAdaptive.WAITING_TIME.name: WaitingTime(attribute_name),
+            AttributeAdaptive.OTHER.name: OtherAttribute(attribute_name, other_name)
         }
         return classes[attribute_name]
 
@@ -55,3 +56,20 @@ class WaitingTime:
         # return the wasted time ONLY with regards to the activity described by the ‘interval’ event
         waiting_time = event['@@approx_bh_this_wasted_time']
         return waiting_time
+
+
+class OtherAttribute:
+    def __init__(self, name, colum_name):
+        self.name = name
+        self.column_name = colum_name
+
+    def get_value(self, event):
+        # get the value of the attributed defined by the user
+        # testes only using numeric attributes
+        if self.column_name in event.keys():
+            value_str = event[f'{self.column_name}']
+            value_str = value_str.replace(",", ".")
+            value = float(value_str)
+            return value
+        else:
+            print(f'Attribute name not found in attributes.OtherAttribute {self.column_name}')

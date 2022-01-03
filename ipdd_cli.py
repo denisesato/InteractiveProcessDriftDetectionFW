@@ -49,8 +49,10 @@ def main():
     parser.add_argument('--win_size', '-wz', type=int, default=30,
                         help='Window size: numeric value indicating the total of window unities for each window')
     # options for adaptive approach
-    parser.add_argument('--attribute', '-at', help='Attribute for the change detector: st - sojourn time activity',
+    parser.add_argument('--attribute', '-at', help='Attribute for the change detector: st - sojourn time activity '
+                                                   'ot - other attribute; in this case specify attribute_name parameter',
                         default='st')
+    parser.add_argument('--attribute_name', '-atname', help='Attribute name')
     parser.add_argument('--delta', '-dt', help='Delta parameter - ADWIN change detector', type=float,
                         default=0.002)
 
@@ -68,6 +70,7 @@ def main():
 
     win_unity = ''
     attribute = ''
+    attribute_name = ''
     win_size = 0
     if approach == Approach.FIXED.name:
         if args.win_unity == 'u':
@@ -80,6 +83,13 @@ def main():
     elif approach == Approach.ADAPTIVE.name:
         if args.attribute == 'st':
             attribute = AttributeAdaptive.SOJOURN_TIME.name
+        else:
+            attribute = AttributeAdaptive.OTHER.name
+            if args.attribute_name != '':
+                attribute_name = args.attribute_name
+            else:
+                print(f'You must define --attribute_name when using attribute OTHER')
+                return
 
     event_log = args.event_log
     real_drifts = args.real_drifts
@@ -104,6 +114,8 @@ def main():
         print(f'Window size: {win_size}')
     elif approach == Approach.ADAPTIVE.name:
         print(f'Attribute: {attribute}')
+        if attribute == AttributeAdaptive.OTHER.name:
+            print(f'Attribute name: {attribute_name}')
         print(f'Delta - ADWIN detector: {args.delta}')
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
@@ -118,7 +130,7 @@ def main():
         parameters = IPDDParametersFixed(event_log, approach, win_type, metrics, win_unity, win_size)
         framework.run(parameters, user_id='script')
     elif approach == Approach.ADAPTIVE.name:
-        parameters = IPDDParametersAdaptive(event_log, approach, win_type, metrics, attribute, args.delta)
+        parameters = IPDDParametersAdaptive(event_log, approach, win_type, metrics, attribute, attribute_name, args.delta)
         framework.run(parameters, user_id='script')
 
     running = framework.get_status_running()

@@ -21,7 +21,7 @@ from pm4py.objects.log.util import interval_lifecycle
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
-from components.parameters import Approach
+from components.parameters import Approach, AttributeAdaptive
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
 from components.parameters import ReadLogAs, WindowUnityFixed
@@ -83,17 +83,26 @@ class AnalyzeDrift:
         # save data and plot about the data
         df = pd.DataFrame([values_for_activity.keys(), values_for_activity.values()]).T
         df.columns = ['trace', 'value']
-        filename_attributes = f'{activity_name}_{self.current_parameters.attribute}.csv'
+        if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+            filename_attributes = f'{activity_name}_{self.current_parameters.attribute_name}.csv'
+        else:
+            filename_attributes = f'{activity_name}_{self.current_parameters.attribute}.csv'
         output_filename = os.path.join(self.drifts_output_path, filename_attributes)
         df.to_csv(output_filename, index=False)
         sns.set_style("whitegrid")
         plot = sns.lineplot(data=df, x='trace', y='value')
-        plot.set_ylabel(f'Activity {activity_name}')
+        if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+            plot.set_ylabel(f'Activity {activity_name} - {self.current_parameters.attribute_name}')
+        else:
+            plot.set_ylabel(f'Activity {activity_name} - {self.current_parameters.attribute}')
         if change_points:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
-        filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute}.png')
+        if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+            filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute_name}.png')
+        else:
+            filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute}.png')
         plt.savefig(filename)
         print(f'Saving plot for activity [{activity_name}]')
         plt.close()
@@ -122,11 +131,20 @@ class AnalyzeDrift:
                 window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
                 # window_count, metrics_manager, initial_indexes = self.apply_sliding_window(event_data)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+                attribute_class = None
+                if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+                    attribute_class = SelectAttribute.get_selected_attribute_class(
+                        self.current_parameters.attribute,
+                        self.current_parameters.attribute_name)
+                else:
+                    attribute_class = SelectAttribute.get_selected_attribute_class(
+                        self.current_parameters.attribute)
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector(self.event_data,
-                                        SelectAttribute.get_selected_attribute_class(
-                                            self.current_parameters.attribute),
-                                        self.current_parameters.delta, activities, self.user)
+                                        attribute_class,
+                                        self.current_parameters.delta,
+                                        activities,
+                                        self.user)
 
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
