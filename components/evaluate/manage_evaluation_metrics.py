@@ -154,8 +154,10 @@ class ManageEvaluationMetrics:
     @staticmethod
     def evaluation_metrics_factory(metric_name, real_drifts, detected_drifts, error_tolerance, items):
         # define all implemented evaluation metrics
+        real_drifts_copy = real_drifts.copy()
+        detected_drifts_copy = detected_drifts.copy()
         classes = {
-            EvaluationMetricList.F_SCORE.value: Fscore(real_drifts, detected_drifts, error_tolerance, items),
-            EvaluationMetricList.FPR.value: FPR(real_drifts, detected_drifts, error_tolerance, items),
+            EvaluationMetricList.F_SCORE.value: Fscore(real_drifts_copy, detected_drifts_copy, error_tolerance, items),
+            EvaluationMetricList.FPR.value: FPR(real_drifts_copy, detected_drifts_copy, error_tolerance, items),
         }
         return classes[metric_name]
