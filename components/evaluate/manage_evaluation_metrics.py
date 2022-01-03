@@ -40,16 +40,25 @@ class EvaluationMetric:
         # value of the calculated metric
         self.value = 0
 
-    # count the basic metrics TP, FP, and FN
+    # count the basic metrics TP, FP, FN, and TN
     def calculate_basic_metrics(self):
         tps = []
         fns = []
         self.real_drifts.sort()
         self.detected_drifts.sort()
-        for real_drift in self.real_drifts:
+        for i, real_drift in enumerate(self.real_drifts):
             tp_found = False
-            for i, detected_drift in enumerate(self.detected_drifts):
-                if real_drift <= detected_drift < (real_drift + self.error_tolerance):
+            for detected_drift in self.detected_drifts:
+                tolerance_interval = self.error_tolerance
+                # if there is another real drift, check the interval of tolerance
+                if (i+1) < len(self.real_drifts):
+                    interval_to_next_drift = self.real_drifts[i+1] - real_drift
+                    if self.error_tolerance > interval_to_next_drift:
+                        # if error_tolerance is greater than the distance to the next real drift
+                        # use the distance as interval
+                        tolerance_interval = interval_to_next_drift
+
+                if real_drift <= detected_drift < (real_drift + tolerance_interval):
                     # real drift is within a detected window
                     tps.append(real_drift)
                     tp_found = True
@@ -62,7 +71,7 @@ class EvaluationMetric:
         self.tp = len(tps)
         self.fn = len(fns)
         self.fp = len(self.detected_drifts)  # the true positives are removed from the list
-        self.tn = self.number_of_items - len(self.real_drifts)
+        self.tn = self.number_of_items - self.tp - self.fn - self.fp
 
     def calculate(self):
         pass
