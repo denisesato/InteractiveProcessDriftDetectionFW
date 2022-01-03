@@ -120,7 +120,7 @@ def main():
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
 
-    if args.real_drifts is not None:
+    if real_drifts is not None:
         print(f'Real drifts: {real_drifts}')
         print(f'Error tolerance: {error_tolerance}')
     print('----------------------------------------------')
