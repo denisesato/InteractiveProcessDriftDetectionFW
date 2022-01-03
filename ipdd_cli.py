@@ -165,16 +165,16 @@ def main():
             print(f'IPDD F-score: {f_score}')
     elif approach == Approach.ADAPTIVE.name:
         if args.real_drifts is not None:
-            if len(detected_drifts) > 0:
-                print(f'********* IPDD F-score results *********')
-                for activity in framework.get_all_activities():
-                    if activity in detected_drifts.keys():
-                        framework.evaluate(real_drifts, detected_drifts[activity], error_tolerance, total_of_itens, activity)
-                    else:
-                        # if IPDD do not detect any drift in the activity
-                        framework.evaluate(real_drifts, [], error_tolerance, total_of_itens, activity)
-            else:
-                print(f'********* IPDD did not detect any drift. No F-score results *********')
+            # if len(detected_drifts) > 0:
+            print(f'********* IPDD evaluation metrics results *********')
+            for activity in framework.get_all_activities():
+                if activity in detected_drifts.keys():
+                    framework.evaluate(real_drifts, detected_drifts[activity], error_tolerance, total_of_itens, activity)
+                else:
+                    # if IPDD do not detect any drift in the activity
+                    framework.evaluate(real_drifts, [], error_tolerance, total_of_itens, activity)
+            # else:
+            #     print(f'********* IPDD did not detect any drift. No F-score results *********')
     else:
         print(f'Approach not identified: {approach}')
 
