@@ -42,7 +42,7 @@ def selected_experiments():
         [25, 99, 147, 214],
         [506, 1026, 1487, 1805],
         [506, 1026, 1487, 1805],
-        [448, 897, 1346, 1795, 1892, 1796, 2381, 2498]
+        [448, 897, 1346, 1795, 1892, 2381, 2498]
     ]
     for log, cps in zip(log_name, change_points):
         file = os.path.join(folder, log)
@@ -59,7 +59,7 @@ def selected_experiments():
 
     # temperature experiment
     log = 'Log_Paper_Lathe4.xes'
-    cps = [448, 897, 1346, 1795, 1892, 1796, 2381, 2498]
+    cps = [448, 897, 1346, 1795, 1892, 2381, 2498]
     file = os.path.join(folder, log)
     deltas = [0.002, 0.05, 0.1, 0.3, 1]
     for delta in deltas:
