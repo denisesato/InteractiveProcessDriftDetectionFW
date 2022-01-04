@@ -71,7 +71,7 @@ class EvaluationMetric:
         self.tp = len(tps)
         self.fn = len(fns)
         self.fp = len(self.detected_drifts)  # the true positives are removed from the list
-        self.tn = self.number_of_items - self.tp - self.fp
+        self.tn = self.number_of_items - self.tp - self.fn - self.fp
 
     def calculate(self):
         pass
