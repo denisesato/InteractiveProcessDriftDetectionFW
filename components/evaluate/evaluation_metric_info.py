@@ -15,8 +15,10 @@ from json_tricks import dumps
 
 
 class EvaluationMetricInfo:
-    def __init__(self, name, value):
+    def __init__(self, name, real_drifts, detected_drifts, value):
         self.name = name
+        self.real_drifts = real_drifts
+        self.detected_drifts = detected_drifts
         self.value = value
         self.additional_attributes = {}
 

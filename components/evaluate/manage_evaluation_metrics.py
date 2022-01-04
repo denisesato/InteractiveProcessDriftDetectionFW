@@ -71,7 +71,7 @@ class EvaluationMetric:
         self.tp = len(tps)
         self.fn = len(fns)
         self.fp = len(self.detected_drifts)  # the true positives are removed from the list
-        self.tn = self.number_of_items - self.tp - self.fn - self.fp
+        self.tn = self.number_of_items - self.tp - self.fp
 
     def calculate(self):
         pass
@@ -154,7 +154,7 @@ class ManageEvaluationMetrics:
             metric = ManageEvaluationMetrics.evaluation_metrics_factory(metric_name, real_drifts, detected_drifts,
                                                                  error_tolerance, items)
             value = metric.calculate()
-            metric_info = EvaluationMetricInfo(metric_name, value)
+            metric_info = EvaluationMetricInfo(metric_name, real_drifts, detected_drifts, value)
             if activity:  # used when the user selected the ADAPTIVE approach
                 metric_info.add_attribute('activity', activity)
             metrics_info.append(metric_info)
