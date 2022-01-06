@@ -34,7 +34,7 @@ navbar = dbc.NavbarSimple(
 
 evaluation_card = html.Div([
     dbc.Collapse([
-        dbc.CardHeader(['Calculate F-score metric']),
+        dbc.CardHeader(['Evaluation metrics']),
         dbc.CardBody([
             dbc.Row([
                 dbc.Col(html.Span('Real drifts: '), width=2),
@@ -513,11 +513,11 @@ def update_slider_and_plot(activity, attribute, approach):
             if approach == Approach.FIXED.name:
                 total_of_windows = framework.get_total_of_windows()
                 if total_of_windows > 1:
-                    windows_with_drifts = framework.get_drifts_info()
+                    windows_with_drifts, traces = framework.get_drifts_info()
             elif approach == Approach.ADAPTIVE.name:
                 total_of_windows = framework.get_total_of_windows(activity)
                 if total_of_windows > 1:
-                    windows_with_drifts = framework.get_drifts_info(activity)
+                    windows_with_drifts, traces = framework.get_drifts_info(activity)
             else:
                 print(f'Approach not identified {approach} in app_process_models.update_slider_and_plot')
 
@@ -525,7 +525,7 @@ def update_slider_and_plot(activity, attribute, approach):
             for w in range(0, last_window):
                 label = str(w + 1) + '|' + str(initial_indexes[w])
                 marks[w] = {'label': label}
-                if windows_with_drifts and (w + 1) in windows_with_drifts:
+                if windows_with_drifts and ((w + 1) in windows_with_drifts):
                     marks[w] = {'label': label, 'style': {'color': '#f50'}}
                 else:
                     marks[w] = {'label': label}
@@ -599,7 +599,6 @@ def update_status_and_drifts(n, div_status, activity, approach):
                State('activity', 'value')])
 def evaluate(n_clicks, real_drifts, window_size, activity):
     if n_clicks and real_drifts and real_drifts != '':
-        f_score = ""
         if framework.get_status_framework() == IPDDProcessingStatus.NOT_STARTED:
             return f'It is not possible to evaluate yet because framework was not started.'
         if framework.get_status_framework() == IPDDProcessingStatus.RUNNING:
