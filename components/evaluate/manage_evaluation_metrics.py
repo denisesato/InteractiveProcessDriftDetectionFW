@@ -149,6 +149,7 @@ class ManageEvaluationMetrics:
 
     def calculate_selected_evaluation_metrics(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
         metrics_info = []
+        metrics_summary = {}
         for metric_name in self.metrics_list:
             print(f'Calculating evaluation metric [{metric_name}]')
             metric = ManageEvaluationMetrics.evaluation_metrics_factory(metric_name, real_drifts, detected_drifts,
@@ -158,7 +159,9 @@ class ManageEvaluationMetrics:
             if activity:  # used when the user selected the ADAPTIVE approach
                 metric_info.add_attribute('activity', activity)
             metrics_info.append(metric_info)
+            metrics_summary[metric_name] = value
         self.save_metrics(metrics_info)
+        return metrics_summary
 
     @staticmethod
     def evaluation_metrics_factory(metric_name, real_drifts, detected_drifts, error_tolerance, items):

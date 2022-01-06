@@ -312,6 +312,7 @@ class InteractiveProcessDriftDetectionFW:
             parameters.metrics = self.model_type_definitions.get_default_metrics()
 
         # initializing attributes that depend of the approach
+        outputpath_adaptive = ''
         if parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
@@ -385,7 +386,7 @@ class InteractiveProcessDriftDetectionFW:
             print(f'Parameter ReadLogAs not identified in ipdd_fw.get_number_of_items(): {self.current_parameters.read_log_as}')
 
     def evaluate(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
-        self.manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts, error_tolerance, items, activity)
+        return self.manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts, error_tolerance, items, activity)
 
     def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:

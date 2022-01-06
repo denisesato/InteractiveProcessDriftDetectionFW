@@ -160,7 +160,7 @@ parameters_panel = [
                 ], id='col-window-size', style={'display': 'none'}),
                 dbc.Col(
                     modal_extended_adaptive_options,
-                    id='col-extended_adaptive_options', align="end", width='auto'),
+                    id='col-extended_adaptive_options', align="end", width='auto', style={'display': 'none'}),
                 dbc.Col([
                     dbc.Button(children=['Analyze Process Drifts'],
                                id='mine_models_btn', n_clicks=0, disabled=True,
@@ -306,6 +306,7 @@ def toggle_popover(n, is_open):
 @app.callback([Output('col-window-unity', 'style'),
                Output('col-window-size', 'style'),  # next attribute for fixed approach
                Output('col-attribute', 'style'),  # next attribute for adaptive approach
+               Output('col-extended_adaptive_options', 'style'), # extended attributes for adaptive approach
                Output('window-type', 'disabled'),
                Output('window-type', 'value')],  # read the log as
               Input('approach', 'value'),
@@ -316,16 +317,16 @@ def approach_selected(approach_value, read_log_as_value):
     # print(f'Chamou {approach_value} {window_unity_style} {window_size_style}')
     if approach_value:
         if approach_value == Approach.FIXED.name:
-            return show, show, hide, False, read_log_as_value
+            return show, show, hide, hide, False, read_log_as_value
         elif approach_value == Approach.ADAPTIVE.name:
-            return hide, hide, show, False, read_log_as_value
+            return hide, hide, show, show, False, read_log_as_value
         elif approach_value == '':
-            return hide, hide, hide, True, ''
+            return hide, hide, hide, hide, True, ''
         else:
-            print(f'Invalid approach type: {approach_value}')
-            return hide, hide, hide, True, read_log_as_value
+            print(f'Invalid approach type in app_process_models.approach_selected: {approach_value}')
+            return hide, hide, hide, hide, True, read_log_as_value
     else:  # first call
-        return hide, hide, hide, True, read_log_as_value
+        return hide, hide, hide, hide, True, read_log_as_value
 
 
 @app.callback([Output('window-unity', 'disabled'),
@@ -503,7 +504,7 @@ def update_slider_and_plot(activity, attribute, approach):
             initial_indexes = framework.get_initial_trace_indexes(activity)
             last_window = framework.get_total_of_windows(activity)
         else:
-            print(f'Approach not identified {approach} in update_slider_and_plot')
+            print(f'Approach not identified {approach} in app_process_models.update_slider_and_plot')
         # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
         windows_with_drifts = ()
         if initial_indexes:
@@ -518,13 +519,12 @@ def update_slider_and_plot(activity, attribute, approach):
                 if total_of_windows > 1:
                     windows_with_drifts = framework.get_drifts_info(activity)
             else:
-                print(f'Approach not identified {approach} in update_slider_and_plot')
+                print(f'Approach not identified {approach} in app_process_models.update_slider_and_plot')
 
             max_slider = total_of_windows - 1
             for w in range(0, last_window):
                 label = str(w + 1) + '|' + str(initial_indexes[w])
                 marks[w] = {'label': label}
-
                 if windows_with_drifts and (w + 1) in windows_with_drifts:
                     marks[w] = {'label': label, 'style': {'color': '#f50'}}
                 else:
@@ -617,7 +617,11 @@ def evaluate(n_clicks, real_drifts, window_size, activity):
                     list_real_drifts.append(item_int)
             print(f'Real drifts {list_real_drifts}')
             windows, traces = framework.get_drifts_info(activity)
-            f_score = framework.evaluate(list_real_drifts, traces, window_size, framework.get_number_of_items())
-            print(f'IPDD f-score: {"{:.2f}".format(f_score)}')
-        return f'F-score: {"{:.2f}".format(f_score)}'
+            metrics_summary = framework.evaluate(list_real_drifts, traces, window_size, framework.get_number_of_items())
+            metric = []
+            for metric_name in metrics_summary.keys():
+                metric_print = f'{metric_name}: {"{:.2f}".format(metrics_summary[metric_name])}'
+                print(f'IPDD evaluated: {metric_print}')
+                metric.append(html.H5(metric_print))
+        return metric
     return ''

@@ -34,7 +34,7 @@ def selected_experiments():
         'DR_MS.xes',
         'Log_Paper_Lathe1.xes',
         'Log_Paper_Lathe2.xes',
-        'Log_Paper_Lathe3.xes'
+        'Log_Paper_Lathe3.xes',
     ]
     change_points = [
         [],
