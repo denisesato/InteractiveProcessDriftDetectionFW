@@ -131,7 +131,10 @@ class IPDDParametersAdaptive(IPDDParameters):
         super().__init__(logname, approach, read_log_as, metrics)
         self.attribute = attribute
         self.attribute_name = attribute_name
-        self.delta = delta
+        if delta:
+            self.delta = delta
+        else:  # default value
+            self.delta = 0.002
 
 
 def check_user_path(generic_path, user_id):
