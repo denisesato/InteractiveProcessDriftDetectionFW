@@ -12,12 +12,11 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 import os
-import dash_table
+from dash import dash_table
 import dash_bootstrap_components as dbc
-import dash_html_components as html
+from dash import html
 from dash.dependencies import Input, Output
-from app import app, get_user_id
-from app import framework
+from app import app, get_user_id, framework
 
 # configuring a navbar
 navbar = dbc.NavbarSimple(

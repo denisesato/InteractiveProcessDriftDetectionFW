@@ -29,9 +29,9 @@ class DiscoveryPn(Discovery):
 
     # mine the Petri Net from the sub-log
     # defined by the windowing strategy
-    def generate_process_model(self, sub_log, models_path, event_data_original_name, w_count):
+    def generate_process_model(self, sub_log, models_path, event_data_original_name, w_count, activity=''):
         # create the folder for saving the process map if does not exist
-        models_path = self.model_type_definitions.get_models_path(models_path, event_data_original_name)
+        models_path = self.model_type_definitions.get_models_path(models_path, event_data_original_name, activity)
         if not os.path.exists(models_path):
             os.makedirs(models_path)
 
@@ -45,18 +45,3 @@ class DiscoveryPn(Discovery):
         Source.save(gviz, filename=output_filename, directory=models_path)
         return PNModel(net, initial_marking, final_marking)
 
-    def get_process_model(self, models_path, log_name, window):
-        map_file = self.model_type_definitions.get_model_filename(log_name, window)
-        models_path = self.model_type_definitions.get_models_path(models_path, log_name)
-
-        if os.path.exists(os.path.join(models_path, map_file)):
-            gviz = Source.from_file(filename=map_file, directory=models_path)
-            return gviz.source
-
-        return """
-            digraph  {
-              node[style="filled"]
-              a ->b->d
-              a->c->d
-            }
-            """

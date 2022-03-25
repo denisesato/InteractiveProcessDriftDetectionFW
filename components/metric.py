@@ -51,7 +51,7 @@ class Metric(threading.Thread):
                 file.write(self.get_info().serialize())
                 file.write('\n')
             self.lock.release()
-            print(f'Saving [{self.metric_name}] for windows [{self.window}-{self.window - 1}]')
+            print(f'Saving [{self.metric_name}] comparing windows [{self.window-1}-{self.window}]')
         self.manager_similarity_metrics.increment_metrics_count()
         self.manager_similarity_metrics.check_finish()
 

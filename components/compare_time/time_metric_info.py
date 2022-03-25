@@ -11,7 +11,6 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-from json_tricks import dumps
 from components.metric_info import MetricInfo, AdditionalInfo
 
 
@@ -25,4 +24,5 @@ class TimeMetricInfo(MetricInfo):
 
     def set_activities(self, activities):
         self.include_complete_info(activities)
+        self.add_additional_info(AdditionalInfo('Activity with time difference', activities))
 

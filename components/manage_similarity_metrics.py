@@ -17,9 +17,7 @@ from threading import RLock, Thread
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
 
-
-# workaround for pygraphviz problem to release file handlers in windows
-# import win32file as wfile
+from components.parameters import Approach
 from components.pn_definitions import PnDefinitions
 
 
@@ -33,7 +31,8 @@ def threaded(fn):
 
 
 class ManageSimilarityMetrics:
-    def __init__(self, model_type, current_parameters, control, models_path, metrics_path):
+    def __init__(self, model_type, current_parameters, control, models_path, metrics_path,
+                 activity=''):
         print(f'**************************************************************************')
         print(f'*************** Similarity metrics calculation started *******************')
         print(f'**************************************************************************')
@@ -41,6 +40,7 @@ class ManageSimilarityMetrics:
         self.current_parameters = current_parameters
         self.final_window = 0
         self.metrics_count = 0
+        self.activity = activity
         self.control = control
         self.models_path = models_path
         self.model_type = model_type
@@ -57,6 +57,7 @@ class ManageSimilarityMetrics:
 
         # get the metrics selected by the user
         self.metrics_list = current_parameters.metrics
+
         # Create a locker for each metric to manage the access to the file where the information is saved
         self.locks = {}
         for m in self.metrics_list:
@@ -64,7 +65,10 @@ class ManageSimilarityMetrics:
 
         # Define the path for the metrics file
         # IPDD creates one file by each implemented metric
-        self.metrics_path = self.model_type_definitions.get_metrics_path(metrics_path, self.current_parameters.logname)
+        self.metrics_path = self.model_type_definitions.get_metrics_path(metrics_path,
+                                                              self.current_parameters.logname)
+        if activity != '':
+            self.metrics_path = os.path.join(self.metrics_path, activity)
         # Check if the folder already exists, and create it if not
         if not os.path.exists(self.metrics_path):
             os.makedirs(self.metrics_path)
@@ -74,12 +78,6 @@ class ManageSimilarityMetrics:
         self.running = False
         self.timeout = 60  # in seconds
         self.time_started = None
-
-        # workaround for pygraphviz problem - the library do not release file handlers
-        # in windows - this should be verified again
-        # change the maximum number of open files
-        # wfile._setmaxstdio(8196)
-        # print(f'NEW max open files: {[wfile._getmaxstdio()]}')
 
     # organize the file's structure for storing information about the
     # calculated metrics
@@ -102,18 +100,19 @@ class ManageSimilarityMetrics:
         print(f'Setting final window value {w}')
         self.final_window = w
 
-    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2):
+    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2, parameters, initial_trace=None):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
         # calculate the chosen metrics and save the values on the file
-        initial_trace = (current_window - 1) * self.current_parameters.winsize
-        self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2)
+        print(f'calculate_metrics - current window {current_window} - initial_trace = {initial_trace}')
+        self.calculate_configured_similarity_metrics(current_window, initial_trace, model1, model2, sublog1, sublog2,
+                                                     parameters)
 
-    def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2):
+    def calculate_configured_similarity_metrics(self, current_window, initial_trace, m1, m2, l1, l2, parameters):
         self.model_type_definitions.set_current_parameters(self.current_parameters)
         for metric_name in self.metrics_list:
-            print(f'Starting [{metric_name}] calculation between windows [{current_window}-{current_window-1}]')
+            print(f'Starting [{metric_name}] calculation between windows [{current_window - 1}-{current_window}]')
             metric = self.model_type_definitions.metrics_factory(metric_name, current_window,
-                                                                 initial_trace, metric_name, m1, m2, l1, l2)
+                                                                 initial_trace, metric_name, m1, m2, l1, l2, parameters)
 
             metric.set_saving_definitions(self.filenames[metric_name], self.current_parameters, self.locks[metric_name],
                                           self)
@@ -123,8 +122,12 @@ class ManageSimilarityMetrics:
         self.metrics_count += 1
 
     def check_finish(self):
-        print(f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
-        if self.final_window != 0 and self.metrics_count == (self.final_window * len(self.metrics_list)):
+        print(
+            f'check_finish - final_window {self.final_window} - metrics_count {self.metrics_count} - total de metricas {len(self.metrics_list)}')
+        # check for tumbling windows
+        if self.final_window != 0 and self.metrics_count == (
+                self.final_window * len(self.metrics_list)):
+        # if self.final_window != 0 and self.metrics_count == (self.final_window / 2 * len(self.metrics_list)): # for sliding windows
             self.finish()
 
     @threaded
@@ -155,8 +158,9 @@ class ManageSimilarityMetrics:
         self.running = False
         self.control.finish_metrics_calculation()
 
-    def get_window_candidates(self):
-        candidates = set()
+    def get_drifts_info(self):
+        windows = []
+        traces = []
         # avoiding errors when the process model does not have any similarity metric implemented yet
         if self.metrics_list:
             for m in self.metrics_list:
@@ -165,25 +169,41 @@ class ManageSimilarityMetrics:
                     for line in file:
                         metrics_info = loads(line, ignore_comments=True)
                         if metrics_info.is_dissimilar():
-                            candidates.add(metrics_info.window)
+                            # only include the window once
+                            if metrics_info.window not in windows:
+                                windows.append(metrics_info.window)
+                            # only include the trace once
+                            if metrics_info.initial_trace not in traces:
+                                traces.append(metrics_info.initial_trace)
                 self.locks[m].release()
-            filename = os.path.join(self.metrics_path, f'winsize_{self.current_parameters.winsize}_drift_windows.txt')
+
+            if self.current_parameters.approach == Approach.FIXED.name:
+                filename = os.path.join(self.metrics_path,
+                                        f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+                filename = os.path.join(self.metrics_path, f'adaptive_drift_windows.txt')
+            else:
+                print(f'Approach not defined {self.current_parameters.approach} - using default filename...')
+                filename = os.path.join(self.metrics_path, f'_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
             with open(filename, 'w+') as file_drift_windows:
-                file_drift_windows.write(str(candidates))
-        return candidates
+                file_drift_windows.write(str(windows))
+        return windows, traces
+
+    def get_info(self, m, window, metrics):
+        self.locks[m].acquire()
+        with open(self.filenames[m], "r") as file:
+            for line in file:
+                metric_read = loads(line, ignore_comments=True)
+                if metric_read.window == window and metric_read.is_dissimilar():
+                    metrics.append(metric_read)
+                    break
+        self.locks[m].release()
 
     def get_metrics_info(self, window):
         metrics = []
         # avoiding errors when the process model does not have any similarity metric implemented yet
         if self.metrics_list:
             for m in self.metrics_list:
-                self.locks[m].acquire()
-                with open(self.filenames[m], "r") as file:
-                    for line in file:
-                        metric_read = loads(line, ignore_comments=True)
-                        if metric_read.window == window and metric_read.is_dissimilar():
-                            metrics.append(metric_read)
-                            break
-                self.locks[m].release()
+                self.get_info(m, window, metrics)
         return metrics

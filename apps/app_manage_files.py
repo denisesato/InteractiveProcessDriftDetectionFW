@@ -13,10 +13,10 @@
 """
 import os
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output, State
-from app import app, get_user_id, framework, du
+from dash import dcc
+from dash import html
+from dash.dependencies import Output
+from app import du, get_user_id, framework
 
 # configuring a navbar
 navbar = dbc.NavbarSimple(
@@ -46,17 +46,9 @@ def get_layout():
     show_files_div = html.Div([
         html.H4('Loaded event logs.'),
         html.H5('Select the file you want to analyze:'),
+        html.Div(id='div-alerts', children=[]),
         html.Div(id='list-files', children=return_li_files()),
     ], className='mt-2')
-
-    main_card = [
-        dbc.CardBody(
-            [
-                div_instructions,
-                load_files_div,
-                show_files_div
-            ]),
-    ]
 
     # main layout of the page
     layout = [
@@ -64,7 +56,13 @@ def get_layout():
             dbc.Col(navbar, width=12)
         ]),
         dbc.Row([
-            dbc.Col(main_card, className='mt-2', width=12)
+            dbc.Col(
+                dbc.CardBody(
+                    [
+                        div_instructions,
+                        load_files_div,
+                        show_files_div
+                    ]), className='mt-2', width=12),
         ]),
     ]
 

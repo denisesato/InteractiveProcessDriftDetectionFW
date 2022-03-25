@@ -11,15 +11,11 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-import uuid
-
-import dash_core_components as dcc
-import dash_bootstrap_components as dbc
-import dash_html_components as html
-from dash.dependencies import Input, Output, State
-from flask import session
-
 from app import app
+from dash import dcc
+import dash_bootstrap_components as dbc
+from dash import html
+from dash.dependencies import Input, Output, State
 # from app import server  # needed for gunicorn
 from apps import app_manage_files, app_process_models, app_preview_file, app_initial
 
@@ -55,5 +51,5 @@ def display_page(pathname, search):
 
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', port=8050, threaded=True)
-    # app.run_server(debug=True)
+    # app.run_server(host='0.0.0.0', port=8050, threaded=True)
+    app.run_server(debug=True)
