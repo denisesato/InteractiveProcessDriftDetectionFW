@@ -429,6 +429,7 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_activity_plot_src(self, user, activity, attribute):
         filename = os.path.join(self.get_adaptive_path(user), self.current_log.filename,
+                                self.current_parameters.read_log_as, f'delta{self.current_parameters.delta}',
                                 f'{activity}_{attribute}.png')
         return filename
 
