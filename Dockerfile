@@ -5,6 +5,8 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get -y install graphviz-dev
 
+RUN pip install -U numpy
+
 COPY requirements.txt /
 RUN pip install -r /requirements.txt
 
