@@ -459,14 +459,15 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
 
         # save the sub-log
-        output_path = os.path.join(self.logs_path, self.current_parameters.logname, activity)
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-        if activity and activity != '':
-            output_filename = os.path.join(output_path, f'sublog_w{self.window_count[activity]}_{begin}_{end - 1}.xes')
-        else:
-            output_filename = os.path.join(output_path, f'sublog_w{self.window_count}_{begin}_{end - 1}.xes')
-        xes_exporter.apply(sub_log, output_filename)
+        # TODO create a parameter to save the sublogs
+        # output_path = os.path.join(self.logs_path, self.current_parameters.logname, activity)
+        # if not os.path.exists(output_path):
+        #     os.makedirs(output_path)
+        # if activity and activity != '':
+        #     output_filename = os.path.join(output_path, f'sublog_w{self.window_count[activity]}_{begin}_{end - 1}.xes')
+        # else:
+        #     output_filename = os.path.join(output_path, f'sublog_w{self.window_count}_{begin}_{end - 1}.xes')
+        # xes_exporter.apply(sub_log, output_filename)
 
         self.execute_processes_for_window(sub_log, begin, activity)
 

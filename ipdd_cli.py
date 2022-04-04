@@ -28,7 +28,7 @@ def main():
     framework = InteractiveProcessDriftDetectionFW(script=True)
 
     parser = argparse.ArgumentParser(description='IPDD FW command line')
-    parser.add_argument('--approach', '-a', help='Approach: f - fixed window or a - adaptive window', default='a')
+    parser.add_argument('--approach', '-a', help='Approach: f - fixed window or a - adaptive window', default='f')
     parser.add_argument('--read_as', '-wt', help='Read the log as: t - stream of traces or e - event stream',
                         default='t')
     parser.add_argument('--event_log', '-l', required=True,
@@ -42,11 +42,11 @@ def main():
     parser.add_argument('--metrics', '-mt', nargs='+',
                         help=f'Similarity Metrics: list of similarity metrics that IPDD should '
                              f'calculate. Possible options: {[m.name for m in framework.get_implemented_metrics()]}',
-                        default=['NODES'])
+                        default=['NODES', 'EDGES'])
     # options for fixed approach
     parser.add_argument('--win_unity', '-wu',
                         help='Window unity: u - amount of traces or events, h - hours, or d - days', default='u')
-    parser.add_argument('--win_size', '-wz', type=int, default=30,
+    parser.add_argument('--win_size', '-ws', type=int, default=30,
                         help='Window size: numeric value indicating the total of window unities for each window')
     # options for adaptive approach
     parser.add_argument('--attribute', '-at', help='Attribute for the change detector: st - sojourn time activity '
