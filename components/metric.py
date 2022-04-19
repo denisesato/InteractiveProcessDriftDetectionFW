@@ -33,7 +33,7 @@ class Metric(threading.Thread):
         return self.metric_info
 
     def get_complete_info(self):
-        return self.metric_info.get_complete_info()
+        return self.metric_info.get_extra_info()
 
     def is_dissimilar(self):
         pass

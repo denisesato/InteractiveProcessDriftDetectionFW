@@ -198,12 +198,6 @@ class InteractiveProcessDriftDetectionFW:
         self.adaptive_path = os.path.join('data', 'adaptive')
         self.evaluation_path = os.path.join('data', 'evaluation')
 
-        # workaround for pygraphviz problem - the library do not release file handlers
-        # in windows - this should be verified again
-        # change the maximum number of open files
-        # import win32file as wfile
-        # wfile._setmaxstdio(4096)
-
     # return the activities where a drift was detected in the last run
     def get_activities_with_drifts(self):
         return self.activities
@@ -319,20 +313,20 @@ class InteractiveProcessDriftDetectionFW:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
             evaluation_path = os.path.join(self.get_evaluation_path(user_id),
-                                                parameters.logname, parameters.approach,
-                                                parameters.read_log_as,
-                                                f'win_{parameters.win_size}')
+                                           parameters.logname, parameters.approach,
+                                           parameters.read_log_as,
+                                           f'win_{parameters.win_size}')
         elif parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
             # only working for ADWIN parameters, TODO make it generic
             # output_path for saving plots, attribute values, change points, and evaluation metrics
             outputpath_adaptive = os.path.join(self.get_adaptive_path(user_id),
-                                                    parameters.logname, parameters.read_log_as,
-                                                    f'delta{parameters.delta}')
+                                               parameters.logname, parameters.read_log_as,
+                                               f'delta{parameters.delta}')
             evaluation_path = os.path.join(self.get_evaluation_path(user_id),
-                                                parameters.logname, parameters.approach,
-                                                f'delta{parameters.delta}')
+                                           parameters.logname, parameters.approach,
+                                           f'delta{parameters.delta}')
             if not os.path.exists(outputpath_adaptive):
                 os.makedirs(outputpath_adaptive)
         else:
@@ -385,10 +379,12 @@ class InteractiveProcessDriftDetectionFW:
         elif self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             return self.current_log.total_of_events
         else:
-            print(f'Parameter ReadLogAs not identified in ipdd_fw.get_number_of_items(): {self.current_parameters.read_log_as}')
+            print(
+                f'Parameter ReadLogAs not identified in ipdd_fw.get_number_of_items(): {self.current_parameters.read_log_as}')
 
     def evaluate(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
-        return self.manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts, error_tolerance, items, activity)
+        return self.manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts,
+                                                                            error_tolerance, items, activity)
 
     def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:

@@ -11,8 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-from json_tricks import dumps
-from components.metric_info import MetricInfo, AdditionalInfo
+from components.metric_info import MetricInfo, MetricAdditionalInfo
 
 
 class ControlFlowMetricInfo(MetricInfo):
@@ -21,8 +20,8 @@ class ControlFlowMetricInfo(MetricInfo):
 
     def set_diff_added(self, diff):
         if len(diff) > 0:
-            self.add_additional_info(AdditionalInfo('Added', diff))
+            self.add_additional_info(MetricAdditionalInfo('Added', diff))
 
     def set_diff_removed(self, diff):
         if len(diff) > 0:
-            self.add_additional_info(AdditionalInfo('Removed', diff))
+            self.add_additional_info(MetricAdditionalInfo('Removed', diff))

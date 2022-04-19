@@ -13,10 +13,7 @@
 """
 import os
 
-from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgEditDistanceMetric, \
-    DfgNodesSimilarityMetric
-from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric, WaitingTimeSimilarityMetric, \
-    SojournTimeSimilarityAdaptiveMetric
+from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgNodesSimilarityMetric
 from enum import Enum
 
 from components.parameters import Approach, AttributeAdaptive
@@ -25,14 +22,6 @@ from components.parameters import Approach, AttributeAdaptive
 class Metric(str, Enum):
     NODES = 'Nodes'
     EDGES = 'Edges'
-    # commented out because it costs too many processing time and the the nodes and edges
-    # similarity metrics combined allow the same analysis
-    # EDIT_DISTANCE = 'Edit distance'
-
-    # first approach using statistical hypothesis test between adjacent fixed windows
-    # not used anymore
-    # SOJOURN_TIME = 'Sojourn time'
-    # WAITING_TIME = 'Waiting time'
 
 
 class DfgDefinitions:
@@ -49,7 +38,7 @@ class DfgDefinitions:
         return Metric
 
     def get_default_metrics(self):
-        return [Metric.NODES]
+        return [Metric.NODES, Metric.EDGES]
 
     def get_model_filename(self, log_name, window):
         map_file = f'{self.models_path}_w{window}.gv'
@@ -88,20 +77,9 @@ class DfgDefinitions:
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            Metric.EDGES.value: DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2),
-            # Metric.EDIT_DISTANCE.value: DfgEditDistanceMetric(window, initial_trace, name, m1, m2),
-            Metric.NODES.value: DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2),
-            # Metric.SOJOURN_TIME.value: SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters),
-            # Metric.WAITING_TIME.value: WaitingTimeSimilarityMetric(window, initial_trace, name, l1, l2, parameters)
+            Metric.EDGES.value: DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
+            Metric.NODES.value: DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
         }
         return classes[metric_name]
 
-    # created for the first implementation of adaptive windowing
-    # not used anymore because when comparing attributes by activity it does not make sense anymore
-    def adaptive_metrics_factory(self, metric_name, window, initial_trace, change_point, total_of_activities):
-        # define todas as métricas existentes para o tipo de modelo de processo
-        # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
-        classes = {
-            AttributeAdaptive.SOJOURN_TIME.name: SojournTimeSimilarityAdaptiveMetric(window, initial_trace, metric_name, change_point, total_of_activities),
-        }
-        return classes[metric_name]
+

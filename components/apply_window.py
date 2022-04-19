@@ -492,8 +492,7 @@ class AnalyzeDrift:
 
         # calculate the similarity metrics between consecutive windows
         if window > 1:
-            metrics.calculate_metrics(window, previous_sub_log, sub_log, previous_model,
-                                      model, self.current_parameters, initial_trace_index)
+            metrics.calculate_metrics(window, previous_model, model, previous_sub_log, sub_log, self.current_parameters, initial_trace_index)
 
         if activity:
             # save the current model and sub_log for the next window

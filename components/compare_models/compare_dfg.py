@@ -12,9 +12,8 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 import threading
-import networkx as nx
+from pm4py.algo.filtering.log.attributes import attributes_filter
 from components.compare_models.controlflow_metric import ControlFlowMetric
-import pygraphviz as pgv
 
 
 def threaded(fn):
@@ -26,127 +25,40 @@ def threaded(fn):
     return wrapper
 
 
-class DfgMetricUtil:
-    # convert the graphviz object (model generated using Pm4Py DFG) into pygraphviz Agraph
-    # then conver to networkx agraph for using network functions
-    @staticmethod
-    def get_nxgraph_from_gviz(gviz):
-        graph = pgv.AGraph(gviz.source)
-        nxgraph = nx.nx_agraph.from_agraph(graph)
-        return nxgraph
-
-    # remove frequency information from activity name, returning a new process map
-    @staticmethod
-    def remove_frequencies_from_labels(g):
-        # remove frequency information from labels
-        mapping = {}
-        for node in g.nodes.data():
-            old_label = node[1]['label']
-            new_label = old_label.partition('(')[0]
-            mapping[node[0]] = new_label
-        g_new = nx.relabel_nodes(g, mapping)
-        return g_new
-
-    # remove nodes not existent in both process maps
-    @staticmethod
-    def remove_different_nodes(g1, g2, diff_nodes):
-        for node in diff_nodes:
-            if node in g1.nodes:
-                g1.remove_node(node)
-            if node in g2.nodes:
-                g2.remove_node(node)
-        return g1, g2
-
-    # return the set of labels (activity names) without frequency
-    @staticmethod
-    def get_labels(g):
-        nodes_g = [n[1]['label'] for n in g.nodes.data()]
-        labels_g = [l.partition('(')[0] for l in nodes_g]
-        return labels_g
-
-
 class DfgNodesSimilarityMetric(ControlFlowMetric):
-    def __init__(self, window, trace, metric_name, model1, model2, convert=True):
-        if convert: # converting the graphviz object to networkx agraph
-            super().__init__(window, trace, metric_name, DfgMetricUtil.get_nxgraph_from_gviz(model1),
-                             DfgMetricUtil.get_nxgraph_from_gviz(model2))
-        else:
-            super().__init__(window, trace, metric_name, model1, model2)
+    def __init__(self, window, trace, metric_name, model1, model2, sublog1, sublog2):
+        super().__init__(window, trace, metric_name, model1, model2, sublog1, sublog2)
 
     def is_dissimilar(self):
         return self.value < 1
 
     def calculate(self):
-        labels_g1 = DfgMetricUtil.get_labels(self.model1)
-        labels_g2 = DfgMetricUtil.get_labels(self.model2)
+        # get the current nodes from the traces using the name of the activities
+        nodes_model1 = list(attributes_filter.get_attribute_values(self.sublog1, "concept:name").keys())
+        nodes_model2 = list(attributes_filter.get_attribute_values(self.sublog2, "concept:name").keys())
 
-        self.diff_removed = set(labels_g1).difference(set(labels_g2))
-        self.diff_added = set(labels_g2).difference(set(labels_g1))
+        self.diff_removed = set(nodes_model1).difference(set(nodes_model2))
+        self.diff_added = set(nodes_model2).difference(set(nodes_model1))
 
-        inter = set(labels_g1).intersection(set(labels_g2))
-        self.value = 2 * len(inter) / (len(labels_g1) + len(labels_g2))
-        return self.value, self.diff_added, self.diff_removed
-
-
-class DfgEditDistanceMetric(ControlFlowMetric):
-    def __init__(self, window, trace, metric_name, model1, model2):
-        super().__init__(window, trace, metric_name, DfgMetricUtil.get_nxgraph_from_gviz(model1),
-                         DfgMetricUtil.get_nxgraph_from_gviz(model2))
-
-    def is_dissimilar(self):
-        return self.value > 0
-
-    def calculate(self):
-        new_g1 = DfgMetricUtil.remove_frequencies_from_labels(self.model1)
-        new_g2 = DfgMetricUtil.remove_frequencies_from_labels(self.model2)
-
-        # option for setting the timeout in the nx library
-        # self.value = nx.graph_edit_distance(g1, g2, timeout=30)
-        self.value = nx.graph_edit_distance(new_g1, new_g2)
-        self.diff_added = set()
-        self.diff_removed = set()
+        inter = set(nodes_model1).intersection(set(nodes_model2))
+        self.value = 2 * len(inter) / (len(nodes_model1) + len(nodes_model2))
         return self.value, self.diff_added, self.diff_removed
 
 
 class DfgEdgesSimilarityMetric(ControlFlowMetric):
-    def __init__(self, window, trace, metric_name, model1, model2):
-        super().__init__(window, trace, metric_name, DfgMetricUtil.get_nxgraph_from_gviz(model1),
-                         DfgMetricUtil.get_nxgraph_from_gviz(model2))
+    def __init__(self, window, trace, metric_name, model1, model2, sublog1, sublog2):
+        super().__init__(window, trace, metric_name, model1, model2, sublog1, sublog2)
 
     def is_dissimilar(self):
         return self.value < 1
 
     def calculate(self):
-        new_g1 = DfgMetricUtil.remove_frequencies_from_labels(self.model1)
-        new_g2 = DfgMetricUtil.remove_frequencies_from_labels(self.model2)
+        edges1 = self.model1
+        edges2 = self.model2
 
-        # calulate the nodes similarity first
-        nodes_metric = DfgNodesSimilarityMetric(self.window, self.initial_trace, self.metric_name, self.model1,
-                                                self.model2, convert=False)
-        nodes_metric.calculate()
+        self.diff_removed = set(edges1).difference(set(edges2))
+        self.diff_added = set(edges2).difference(set(edges1))
 
-        # if the nodes similarity is different than 1
-        # IPDD removes the different nodes
-        # then it calculated the edges similarity metric
-        if nodes_metric.value < 1:
-            new_g1, new_g2 = DfgMetricUtil.remove_different_nodes(new_g1, new_g2,
-                                                                  set.union(nodes_metric.diff_added,
-                                                                            nodes_metric.diff_removed))
-        # get the different edges
-        self.diff_removed = set()
-        diff_removed = nx.difference(new_g1, new_g2)
-        for e in diff_removed.edges:
-            self.diff_removed.add(e)
-
-        self.diff_added = set()
-        diff_added = nx.difference(new_g2, new_g1)
-        for e in diff_added.edges:
-            self.diff_added.add(e)
-
-        # calculate the edges similarity metric
-        inter = set(new_g1.edges).intersection(set(new_g2.edges))
-        self.value = 2 * len(inter) / (len(new_g1.edges) + len(new_g2.edges))
+        inter = set(edges1).intersection(set(edges2))
+        self.value = 2 * len(inter) / (len(edges1) + len(edges2))
         return self.value, self.diff_added, self.diff_removed
-
-
-

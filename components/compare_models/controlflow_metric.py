@@ -16,12 +16,14 @@ from components.metric import Metric
 
 
 class ControlFlowMetric(Metric):
-    def __init__(self, window, trace, metric_name, model1, model2):
+    def __init__(self, window, trace, metric_name, model1, model2, sublog1, sublog2):
         super().__init__(window, metric_name)
         self.diff_added = set()
         self.diff_removed = set()
         self.model1 = model1
         self.model2 = model2
+        self.sublog1 = sublog1
+        self.sublog2 = sublog2
 
         self.initial_trace = trace
         self.metric_info = ControlFlowMetricInfo(window, trace, metric_name)

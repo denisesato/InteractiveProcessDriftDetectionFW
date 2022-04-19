@@ -13,15 +13,7 @@
 """
 import os
 from enum import Enum
-
-from components.compare_conformance.compare_conformance_pn import ConformanceSimilarityMetric
-from components.compare_time.compare_sojourn_time import SojournTimeSimilarityMetric
 from components.parameters import Approach
-
-
-class Metric(str, Enum):
-    CONFORMANCE = 'Conformance'
-    SOJOURN_TIME = 'Sojourn time similarity'
 
 
 class PnDefinitions:
@@ -47,29 +39,30 @@ class PnDefinitions:
     def get_models_path(self, generic_models_path, original_filename, activity):
         if self.current_parameters.approach == Approach.FIXED.name:
             models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
-                                           f'winsize_{self.current_parameters.win_size}')
+                                       f'winsize_{self.current_parameters.win_size}')
         elif self.current_parameters.approach == Approach.ADAPTIVE.name:
             models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
-                                           f'adaptive_{self.current_parameters.attribute}')
+                                       f'adaptive_{self.current_parameters.attribute}')
         else:
             print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
             models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity)
         return models_path
 
     def get_implemented_metrics(self):
-        return Metric
+        return []
 
     def get_default_metrics(self):
-        return [Metric.CONFORMANCE]
+        return []
 
     def metrics_factory(self, metric_name, window, initial_trace, name, m1, m2, l1, l2):
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
-        classes = {
-            Metric.SOJOURN_TIME.value: SojournTimeSimilarityMetric(window, initial_trace, name, l1, l2),
-            Metric.CONFORMANCE.value: ConformanceSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
-        }
-        return classes[metric_name]
+        # classes = {
+        #     Metric.PLACES.value: PlacesSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
+        #     Metric.TRANSITIONS.value: TransitionsSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
+        # }
+        # return classes[metric_name]
+        pass
 
 
 class PNModel:

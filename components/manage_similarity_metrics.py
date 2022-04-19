@@ -47,8 +47,6 @@ class ManageSimilarityMetrics:
 
         if self.model_type == 'dfg':
             self.model_type_definitions = DfgDefinitions()
-        elif self.model_type == 'pn':
-            self.model_type_definitions = PnDefinitions()
         else:
             print(f'Model type [{self.model_type}] does not have similarity metrics implemented.')
             self.finish()
@@ -100,7 +98,7 @@ class ManageSimilarityMetrics:
         print(f'Setting final window value {w}')
         self.final_window = w
 
-    def calculate_metrics(self, current_window, sublog1, sublog2, model1, model2, parameters, initial_trace=None):
+    def calculate_metrics(self, current_window, model1, model2, sublog1, sublog2, parameters, initial_trace=None):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
         # calculate the chosen metrics and save the values on the file
         print(f'calculate_metrics - current window {current_window} - initial_trace = {initial_trace}')

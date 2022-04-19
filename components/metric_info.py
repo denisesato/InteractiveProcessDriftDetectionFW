@@ -24,7 +24,7 @@ class MetricInfo:
         self.info = []
         # the complete info shows the p-value calculated for each activity
         # when statistical hypothesis test is applied (Sojourn Time Similarity)
-        self.complete_info = None
+        self.extra_info = None
 
     def add_additional_info(self, additional_info):
         self.info.append(additional_info)
@@ -45,11 +45,11 @@ class MetricInfo:
     def get_additional_info(self):
         return self.info
 
-    def include_complete_info(self, complete_info):
-        self.complete_info = complete_info
+    def include_extra_info(self, complete_info):
+        self.extra_info = complete_info
 
-    def get_complete_info(self):
-        return self.complete_info
+    def get_extra_info(self):
+        return self.extra_info
 
     def __str__(self):
         info = f'Metric name: {self.metric_name}\n'
@@ -57,12 +57,12 @@ class MetricInfo:
         info += f'Value: {self.value}\n'
         info += f'Is dissimilar: {self.dissimilar}\n'
         info += f'Additional info: {[info.get_status_info() for info in self.info]}\n'
-        if self.complete_info:
-            info += f'Complete info: {self.complete_info}'
+        if self.extra_info:
+            info += f'Extra info: {self.extra_info}'
         return info
 
 
-class AdditionalInfo:
+class MetricAdditionalInfo:
     def __init__(self, name, information_set):
         self.name = name
         self.information_set = information_set
