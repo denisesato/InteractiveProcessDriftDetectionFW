@@ -39,7 +39,7 @@ def get_layout():
 
         du.Upload(id='dash-uploader',
                   max_file_size=1800,  # 1800 Mb
-                  filetypes=['xes'],
+                  filetypes=['xes', 'xes.gz'],
                   upload_id=get_user_id()),
     ])
 
