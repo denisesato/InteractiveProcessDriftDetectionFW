@@ -127,10 +127,12 @@ class IPDDParametersFixed(IPDDParameters):
 
 
 class IPDDParametersAdaptive(IPDDParameters):
-    def __init__(self, logname, approach, read_log_as, metrics, attribute, attribute_name=None, delta=None):
+    def __init__(self, logname, approach, read_log_as, metrics, attribute, attribute_name=None, activities=[],
+                 delta=None):
         super().__init__(logname, approach, read_log_as, metrics)
         self.attribute = attribute
         self.attribute_name = attribute_name
+        self.activities = activities
         if delta:
             self.delta = delta
         else:  # default value
@@ -259,6 +261,7 @@ class InteractiveProcessDriftDetectionFW:
             variant = xes_importer.Variants.ITERPARSE
             parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
             self.current_log.log = xes_importer.apply(complete_filename, variant=variant, parameters=parameters)
+
             self.current_log.first_traces = log_converter.apply(EventLog(self.current_log.log[0:self.MAX_TRACES]),
                                                                 variant=log_converter.Variants.TO_DATA_FRAME)
 

@@ -53,6 +53,8 @@ def main():
                                                    'ot - other attribute; in this case specify attribute_name parameter',
                         default='st')
     parser.add_argument('--attribute_name', '-atname', help='Attribute name')
+    parser.add_argument('--activities', '-activities', nargs='+',
+                        help='Activities considered for getting the defined attribute', default=[])
     parser.add_argument('--delta', '-dt', help='Delta parameter - ADWIN change detector', type=float,
                         default=0.002)
 
@@ -90,6 +92,7 @@ def main():
             else:
                 print(f'You must define --attribute_name when using attribute OTHER')
                 return
+        activities = args.activities
 
     event_log = args.event_log
     real_drifts = args.real_drifts
@@ -116,6 +119,8 @@ def main():
         print(f'Attribute: {attribute}')
         if attribute == AttributeAdaptive.OTHER.name:
             print(f'Attribute name: {attribute_name}')
+            if len(activities) > 0:
+                print(f'Filtered activities: {activities}')
         print(f'Delta - ADWIN detector: {args.delta}')
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
@@ -130,7 +135,8 @@ def main():
         parameters = IPDDParametersFixed(event_log, approach, win_type, metrics, win_unity, win_size)
         framework.run(parameters, user_id='script')
     elif approach == Approach.ADAPTIVE.name:
-        parameters = IPDDParametersAdaptive(event_log, approach, win_type, metrics, attribute, attribute_name, args.delta)
+        parameters = IPDDParametersAdaptive(event_log, approach, win_type, metrics, attribute, attribute_name,
+                                            activities, args.delta)
         framework.run(parameters, user_id='script')
 
     running = framework.get_status_running()
@@ -151,7 +157,7 @@ def main():
         for activity in framework.get_activities_with_drifts():
             indexes = framework.initial_indexes[activity]
             detected_drifts[activity] = list(indexes.keys())[1:]
-            print(f'IPDD detect sojourn time drift for activity {activity} in indexes {detected_drifts}')
+            print(f'IPDD detect drifts for attribute {attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
             # get information about control-flow metrics
             windows, traces = framework.get_drifts_info(activity)
             if len(traces) > 0:

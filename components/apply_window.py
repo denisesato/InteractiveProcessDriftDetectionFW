@@ -13,11 +13,11 @@
 """
 import os
 from threading import Thread
-import numpy as np
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.objects.log.util import interval_lifecycle
+from pm4py.algo.filtering.log.attributes import attributes_filter
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
@@ -123,15 +123,30 @@ class AnalyzeDrift:
             self.previous_model = {}
 
         metrics_manager = None
+        # get all activities from the event log
+        activities = self.get_all_activities()
+
         if self.event_data is not None:
-            # get the activities
-            activities = self.get_all_activities()
             # call for the implementation of the different windowing strategies
             if self.current_parameters.approach == Approach.FIXED.name:
                 window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
                 # window_count, metrics_manager, initial_indexes = self.apply_sliding_window(event_data)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-                attribute_class = None
+                # the user may select the activities that contain the attribute
+                # for applying the detection (only available in the CLI interface by now)
+                selected_activities = self.current_parameters.activities
+                filter_activities = False
+                if len(selected_activities) > 0:  # the user select the activities to consider
+                    filter_activities = True
+                    for act in selected_activities:
+                        if act not in activities:
+                            print(
+                                f'Activity {act} not exist in the event log. Considering all activities for applying the detector..')
+                            filter_activities = False
+                # if the user do not define the activities or set any activity not existent, use all activities
+                if filter_activities:
+                    activities = selected_activities
+
                 if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
                     attribute_class = SelectAttribute.get_selected_attribute_class(
                         self.current_parameters.attribute,
@@ -139,6 +154,7 @@ class AnalyzeDrift:
                 else:
                     attribute_class = SelectAttribute.get_selected_attribute_class(
                         self.current_parameters.attribute)
+
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector(self.event_data,
                                         attribute_class,
@@ -291,8 +307,7 @@ class AnalyzeDrift:
 
     def get_all_activities(self):
         # get the activities
-        activities = [ev['concept:name'] for trace in self.current_log.log for ev in trace]
-        activities = np.unique(np.array(activities))
+        activities = attributes_filter.get_attribute_values(self.current_log.log, "concept:name")
         return activities
 
     def apply_detector(self, event_data, attribute_class, delta, activities, user):
@@ -332,7 +347,11 @@ class AnalyzeDrift:
             if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
                 for event in item:
                     activity = event['concept:name']
-                    value = attribute_class.get_value(event)
+                    try:
+                        value = attribute_class.get_value(event)
+                    except AttributeError as err:
+                        # print(f'Error getting the value of attribute: {err}')
+                        continue
                     attribute_values[activity][i] = value
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():

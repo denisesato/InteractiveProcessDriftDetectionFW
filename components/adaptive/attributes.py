@@ -72,4 +72,4 @@ class OtherAttribute:
             value = float(value_str)
             return value
         else:
-            print(f'Attribute name not found in attributes.OtherAttribute {self.column_name}')
+            raise AttributeError(f'Attribute {self.column_name} not found in event {event}')
