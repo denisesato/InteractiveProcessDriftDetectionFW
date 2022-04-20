@@ -18,23 +18,29 @@ The application will be accessible by any browser using the URL http://localhost
 72 event logs containing drifts are available for download at Business Process Drift dataset (https://data.4tu.nl/articles/dataset/Business_Process_Drift/12712436 - Reference http://eprints.qut.edu.au/83013/). 
 
 Steps for analyzing drifts using IPDD:
+
 1) Check if the event log is listed. If not, the user can drop an XES file, then IPDD will include it on the list.
+
 2) Select an XES file from the list. IPDD shows a preview of the event log. 
+
 3) Click on "Process Drift Analysis" to access the main page for drift analysis.
+
 3) On the main page, the user must define:
 
-a. Read as - the log can be read as: 
+   a. Read as - the log can be read as: 
+
      - Stream of traces: log is read trace by trace, sorting the traces based on the timestamp of the first event
      - Event stream: log is read event by event, based on their timestamps
 
-b. Window type - define how the windowing strategy will split the log 
+   b. Window type - define how the windowing strategy will split the log 
+
      - Traces/events: number of traces or events (depending on the windowing strategy's choice)
      - Days: number of days 
      - Hours: number of hours
      
-c. Window size - a numeric value indicating the size of the window
+   c. Window size - a numeric value indicating the size of the window
 
-4) Click on "Analyze Process Drifts" to start the drift analysis. 
+5) Click on "Analyze Process Drifts" to start the drift analysis. 
 
 IPDD will inform the user when it finishes to mine the models and calculate the similarity metrics.
 
