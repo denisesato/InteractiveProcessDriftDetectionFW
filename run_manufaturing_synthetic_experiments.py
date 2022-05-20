@@ -83,6 +83,29 @@ def selected_experiments():
         subprocess.run(f"ipdd_cli.py -a a -l {file} -at OTHER -atname Temperatura -d {delta} -rd {str_changepoints}",
                        shell=True)
 
+def one_experiment_for_testing():
+    folder = '"C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/LogsProducao/Artificiais/SelecionadosArtigo"'
+    log_name = [
+        'DR_MS.xes',
+    ]
+    change_points = [
+        [0, 26, 100, 148, 215],  # trace inicial e traces após a parada para manutenção
+    ]
+
+    for log, cps in zip(log_name, change_points):
+        file = os.path.join(folder, log)
+        deltas = [0.002, 0.05, 0.1, 0.3, 1]
+        for delta in deltas:
+            print(f'Executando experimento para o log {file} adaptativo SOJOURN TIME com delta {delta} ...')
+            str_changepoints = ""
+            if len(cps) == 0:
+                str_changepoints = '0'
+            else:
+                for change_point in cps:
+                    str_changepoints = f'{str_changepoints} {change_point}'
+            subprocess.run(f"ipdd_cli.py -a a -l {file} -d {delta} -rd {str_changepoints}", shell=True)
+
 
 if __name__ == '__main__':
-    selected_experiments()
+    # selected_experiments()
+    one_experiment_for_testing()
