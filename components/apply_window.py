@@ -21,6 +21,8 @@ from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
 from pm4py.algo.evaluation.replay_fitness import algorithm as replay_fitness_evaluator
+from pm4py.algo.discovery.footprints import algorithm as fp_discovery
+from pm4py.algo.conformance.footprints.util import evaluation
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
@@ -69,6 +71,14 @@ def calculate_quality_metric(metric_name, log, net, im, fm):
         return 0
 
 
+def calculate_quality_metric_footprints(metric_name, log, tree):
+    if metric_name == 'precisionFP':
+        fp_log = fp_discovery.apply(log, variant=fp_discovery.Variants.TRACE_BY_TRACE)
+        fp_tree = fp_discovery.apply(tree, variant=fp_discovery.Variants.PROCESS_TREE)
+        precision = evaluation.fp_precision(fp_log, fp_tree)
+        return precision
+
+
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
                  models_path, metrics_path, logs_path, current_log, discovery, user,
@@ -86,8 +96,8 @@ class AnalyzeDrift:
 
         # instance of the MetricsManager
         if current_parameters.approach == Approach.FIXED.name or \
-            (current_parameters.approach == Approach.ADAPTIVE.name and
-             current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name):
+                (current_parameters.approach == Approach.ADAPTIVE.name and
+                 current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name):
             self.metrics = None
         elif current_parameters.approach == Approach.ADAPTIVE.name:
             self.metrics = {}
@@ -211,9 +221,9 @@ class AnalyzeDrift:
                 # IPDD adaptive windowing approach
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector_on_quality_metrics_windowing(self.event_data,
-                                                                 self.current_parameters.delta,
-                                                                 self.current_parameters.win_size,
-                                                                 self.user)
+                                                                     self.current_parameters.delta,
+                                                                     self.current_parameters.win_size,
+                                                                     self.user)
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
 
@@ -525,20 +535,11 @@ class AnalyzeDrift:
         # initialize window count and case ids
         self.window_count = 0
         self.initial_case_ids = {}
-        final_case_ids = {}
-        initial_indexes = []
         initial_trace_id = 0
         final_trace_id = initial_trace_id + window_size
         total_of_traces = len(event_data)
         for i in range(0, total_of_traces):
             print(f'Reading trace [{i}]...')
-            # get the current case id
-            case_id = self.get_case_id(event_data[i])
-            # save the first case id as the beginning of the first window
-            if i == 0:
-                self.initial_case_ids[i] = case_id
-                initial_indexes.append(initial_trace_id)
-
             last_trace = EventLog(event_data[i:(i + 1)])
             # check if one of the metrics report a drift
             drift_detected = False
@@ -560,11 +561,12 @@ class AnalyzeDrift:
             if drift_detected:
                 # process new window
                 self.new_window(initial_trace_id, final_trace_id)
+                # get the  case id
+                case_id = self.get_case_id(event_data[initial_trace_id])
                 # save the initial of the processed window
-                self.initial_case_ids[i] = case_id
+                self.initial_case_ids[initial_trace_id] = case_id
                 # update the beginning of the next window
                 initial_trace_id = i
-                initial_indexes.append(initial_trace_id)
 
                 for dimension in metrics.keys():
                     # reset the detectors to avoid a new drift during the stable period
@@ -582,6 +584,27 @@ class AnalyzeDrift:
                 # net, im, fm = heuristics_miner.apply(log_for_model)
                 # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
                 # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
+        # process remaining items as the last window
+        if initial_trace_id < total_of_traces:
+            final_trace_id = initial_trace_id + window_size
+            if final_trace_id > total_of_traces:
+                final_trace_id = total_of_traces
+            print(
+                f'Analyzing final window... size {final_trace_id - initial_trace_id} window_count {self.window_count}')
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            # process final window for all activities where a drift has been detected
+            self.new_window(initial_trace_id, final_trace_id)
+            case_id = self.get_case_id(event_data[initial_trace_id])
+            self.initial_case_ids[initial_trace_id] = case_id
+        else:
+            # if no drift is detected, generate the complete model and the plot with attribute values for each activity
+            print(f'Analyzing unique window because no drift is detected...')
+            # process the unique window
+            case_id = self.get_case_id(event_data[initial_trace_id])
+            self.initial_case_ids[0] = case_id
+            self.new_window(initial_trace_id, window_size)
+
         all_drifts = []
         for dimension in metrics.keys():
             all_drifts += drifts[dimension]
@@ -593,12 +616,139 @@ class AnalyzeDrift:
         return self.window_count, self.metrics, self.initial_case_ids
 
     # IPDD adaptive windowing approach
-    def apply_detector_on_quality_metrics_windowing(self, event_data, delta, user):
-        print(f'Applying ADWIN to log {self.current_log.filename} delta {delta}')
-        # tenho que ver como retornar os final_case_ids
-        initial_case_ids = []
-        final_case_ids = []
-        return self.window_count, self.metrics, initial_case_ids, final_case_ids
+    def apply_detector_on_quality_metrics_windowing(self, event_data, delta, window_size, user):
+        print(f'Windowing approach - ADWIN to log {self.current_log.filename} delta {delta}')
+        metrics = {
+            QualityDimension.FITNESS.name: 'fitnessTBR',
+            QualityDimension.PRECISION.name: 'precisionFP'
+        }
+        total_of_traces = len(event_data)
+        # derive the model for evaluating the quality metrics
+        initial_trace_id_for_stable_period = 0
+        final_trace_id = initial_trace_id_for_stable_period + window_size
+        log_for_model = EventLog(event_data[initial_trace_id_for_stable_period:final_trace_id])
+        net, im, fm = inductive_miner.apply(log_for_model)
+        tree = inductive_miner.apply_tree(log_for_model)
+        print(f'Initial model discovered using traces [{initial_trace_id_for_stable_period}-{final_trace_id - 1}]')
+        # initialize similarity metrics manager
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
+        # initialize window count and case ids
+        self.window_count = 0
+        self.initial_case_ids = {}
+        values = dict.fromkeys(metrics)
+        adwin = dict.fromkeys(metrics)
+        drifts = dict.fromkeys(metrics)
+        for m in metrics.keys():
+            values[m] = []
+            if delta:
+                adwin[m] = ADWIN(delta=delta)
+            else:
+                adwin[m] = ADWIN()
+            drifts[m] = []
+
+        initial_trace_id = 0  # start of the window (change point)
+        for i in range(0, total_of_traces):
+            # print(f'Reading trace {i}')
+            current_trace = EventLog(event_data[i:i + 1])
+            if i == initial_trace_id_for_stable_period:
+                print(f'Setup phase - traces [{initial_trace_id_for_stable_period}-{initial_trace_id_for_stable_period + window_size - 1}]')
+                # initial of the stable period
+                # during the stable period we apply the same value for the metrics
+                # fitness - calculated using the initial trace of the stable period
+                # precision - calculated using all the traces inside the stable period
+                traces_stable_period = EventLog(event_data[initial_trace_id_for_stable_period:initial_trace_id_for_stable_period + window_size])
+                precision = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name],
+                                                                traces_stable_period,
+                                                                tree) * 100
+                fitness = calculate_quality_metric(metrics[QualityDimension.FITNESS.name], current_trace, net, im,
+                                                   fm) * 100
+            elif i >= initial_trace_id_for_stable_period + window_size:
+                print(f'Detection phase - reading trace {i}')
+                window = EventLog(event_data[i - window_size + 1:i + 1])
+                # after the stable period calculate the metrics after reading a new trace
+                precision = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name], window,
+                                                                tree) * 100
+                fitness = calculate_quality_metric(metrics[QualityDimension.FITNESS.name], current_trace, net, im,
+                                                   fm) * 100
+
+            values[QualityDimension.PRECISION.name].append(precision)
+            adwin[QualityDimension.PRECISION.name].add_element(precision)
+
+            values[QualityDimension.FITNESS.name].append(fitness)
+            adwin[QualityDimension.FITNESS.name].add_element(fitness)
+
+            drift_detected = False
+            change_point = 0
+            # check for drift in precision
+            if adwin[QualityDimension.PRECISION.name].detected_change():
+                # define the change point as the initial of the window
+                change_point = i - window_size + 1
+                drifts[QualityDimension.PRECISION.name].append(change_point)
+                print(f'Metric [{QualityDimension.PRECISION.value}] detected a drift in trace: {change_point}')
+                drift_detected = True
+            # check for drift in fitness
+            elif adwin[QualityDimension.FITNESS.name].detected_change():
+                change_point = i
+                drifts[QualityDimension.FITNESS.name].append(change_point)
+                print(f'Metric [{QualityDimension.FITNESS.value}] detected a drift in trace: {change_point}')
+                drift_detected = True
+
+            if drift_detected:
+                # process new window
+                final_trace_id = initial_trace_id + window_size
+                if final_trace_id > total_of_traces:
+                    final_trace_id = total_of_traces
+                self.new_window(initial_trace_id, final_trace_id)
+                # get the current case id
+                case_id = self.get_case_id(event_data[initial_trace_id])
+                # save the initial of the processed window
+                self.initial_case_ids[initial_trace_id] = case_id
+                # update the beginning of the next window
+                initial_trace_id_for_stable_period = i + 1
+                initial_trace_id = change_point
+                for m in metrics:
+                    # reset the detectors to avoid a new drift during the stable period
+                    adwin[m].reset()
+                # Discover a new model using window
+                log_for_model = EventLog(event_data[change_point:change_point + window_size])
+                net, im, fm = inductive_miner.apply(log_for_model)
+                tree = inductive_miner.apply_tree(log_for_model)
+                print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
+
+        # process remaining items as the last window
+        if initial_trace_id < total_of_traces:
+            final_trace_id = initial_trace_id + window_size
+            if final_trace_id > total_of_traces:
+                final_trace_id = total_of_traces
+            print(f'Analyzing final window... size {final_trace_id-initial_trace_id} window_count {self.window_count}')
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            # process final window for all activities where a drift has been detected
+            self.new_window(initial_trace_id, final_trace_id)
+            case_id = self.get_case_id(event_data[initial_trace_id])
+            self.initial_case_ids[initial_trace_id] = case_id
+        else:
+            # if no drift is detected, generate the complete model and the plot with attribute values for each activity
+            print(f'Analyzing unique window because no drift is detected...')
+            # process the unique window
+            case_id = self.get_case_id(event_data[initial_trace_id])
+            self.initial_case_ids[0] = case_id
+            self.new_window(initial_trace_id, window_size)
+
+        all_drifts = []
+        for m in metrics.keys():
+            all_drifts += drifts[m]
+            df = pd.DataFrame(values[m])
+        all_drifts = list(set(all_drifts))
+        all_drifts.sort()
+        # filename = f'{logname}_win{winsize}'
+        # if delta:
+        #     filename = f'{filename}_delta{delta}'
+        # save_plot(metrics, values, output_folder, filename, all_drifts)
+        # return all_drifts
+
+        return self.window_count, self.metrics, self.initial_case_ids
 
     def get_current_timestamp(self, item):
         timestamp_aux = None
