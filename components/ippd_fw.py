@@ -18,7 +18,7 @@ from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
-from components.parameters import Approach, ReadLogAs
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from threading import Thread
@@ -127,12 +127,26 @@ class IPDDParametersFixed(IPDDParameters):
 
 
 class IPDDParametersAdaptive(IPDDParameters):
-    def __init__(self, logname, approach, read_log_as, metrics, attribute, attribute_name=None, activities=[],
-                 delta=None):
+    def __init__(self, logname, approach, perspective, read_log_as, metrics, attribute,
+                 attribute_name=None, activities=[], delta=None):
         super().__init__(logname, approach, read_log_as, metrics)
+        self.perspective = perspective
         self.attribute = attribute
         self.attribute_name = attribute_name
         self.activities = activities
+        if delta:
+            self.delta = delta
+        else:  # default value
+            self.delta = 0.002
+
+
+class IPDDParametersAdaptiveControlflow(IPDDParameters):
+    def __init__(self, logname, approach, perspective, read_log_as, win_size, metrics,
+                 adaptive_controlflow_approach, delta=None):
+        super().__init__(logname, approach, read_log_as, metrics)
+        self.win_size = win_size
+        self.perspective = perspective
+        self.adaptive_controlflow_approach = adaptive_controlflow_approach
         if delta:
             self.delta = delta
         else:  # default value
@@ -213,15 +227,23 @@ class InteractiveProcessDriftDetectionFW:
             return self.current_parameters.approach
         return None
 
+    def get_adaptive_perpective(self):
+        if self.current_parameters:
+            return self.current_parameters.perspective
+        return None
+
     def get_first_activity(self):
         if len(self.activities) > 0:
             return self.activities[0]
         return ''
 
     def get_total_of_windows(self, activity=None):
-        if self.total_of_windows and self.get_approach() == Approach.ADAPTIVE.name and activity and activity != '':
+        if self.total_of_windows and self.get_approach() == Approach.ADAPTIVE.name and \
+                self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name and activity and activity != '':
             return self.total_of_windows[activity]
-        elif self.total_of_windows and self.get_approach() == Approach.FIXED.name:
+        elif self.total_of_windows and (self.get_approach() == Approach.FIXED.name or
+                                        (self.get_approach() == Approach.ADAPTIVE.name and
+                                         self.get_adaptive_perpective() == AdaptivePerspective.CONTROL_FLOW.name)):
             return self.total_of_windows
         else:
             return 0
@@ -350,7 +372,8 @@ class InteractiveProcessDriftDetectionFW:
                                self.get_metrics_path(user_id), self.get_logs_path(user_id),
                                self.current_log, self.discovery, user_id, outputpath_adaptive)
         self.total_of_windows, self.initial_indexes, self.all_activities = analyze.start_drift_analysis()
-        if parameters.approach == Approach.ADAPTIVE.name:
+        if parameters.approach == Approach.ADAPTIVE.name and \
+                parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
             print(f'Setting the activities with drifts: {self.activities}')
 
@@ -391,7 +414,7 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:
-            if activity:
+            if activity != '':
                 return list(self.initial_indexes[activity].keys())
             return list(self.initial_indexes.keys())
         return None
@@ -405,6 +428,9 @@ class InteractiveProcessDriftDetectionFW:
     def get_metrics_manager(self, activity=''):
         if self.get_approach() == Approach.ADAPTIVE.name and activity != '':
             return self.control.get_metrics_manager(activity)
+        elif self.get_approach() == Approach.ADAPTIVE.name and \
+                self.get_adaptive_perpective() == AdaptivePerspective.CONTROL_FLOW.name:
+            return self.control.get_metrics_manager()
         elif self.get_approach() == Approach.FIXED.name:
             return self.control.get_metrics_manager()
         else:
@@ -477,9 +503,12 @@ class InteractiveProcessDriftDetectionFW:
         return self.status_similarity_metrics
 
     def get_drifts_info(self, activity=''):
-        if self.get_approach() == Approach.ADAPTIVE.name and activity != '':
+        if self.get_approach() == Approach.ADAPTIVE.name and \
+                self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name and activity != '':
             return self.get_metrics_manager(activity).get_drifts_info()
-        elif self.get_approach() == Approach.FIXED.name:
+        elif self.get_approach() == Approach.FIXED.name or \
+                (self.get_approach() == Approach.ADAPTIVE.name and
+                 self.get_adaptive_perpective() == AdaptivePerspective.CONTROL_FLOW.name):
             return self.get_metrics_manager().get_drifts_info()
         else:
             print(f'Approach not identified {self.get_approach()} in self.get_approach()')

@@ -19,8 +19,10 @@ import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
 from app import app, get_user_id, framework, dash
 from components.adaptive.attributes import Activity
-from components.parameters import WindowUnityFixed, ReadLogAs, AttributeAdaptive, Approach
-from components.ippd_fw import IPDDProcessingStatus, IPDDParametersFixed, IPDDParametersAdaptive
+from components.parameters import WindowUnityFixed, ReadLogAs, AttributeAdaptive, Approach, AdaptivePerspective, \
+    ControlflowAdaptiveApproach
+from components.ippd_fw import IPDDProcessingStatus, IPDDParametersFixed, IPDDParametersAdaptive, \
+    IPDDParametersAdaptiveControlflow
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -131,31 +133,44 @@ parameters_panel = [
                                           for item in Approach],
                                  ),
                 ]),
+                # dbc.Col([
+                #     dbc.Label('Read the log as', width='auto'),
+                #     dcc.Dropdown(id='window-type',
+                #                  options=[{'label': item.value, 'value': item.name}
+                #                           for item in ReadLogAs],
+                #                  disabled=True),
+                # ]),
                 dbc.Col([
-                    dbc.Label('Read the log as', width='auto'),
-                    dcc.Dropdown(id='window-type',
+                    dbc.Label('Perspective', width='auto'),
+                    dcc.Dropdown(id='adaptive-perspective',
                                  options=[{'label': item.value, 'value': item.name}
-                                          for item in ReadLogAs],
-                                 disabled=True),
-                ]),
+                                          for item in AdaptivePerspective],
+                                 ),
+                ], id='col-perspective', style={'display': 'None'}),
                 dbc.Col([
                     dbc.Label('Attribute', width='auto'),
                     dcc.Dropdown(id='attribute',
                                  options=[{'label': item.value, 'value': item.name}
-                                          for item in AttributeAdaptive],
-                                 disabled=True),
+                                          for item in AttributeAdaptive]),
                 ], id='col-attribute', style={'display': 'None'}),
                 dbc.Col([
-                    dbc.Label('Split sub-logs based on', width='auto'),
-                    dcc.Dropdown(id='window-unity',
-                                 options=[],
-                                 disabled=True,
+                    dbc.Label('Adaptive approach', width='auto'),
+                    dcc.Dropdown(id='adaptive-controlflow-approach',
+                                 options=[{'label': item.value, 'value': item.name}
+                                          for item in ControlflowAdaptiveApproach],
                                  ),
-                ], id='col-window-unity', style={'display': 'none'}),
+                ], id='col-adaptive-controlflow-approach', style={'display': 'None'}),
+                # dbc.Col([
+                #     dbc.Label('Split sub-logs based on', width='auto'),
+                #     dcc.Dropdown(id='window-unity',
+                #                  options=[],
+                #                  disabled=True,
+                #                  ),
+                # ], id='col-window-unity', style={'display': 'none'}),
                 dbc.Col([
                     dbc.Label('Window size', width='auto'),
                     dbc.Input(id='input-window-size', type='number', min=1,
-                              placeholder='Size', disabled=True, value=30),
+                              placeholder='Size', value=30),
                     html.Div(id='window-size', style={'display': 'none'}),
                 ], id='col-window-size', style={'display': 'none'}),
                 dbc.Col(
@@ -303,80 +318,70 @@ def toggle_popover(n, is_open):
     return is_open
 
 
-@app.callback([Output('col-window-unity', 'style'),
-               Output('col-window-size', 'style'),  # next attribute for fixed approach
-               Output('col-attribute', 'style'),  # next attribute for adaptive approach
-               Output('col-extended_adaptive_options', 'style'), # extended attributes for adaptive approach
-               Output('window-type', 'disabled'),
-               Output('window-type', 'value')],  # read the log as
-              Input('approach', 'value'),
-              State('window-type', 'value'))
-def approach_selected(approach_value, read_log_as_value):
+@app.callback([Output('col-attribute', 'style'),  # next attribute for data/time perspective
+               Output('col-adaptive-controlflow-approach', 'style')],  # next attribute for control-flow perspective
+              Input('adaptive-perspective', 'value'))
+def adaptive_perspective_selected(perspective):
     show = {'display': 'block'}
     hide = {'display': 'none'}
-    # print(f'Chamou {approach_value} {window_unity_style} {window_size_style}')
+    print(f'adaptive_perspective_selected: {perspective}')
+    if perspective:
+        if perspective == AdaptivePerspective.TIME_DATA.name:
+            return show, hide
+        elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            return hide, show
+        else:
+            print(f'Invalid perspective for adaptive approach: {perspective}')
+            return hide, hide
+    else:  # first call
+        return hide, hide
+
+
+@app.callback([Output('col-window-size', 'style'),  # next attribute for all approaches
+               Output('col-perspective', 'style'),  # next attribute for adaptive approach
+               Output('col-extended_adaptive_options', 'style')],  # extended attributes for adaptive approach
+              Input('approach', 'value'))
+def approach_selected(approach_value):
+    show = {'display': 'block'}
+    hide = {'display': 'none'}
+    print(f'approach_selected: {approach_value}')
     if approach_value:
         if approach_value == Approach.FIXED.name:
-            return show, show, hide, hide, False, read_log_as_value
+            return show, hide, hide
         elif approach_value == Approach.ADAPTIVE.name:
-            return hide, hide, show, show, False, read_log_as_value
+            return show, show, show
         elif approach_value == '':
-            return hide, hide, hide, hide, True, ''
+            return hide, hide, hide
         else:
             print(f'Invalid approach type in app_process_models.approach_selected: {approach_value}')
-            return hide, hide, hide, hide, True, read_log_as_value
+            return hide, hide, hide
     else:  # first call
-        return hide, hide, hide, hide, True, read_log_as_value
+        return hide, hide, hide
 
 
-@app.callback([Output('window-unity', 'disabled'),
-               Output('input-window-size', 'disabled'),
-               Output('window-unity', 'options'),
-               Output('attribute', 'disabled'),
-               Output('mine_models_btn', 'disabled')],
-              [Input('window-type', 'value'),
-               Input('window-unity', 'value'),
-               Input('input-window-size', 'value'),
-               Input('attribute', 'value')],
-              State('approach', 'value')
+@app.callback(Output('mine_models_btn', 'disabled'),
+              [Input('input-window-size', 'value'),
+               Input('attribute', 'value'),
+               Input('adaptive-controlflow-approach', 'value')],
+              [State('approach', 'value'),
+               State('adaptive-perspective', 'value')]
               )
-def type_and_options_selected(read_log_as, unity_value, winsize, attribute, approach):
+def options_selected(winsize, attribute, adaptive_controlflow_approach, approach, adaptive_perspective):
     enable_mine_button = False
-    enable_window_unity = False
-    enable_window_size = False
-    enable_attribute = False
-    options = []
-
+    print(f'options_seleced {winsize} {attribute} {adaptive_controlflow_approach}')
     # check if the mine button should be enabled
-    if read_log_as:
-        if approach and approach == Approach.ADAPTIVE.name:
-            # check if the attribute should be enabled
-            if read_log_as:
-                enable_attribute = True
-
-                # check if the user fill attribute to enable mine button
-                if attribute:
-                    enable_mine_button = True
-        elif approach and approach == Approach.FIXED.name:
-            # if the user have selected FIXED window and type, fill the options for window unity
-            if approach and approach == Approach.FIXED.name and read_log_as:
-                for item in WindowUnityFixed:
-                    if item == WindowUnityFixed.UNITY:
-                        if read_log_as == ReadLogAs.TRACE.name:
-                            options.append({'label': 'Traces', 'value': item.name})
-                        elif read_log_as == ReadLogAs.EVENT.name:
-                            options.append({'label': 'Events', 'value': item.name})
-                    else:
-                        options.append({'label': item.value, 'value': item.name})
-                enable_window_unity = True
-            # check if the window size input should be enabled
-            if unity_value:
-                enable_window_size = True
-
-                # check if the user fill the window size to enable mine button
-                if winsize and winsize > 0:
-                    enable_mine_button = True
-    return not enable_window_unity, not enable_window_size, options, not enable_attribute, not enable_mine_button,
+    if approach and approach == Approach.ADAPTIVE.name:
+        if adaptive_perspective and adaptive_perspective == AdaptivePerspective.TIME_DATA.name:
+            # check if the user fill attribute to enable mine button
+            if attribute:
+                enable_mine_button = True
+        elif adaptive_perspective and adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            if adaptive_controlflow_approach and winsize and winsize > 0:
+                enable_mine_button = True
+    elif approach and approach == Approach.FIXED.name:
+        if winsize and winsize > 0:
+            enable_mine_button = True
+    return not enable_mine_button
 
 
 @app.callback([Output('check-ipdd-finished', 'disabled'),
@@ -419,14 +424,14 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
               [Input('mine_models_btn', 'n_clicks')],
               [State('approach', 'value'),
                State('input-window-size', 'value'),
-               State('window-type', 'value'),
-               State('window-unity', 'value'),
                State('attribute', 'value'),
                State('hidden-filename', 'children'),
                State('metrics', 'value'),
+               State('adaptive-perspective', 'value'),
+               State('adaptive-controlflow-approach', 'value'),
                State('input-delta', 'value')])
-def run_framework(n_clicks, approach, input_window_size, window_type, window_unity, attribute, file, metrics,
-                  deltaAdwin):
+def run_framework(n_clicks, approach, input_window_size, attribute, file, metrics,
+                  adaptive_perspective, adaptive_controlflow_approach, deltaAdwin):
     if n_clicks > 0:
         int_input_size = 0
         if input_window_size is not None:
@@ -435,14 +440,20 @@ def run_framework(n_clicks, approach, input_window_size, window_type, window_uni
             print(f'Running IPDD')
             user = get_user_id()
             if approach == Approach.FIXED.name:
-                parameters = IPDDParametersFixed(file, approach, window_type, metrics, window_unity, int_input_size)
+                parameters = IPDDParametersFixed(file, approach, ReadLogAs.TRACE.name, metrics,
+                                                 WindowUnityFixed.UNITY.name,
+                                                 int_input_size)
                 framework.run(parameters, user_id=user)
             elif approach == Approach.ADAPTIVE.name:
-                if deltaAdwin:
-                    parameters = IPDDParametersAdaptive(file, approach, window_type, metrics, attribute, deltaAdwin)
-                else:
-                    parameters = IPDDParametersAdaptive(file, approach, window_type, metrics, attribute)
-                framework.run(parameters, user_id=user)
+                if adaptive_perspective == AdaptivePerspective.TIME_DATA.name:
+                    parameters = IPDDParametersAdaptive(file, approach, adaptive_perspective, ReadLogAs.TRACE.name,
+                                                        metrics, attribute, deltaAdwin)
+                    framework.run(parameters, user_id=user)
+                elif adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                    parameters = IPDDParametersAdaptiveControlflow(file, approach, adaptive_perspective,
+                                                                   ReadLogAs.TRACE.name, int_input_size, metrics,
+                                                                   adaptive_controlflow_approach, deltaAdwin)
+                    framework.run(parameters, user_id=user)
             else:
                 print(f'Incorrect approach {approach}')
         print(f'Setting window-size value {input_window_size}, indicating IPDD starts the analysis')
@@ -489,15 +500,18 @@ def update_figure(window_value, activity, file):
                Output('activity_plot', 'src')],
               Input('activity', 'value'),
               State('attribute', 'value'),
-              State('approach', 'value'))
-def update_slider_and_plot(activity, attribute, approach):
+              State('approach', 'value'),
+              State('adaptive-perspective', 'value'))
+def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
     marks = {}
     max_slider = 0
     selected = -1
     plot = ''
     if approach:
         initial_indexes = None
-        if approach == Approach.FIXED.name:
+        if approach == Approach.FIXED.name or \
+                (approach == Approach.ADAPTIVE.name and
+                 adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name):
             initial_indexes = framework.get_initial_trace_indexes()
             last_window = framework.get_total_of_windows()
         elif approach == Approach.ADAPTIVE.name:
@@ -510,7 +524,9 @@ def update_slider_and_plot(activity, attribute, approach):
         if initial_indexes:
             selected = 0
             # get the number of windows generated and the windows reported as containing drifts
-            if approach == Approach.FIXED.name:
+            if approach == Approach.FIXED.name or \
+                    (approach == Approach.ADAPTIVE.name and
+                     adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name):
                 total_of_windows = framework.get_total_of_windows()
                 if total_of_windows > 1:
                     windows_with_drifts, traces = framework.get_drifts_info()
@@ -529,12 +545,15 @@ def update_slider_and_plot(activity, attribute, approach):
                     marks[w] = {'label': label, 'style': {'color': '#f50'}}
                 else:
                     marks[w] = {'label': label}
-            if approach == Approach.ADAPTIVE.name and activity and activity != '' and \
+            if approach == Approach.ADAPTIVE.name and \
+                    adaptive_perspective == AdaptivePerspective.TIME_DATA.name and \
+                    activity and activity != '' and \
                     activity != Activity.ALL.value and attribute:
                 plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
                 # print(f'Trying to show plot {plot_filename}')
                 encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
                 plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
+    # print(f'update_slider_and_plot: {marks} {max_slider}')
     return marks, max_slider, selected, plot
 
 
@@ -579,7 +598,8 @@ def update_status_and_drifts(n, div_status, activity, approach):
     if ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
         display_evaluation = {'display': 'block'}
 
-        if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name:
+        if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name and\
+                framework.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name:
             activities = [{'label': item, 'value': item} for item in framework.get_activities_with_drifts()]
             if len(activities) == 0:  # no drift is detected
                 first_activity = Activity.ALL.value

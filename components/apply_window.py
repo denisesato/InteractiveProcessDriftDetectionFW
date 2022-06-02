@@ -18,16 +18,20 @@ from pm4py.objects.log.obj import EventStream, EventLog
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.objects.log.util import interval_lifecycle
 from pm4py.algo.filtering.log.attributes import attributes_filter
+from pm4py.algo.discovery.inductive import algorithm as inductive_miner
+from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
+from pm4py.algo.evaluation.replay_fitness import algorithm as replay_fitness_evaluator
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
-from components.parameters import Approach, AttributeAdaptive
+from components.parameters import Approach, AttributeAdaptive, AdaptivePerspective, ControlflowAdaptiveApproach
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
 from components.parameters import ReadLogAs, WindowUnityFixed
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from enum import Enum
 
 
 def threaded(fn):
@@ -37,6 +41,32 @@ def threaded(fn):
         return thread
 
     return wrapper
+
+
+class QualityDimension(str, Enum):
+    FITNESS = 'fitness'
+    PRECISION = 'precision'
+
+
+def calculate_quality_metric(metric_name, log, net, im, fm):
+    if metric_name == 'precisionETC':
+        return precision_evaluator.apply(log, net, im, fm,
+                                         variant=precision_evaluator.Variants.ETCONFORMANCE_TOKEN)
+    elif metric_name == 'precisionAL':
+        precision = precision_evaluator.apply(log, net, im, fm,
+                                              variant=precision_evaluator.Variants.ALIGN_ETCONFORMANCE)
+        return precision
+    elif metric_name == 'fitnessTBR':
+        return replay_fitness_evaluator.apply(log, net, im, fm,
+                                              variant=replay_fitness_evaluator.Variants.TOKEN_BASED)[
+            'average_trace_fitness']
+    elif metric_name == 'fitnessAL':
+        fitness = replay_fitness_evaluator.apply(log, net, im, fm,
+                                                 variant=replay_fitness_evaluator.Variants.ALIGNMENT_BASED)
+        return fitness['average_trace_fitness']
+    else:
+        print(f'metric name not identified {metric_name} in calculate_metric')
+        return 0
 
 
 class AnalyzeDrift:
@@ -55,7 +85,9 @@ class AnalyzeDrift:
         self.model_type = model_type
 
         # instance of the MetricsManager
-        if current_parameters.approach == Approach.FIXED.name:
+        if current_parameters.approach == Approach.FIXED.name or \
+            (current_parameters.approach == Approach.ADAPTIVE.name and
+             current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name):
             self.metrics = None
         elif current_parameters.approach == Approach.ADAPTIVE.name:
             self.metrics = {}
@@ -100,7 +132,8 @@ class AnalyzeDrift:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
         if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute_name}.png')
+            filename = os.path.join(self.drifts_output_path,
+                                    f'{activity_name}_{self.current_parameters.attribute_name}.png')
         else:
             filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute}.png')
         plt.savefig(filename)
@@ -113,11 +146,14 @@ class AnalyzeDrift:
     # selected by the user and start the metrics calculation between
     # consecutive windows
     def start_drift_analysis(self):
-        if self.current_parameters.approach == Approach.FIXED.name:
+        if self.current_parameters.approach == Approach.FIXED.name or \
+                (self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                 self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name):
             self.window_count = 0
             self.previous_sub_log = None
             self.previous_model = None
-        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+        elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             self.window_count = {}
             self.previous_sub_log = {}
             self.previous_model = {}
@@ -131,7 +167,8 @@ class AnalyzeDrift:
             if self.current_parameters.approach == Approach.FIXED.name:
                 window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
                 # window_count, metrics_manager, initial_indexes = self.apply_sliding_window(event_data)
-            elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                    self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
                 # the user may select the activities that contain the attribute
                 # for applying the detection (only available in the CLI interface by now)
                 selected_activities = self.current_parameters.activities
@@ -146,22 +183,37 @@ class AnalyzeDrift:
                 # if the user do not define the activities or set any activity not existent, use all activities
                 if filter_activities:
                     activities = selected_activities
+                else:  # IPDD adaptive on time or data attributes
+                    if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+                        attribute_class = SelectAttribute.get_selected_attribute_class(
+                            self.current_parameters.attribute,
+                            self.current_parameters.attribute_name)
+                    else:
+                        attribute_class = SelectAttribute.get_selected_attribute_class(
+                            self.current_parameters.attribute)
 
-                if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-                    attribute_class = SelectAttribute.get_selected_attribute_class(
-                        self.current_parameters.attribute,
-                        self.current_parameters.attribute_name)
-                else:
-                    attribute_class = SelectAttribute.get_selected_attribute_class(
-                        self.current_parameters.attribute)
-
+                    window_count, metrics_manager, initial_indexes = \
+                        self.apply_detector_on_attribute(self.event_data,
+                                                         attribute_class,
+                                                         self.current_parameters.delta,
+                                                         activities,
+                                                         self.user)
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.CONTROL_FLOW_TRACE.name:
+                # IPDD adaptive trace by trace approach
                 window_count, metrics_manager, initial_indexes = \
-                    self.apply_detector(self.event_data,
-                                        attribute_class,
-                                        self.current_parameters.delta,
-                                        activities,
-                                        self.user)
-
+                    self.apply_detector_on_quality_metrics_trace_by_trace(self.event_data,
+                                                                          self.current_parameters.delta,
+                                                                          self.current_parameters.win_size,
+                                                                          self.user)
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.CONTROL_FLOW_WINDOW.name:
+                # IPDD adaptive windowing approach
+                window_count, metrics_manager, initial_indexes = \
+                    self.apply_detector_on_quality_metrics_windowing(self.event_data,
+                                                                 self.current_parameters.delta,
+                                                                 self.current_parameters.win_size,
+                                                                 self.user)
             else:
                 print(f'Incorrect approach: {self.current_parameters.approach}')
 
@@ -183,7 +235,7 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.window_type}.')
         return case_id
 
-    # only for new trace or event
+    # Sliding window approach implemented for fixed window - NOT USED
     def apply_sliding_window(self, event_data):
         initial_indexes = {}
         # initialize similarity metrics manager
@@ -215,6 +267,7 @@ class AnalyzeDrift:
                                                        self.current_parameters.win_size)
         return self.window_count, self.metrics, initial_indexes
 
+    # windowing method for fixed window approach
     def apply_tumbling_window(self, event_data):
         initial_index = 0
         initial_indexes = {}
@@ -310,7 +363,8 @@ class AnalyzeDrift:
         activities = attributes_filter.get_attribute_values(self.current_log.log, "concept:name")
         return activities
 
-    def apply_detector(self, event_data, attribute_class, delta, activities, user):
+    # IPDD adaptive approach for time or data attributes
+    def apply_detector_on_attribute(self, event_data, attribute_class, delta, activities, user):
         print(f'Applying ADWIN to log {self.current_log.filename} attribute {attribute_class.name} delta {delta}')
         adwin = {}
         attribute_values = {}
@@ -374,7 +428,6 @@ class AnalyzeDrift:
                         # update the beginning of the next window
                         initial_index[activity] = i
             else:
-                print(f'Adaptive approach not implemented yet for EVENT STREAM')
                 # for each new event, collect the duration per activity
                 activity = item['concept:name']
                 value = attribute_class.get_value(item)
@@ -434,6 +487,118 @@ class AnalyzeDrift:
             self.window_count[Activity.ALL.value] = 0
             self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
         return self.window_count, self.metrics, initial_case_ids
+
+    # IPDD adaptive trace by trace approach
+    # Apply the ADWIN detector (scikit-multiflow) in two quality dimensions: fitness and precision
+    # The metrics for each dimension are defined by parameter metrics (dictionary)
+    # The metrics are calculated using the last trace read and the model generated using the first traces (stable_period)
+    # When a drift is detected a new model may be discovered using the next traces (stable_period)
+    # The process model is discovered using the inductive miner
+    def apply_detector_on_quality_metrics_trace_by_trace(self, event_data, delta, window_size, user):
+        print(f'Trace by trace approach - ADWIN to log {self.current_log.filename} delta {delta}')
+        # different metrics can be used for each dimension evaluated
+        # by now we expected one metric for fitness quality dimension and other for precision quality dimension
+        metrics = {
+            QualityDimension.FITNESS.name: 'fitnessTBR',
+            QualityDimension.PRECISION.name: 'precisionETC',
+        }
+        # derive the initial model using the parameter stable_period
+        print(f'Initial model discovered using traces from 0 to {window_size - 1}')
+        log_for_model = EventLog(event_data[0:window_size])
+        net, im, fm = inductive_miner.apply(log_for_model)
+        # other discovery algorithms can be applied
+        # net, im, fm = heuristics_miner.apply(log_for_model)
+        # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
+        # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
+        adwin_detection = {}
+        drifts = {}
+        values = {}
+        for dimension in metrics.keys():
+            # instantiate one detector for each evaluated dimension (fitness and precision)
+            adwin_detection[dimension] = ADWIN(delta=self.current_parameters.delta)
+            drifts[dimension] = []
+            values[dimension] = []
+
+        # initialize similarity metrics manager
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
+        # initialize window count and case ids
+        self.window_count = 0
+        self.initial_case_ids = {}
+        final_case_ids = {}
+        initial_indexes = []
+        initial_trace_id = 0
+        final_trace_id = initial_trace_id + window_size
+        total_of_traces = len(event_data)
+        for i in range(0, total_of_traces):
+            print(f'Reading trace [{i}]...')
+            # get the current case id
+            case_id = self.get_case_id(event_data[i])
+            # save the first case id as the beginning of the first window
+            if i == 0:
+                self.initial_case_ids[i] = case_id
+                initial_indexes.append(initial_trace_id)
+
+            last_trace = EventLog(event_data[i:(i + 1)])
+            # check if one of the metrics report a drift
+            drift_detected = False
+            for dimension in metrics.keys():
+                # calculate the metric for each dimension
+                # for each dimension decide if the metric should be calculated using only the last trace read or all
+                # the traces read since the last drift
+                new_value = calculate_quality_metric(metrics[dimension], last_trace, net, im, fm) * 100
+                values[dimension].append(new_value)
+                # update the new value in the detector
+                adwin_detection[dimension].add_element(new_value)
+                if adwin_detection[dimension].detected_change():
+                    # drift detected, save it
+                    drifts[dimension].append(i)
+                    print(f'Metric [{dimension}] - Drift detected at trace {i}')
+                    drift_detected = True
+
+            # if at least one metric report a drift a new model is discovered
+            if drift_detected:
+                # process new window
+                self.new_window(initial_trace_id, final_trace_id)
+                # save the initial of the processed window
+                self.initial_case_ids[i] = case_id
+                # update the beginning of the next window
+                initial_trace_id = i
+                initial_indexes.append(initial_trace_id)
+
+                for dimension in metrics.keys():
+                    # reset the detectors to avoid a new drift during the stable period
+                    adwin_detection[dimension].reset()
+
+                # discover a new model using the next traces (window_size)
+                final_trace_id = i + window_size
+                if final_trace_id > total_of_traces:
+                    final_trace_id = total_of_traces
+
+                print(f'Discover a new model using traces from {i} to {final_trace_id - 1}')
+                log_for_model = EventLog(event_data[i:final_trace_id])
+                net, im, fm = inductive_miner.apply(log_for_model)
+                # other discovery algorithms can be applied
+                # net, im, fm = heuristics_miner.apply(log_for_model)
+                # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
+                # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
+        all_drifts = []
+        for dimension in metrics.keys():
+            all_drifts += drifts[dimension]
+            df = pd.DataFrame(values[dimension])
+        all_drifts = list(set(all_drifts))
+        all_drifts.sort()
+        # save_plot(metrics, values, output_folder, f'{logname}_d{delta}_w{window_size}', all_drifts)
+        # return all_drifts
+        return self.window_count, self.metrics, self.initial_case_ids
+
+    # IPDD adaptive windowing approach
+    def apply_detector_on_quality_metrics_windowing(self, event_data, delta, user):
+        print(f'Applying ADWIN to log {self.current_log.filename} delta {delta}')
+        # tenho que ver como retornar os final_case_ids
+        initial_case_ids = []
+        final_case_ids = []
+        return self.window_count, self.metrics, initial_case_ids, final_case_ids
 
     def get_current_timestamp(self, item):
         timestamp_aux = None
@@ -511,7 +676,8 @@ class AnalyzeDrift:
 
         # calculate the similarity metrics between consecutive windows
         if window > 1:
-            metrics.calculate_metrics(window, previous_model, model, previous_sub_log, sub_log, self.current_parameters, initial_trace_index)
+            metrics.calculate_metrics(window, previous_model, model, previous_sub_log, sub_log, self.current_parameters,
+                                      initial_trace_index)
 
         if activity:
             # save the current model and sub_log for the next window

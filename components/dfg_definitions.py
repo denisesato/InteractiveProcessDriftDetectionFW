@@ -16,7 +16,7 @@ import os
 from components.compare_models.compare_dfg import DfgEdgesSimilarityMetric, DfgNodesSimilarityMetric
 from enum import Enum
 
-from components.parameters import Approach, AttributeAdaptive
+from components.parameters import Approach, AttributeAdaptive, AdaptivePerspective
 
 
 class Metric(str, Enum):
@@ -48,7 +48,10 @@ class DfgDefinitions:
         if current_parameters.approach == Approach.FIXED.name:
             filename = f'{metric_name}_winsize_{current_parameters.win_size}.txt'
         elif current_parameters.approach == Approach.ADAPTIVE.name:
-            filename = f'{metric_name}_adaptive_{current_parameters.attribute}.txt'
+            if current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+                filename = f'{metric_name}_adaptive_{current_parameters.attribute}.txt'
+            if current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                filename = f'{metric_name}_adaptive_{current_parameters.win_size}.txt'
         else:
             print(f'Incorrect approach: {current_parameters.approach} - using default name')
             filename = f'{metric_name}.txt'
@@ -63,8 +66,12 @@ class DfgDefinitions:
             dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
                                            f'winsize_{self.current_parameters.win_size}')
         elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-            dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
-                                           f'adaptive_{self.current_parameters.attribute}')
+            if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+                dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
+                                               f'adaptive_{self.current_parameters.attribute}')
+            if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
+                                               f'adaptive_{self.current_parameters.win_size}')
         else:
             print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
             dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity)
