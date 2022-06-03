@@ -13,9 +13,8 @@
 """
 import os
 import pm4py
-from graphviz import Source
 from pm4py.visualization.dfg import visualizer as dfg_visualization
-from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
+from pm4py.algo.filtering.dfg import dfg_filtering
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery import Discovery
 
@@ -36,10 +35,14 @@ class DiscoveryDfg(Discovery):
             os.makedirs(models_path)
 
         # mine the DFG (using Pm4Py)
-        dfg, start_activities, end_activities = pm4py.discover_directly_follows_graph(sub_log)
-        parameters = {dfg_visualization.Variants.FREQUENCY.value.Parameters.START_ACTIVITIES: start_activities,
-                      dfg_visualization.Variants.FREQUENCY.value.Parameters.END_ACTIVITIES: end_activities}
+        dfg, sa, ea = pm4py.discover_directly_follows_graph(sub_log)
+        activities_count = pm4py.get_attribute_values(sub_log, "concept:name")
+        parameters = {dfg_visualization.Variants.FREQUENCY.value.Parameters.START_ACTIVITIES: sa,
+                      dfg_visualization.Variants.FREQUENCY.value.Parameters.END_ACTIVITIES: ea}
+        # testing
+        # dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea, activities_count, 0.6)
         gviz = dfg_visualization.apply(dfg, log=sub_log, parameters=parameters)
+
         # dfg = dfg_discovery.apply(sub_log, variant=dfg_discovery.Variants.PERFORMANCE)
         # gviz = dfg_visualization.apply(dfg, log=sub_log, variant=dfg_visualization.Variants.PERFORMANCE)
 

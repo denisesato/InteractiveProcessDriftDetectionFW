@@ -74,7 +74,7 @@ class ManageSimilarityMetrics:
         self.filenames = {}
         self.verify_files()
         self.running = False
-        self.timeout = 60  # in seconds
+        self.timeout = 180  # in seconds
         self.time_started = None
 
     # organize the file's structure for storing information about the
