@@ -175,13 +175,16 @@ class ManageSimilarityMetrics:
                                 traces.append(metrics_info.initial_trace)
                 self.locks[m].release()
 
-            if self.current_parameters.approach == Approach.FIXED.name:
+            if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
                 filename = os.path.join(self.metrics_path,
                                         f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
-            elif self.current_parameters.approach == Approach.ADAPTIVE.name:
+            elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
                 filename = os.path.join(self.metrics_path, f'adaptive_drift_windows.txt')
             else:
-                print(f'Approach not defined {self.current_parameters.approach} - using default filename...')
+                if not self.current_parameters:
+                    print(f'Current parameters not defined - using default filename...')
+                else:
+                    print(f'Approach not defined {self.current_parameters.approach} - using default filename...')
                 filename = os.path.join(self.metrics_path, f'_drift_windows.txt')
             print(f'Saving drift windows: {filename}')
             with open(filename, 'w+') as file_drift_windows:

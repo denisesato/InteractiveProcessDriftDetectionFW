@@ -318,45 +318,40 @@ def toggle_popover(n, is_open):
     return is_open
 
 
-@app.callback([Output('col-attribute', 'style'),  # next attribute for data/time perspective
-               Output('col-adaptive-controlflow-approach', 'style')],  # next attribute for control-flow perspective
-              Input('adaptive-perspective', 'value'))
-def adaptive_perspective_selected(perspective):
+@app.callback([Output('col-perspective', 'style'),  # attribute for adaptive approach
+               Output('col-adaptive-controlflow-approach', 'style'),  # attribute for adaptive control-flow perspective
+               Output('col-window-size', 'style'),  # attribute for fixed or adaptive control-flow perspective
+               Output('col-extended_adaptive_options', 'style'),  # extended attributes for adaptive approach
+               Output('col-attribute', 'style')],  # next attribute for adaptive data/time perspective
+              [Input('approach', 'value'),
+               Input('adaptive-perspective', 'value')])
+def approach_or_perspective_selected(approach_value, adaptive_perspective_value):
     show = {'display': 'block'}
     hide = {'display': 'none'}
-    print(f'adaptive_perspective_selected: {perspective}')
-    if perspective:
-        if perspective == AdaptivePerspective.TIME_DATA.name:
-            return show, hide
-        elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
-            return hide, show
-        else:
-            print(f'Invalid perspective for adaptive approach: {perspective}')
-            return hide, hide
-    else:  # first call
-        return hide, hide
-
-
-@app.callback([Output('col-window-size', 'style'),  # next attribute for all approaches
-               Output('col-perspective', 'style'),  # next attribute for adaptive approach
-               Output('col-extended_adaptive_options', 'style')],  # extended attributes for adaptive approach
-              Input('approach', 'value'))
-def approach_selected(approach_value):
-    show = {'display': 'block'}
-    hide = {'display': 'none'}
-    print(f'approach_selected: {approach_value}')
+    # print(f'approach_or_perspective_selected - approach: {approach_value} perspective: {adaptive_perspective_value}')
     if approach_value:
         if approach_value == Approach.FIXED.name:
-            return show, hide, hide
-        elif approach_value == Approach.ADAPTIVE.name:
-            return show, show, show
+            return hide, hide, show, hide, hide
+        elif approach_value == Approach.ADAPTIVE.name and (adaptive_perspective_value and
+                                                           adaptive_perspective_value == '' or
+                                                           not adaptive_perspective_value):
+            return show, hide, hide, show, hide
+        elif approach_value == Approach.ADAPTIVE.name and adaptive_perspective_value and \
+                adaptive_perspective_value != '':
+            if adaptive_perspective_value == AdaptivePerspective.TIME_DATA.name:
+                return show, hide, hide, show, show
+            elif adaptive_perspective_value == AdaptivePerspective.CONTROL_FLOW.name:
+                return show, show, show, show, hide
+            else:
+                print(f'Invalid perspective for adaptive approach: {adaptive_perspective_value}')
+                return show, hide, hide, hide, hide
         elif approach_value == '':
-            return hide, hide, hide
+            return hide, hide, hide, hide, hide
         else:
             print(f'Invalid approach type in app_process_models.approach_selected: {approach_value}')
-            return hide, hide, hide
+            return hide, hide, hide, hide
     else:  # first call
-        return hide, hide, hide
+        return hide, hide, hide, hide
 
 
 @app.callback(Output('mine_models_btn', 'disabled'),
@@ -366,9 +361,9 @@ def approach_selected(approach_value):
               [State('approach', 'value'),
                State('adaptive-perspective', 'value')]
               )
-def options_selected(winsize, attribute, adaptive_controlflow_approach, approach, adaptive_perspective):
+def last_option_selected(winsize, attribute, adaptive_controlflow_approach, approach, adaptive_perspective):
     enable_mine_button = False
-    print(f'options_seleced {winsize} {attribute} {adaptive_controlflow_approach}')
+    # print(f'options_selected {winsize} {attribute} {adaptive_controlflow_approach}')
     # check if the mine button should be enabled
     if approach and approach == Approach.ADAPTIVE.name:
         if adaptive_perspective and adaptive_perspective == AdaptivePerspective.TIME_DATA.name:
@@ -447,7 +442,7 @@ def run_framework(n_clicks, approach, input_window_size, attribute, file, metric
             elif approach == Approach.ADAPTIVE.name:
                 if adaptive_perspective == AdaptivePerspective.TIME_DATA.name:
                     parameters = IPDDParametersAdaptive(file, approach, adaptive_perspective, ReadLogAs.TRACE.name,
-                                                        metrics, attribute, deltaAdwin)
+                                                        metrics, attribute, delta=deltaAdwin)
                     framework.run(parameters, user_id=user)
                 elif adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name:
                     parameters = IPDDParametersAdaptiveControlflow(file, approach, adaptive_perspective,
@@ -598,7 +593,7 @@ def update_status_and_drifts(n, div_status, activity, approach):
     if ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
         display_evaluation = {'display': 'block'}
 
-        if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name and\
+        if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name and \
                 framework.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name:
             activities = [{'label': item, 'value': item} for item in framework.get_activities_with_drifts()]
             if len(activities) == 0:  # no drift is detected

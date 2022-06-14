@@ -62,18 +62,21 @@ class DfgDefinitions:
         return path
 
     def get_models_path(self, generic_models_path, original_filename, activity):
-        if self.current_parameters.approach == Approach.FIXED.name:
+        if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
             dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename,
                                            f'winsize_{self.current_parameters.win_size}')
-        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
-            if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+        elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
+            if self.current_parameters and self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
                 dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
                                                f'adaptive_{self.current_parameters.attribute}')
-            if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            if self.current_parameters and self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                 dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity,
                                                f'adaptive_{self.current_parameters.win_size}')
         else:
-            print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
+            if not self.current_parameters:
+                print(f'Parameters not set - using default name')
+            else:
+                print(f'Incorrect approach: {self.current_parameters.approach} - using default name')
             dfg_models_path = os.path.join(generic_models_path, self.models_path, original_filename, activity)
         return dfg_models_path
 

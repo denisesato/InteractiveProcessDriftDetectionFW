@@ -118,12 +118,24 @@ class IPDDParameters:
         self.metrics = metrics
         self.session_id = None
 
+    def print(self):
+        print(f'----- IPDD general parameters -----')
+        print(f'Logname: {self.logname}')
+        print(f'Approach: {self.approach}')
+        print(f'Read log as: {self.read_log_as}')
+        print(f'Similarity metrics: {self.metrics}')
+
 
 class IPDDParametersFixed(IPDDParameters):
     def __init__(self, logname, approach, read_log_as, metrics, winunity, winsize):
         super().__init__(logname, approach, read_log_as, metrics)
         self.win_unity = winunity
         self.win_size = winsize
+
+    def print(self):
+        print(f'----- IPDD fixed window for control-flow drifts - parameters -----')
+        print(f'Read log as: {self.win_unity}')
+        print(f'Window size: {self.win_size}')
 
 
 class IPDDParametersAdaptive(IPDDParameters):
@@ -139,6 +151,14 @@ class IPDDParametersAdaptive(IPDDParameters):
         else:  # default value
             self.delta = 0.002
 
+    def print(self):
+        print(f'----- Adaptive IPDD for time and data drifts - parameters ----- ')
+        print(f'Perspective: {self.perspective}')
+        print(f'Attribute name: {self.attribute_name}')
+        print(f'Attribute: {self.attribute}')
+        print(f'Activities: {self.activities}')
+        print(f'ADWIN delta: {self.delta}')
+
 
 class IPDDParametersAdaptiveControlflow(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, win_size, metrics,
@@ -151,6 +171,13 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
             self.delta = delta
         else:  # default value
             self.delta = 0.002
+
+    def print(self):
+        print(f'----- Adaptive IPDD for time and data drifts - parameters -----')
+        print(f'Perspective: {self.perspective}')
+        print(f'Approach: {self.adaptive_controlflow_approach}')
+        print(f'Window size: {self.win_size}')
+        print(f'ADWIN delta: {self.delta}')
 
 
 def check_user_path(generic_path, user_id):
@@ -302,6 +329,7 @@ class InteractiveProcessDriftDetectionFW:
 
     @threaded
     def run(self, parameters, user_id='script'):
+        parameters.print()
         self.user_id = user_id
         if not self.script:
             # clean data generated from previous runs
