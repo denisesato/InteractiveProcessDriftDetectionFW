@@ -372,16 +372,20 @@ class InteractiveProcessDriftDetectionFW:
         elif parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
-            # only working for ADWIN parameters, TODO make it generic
-            # output_path for saving plots, attribute values, change points, and evaluation metrics
-            outputpath_adaptive = os.path.join(self.get_adaptive_path(user_id),
+            # ADWIN adaptive path
+            # output_path for saving plots, attribute values, drift, and evaluation metrics
+            outputpath_adaptive_timeseries = os.path.join(self.get_adaptive_path(user_id),
+                                                     parameters.logname, parameters.read_log_as)
+            outputpath_adaptive_adwin = os.path.join(self.get_adaptive_path(user_id),
                                                parameters.logname, parameters.read_log_as,
                                                f'delta{parameters.delta}')
             evaluation_path = os.path.join(self.get_evaluation_path(user_id),
                                            parameters.logname, parameters.approach,
                                            f'delta{parameters.delta}')
-            if not os.path.exists(outputpath_adaptive):
-                os.makedirs(outputpath_adaptive)
+            if not os.path.exists(outputpath_adaptive_timeseries):
+                os.makedirs(outputpath_adaptive_timeseries)
+            if not os.path.exists(outputpath_adaptive_adwin):
+                os.makedirs(outputpath_adaptive_adwin)
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
 
@@ -398,7 +402,8 @@ class InteractiveProcessDriftDetectionFW:
         analyze = AnalyzeDrift(self.model_type, parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
                                self.get_metrics_path(user_id), self.get_logs_path(user_id),
-                               self.current_log, self.discovery, user_id, outputpath_adaptive)
+                               self.current_log, self.discovery, user_id, outputpath_adaptive_timeseries,
+                               outputpath_adaptive_adwin)
         self.total_of_windows, self.initial_indexes, self.all_activities = analyze.start_drift_analysis()
         if parameters.approach == Approach.ADAPTIVE.name and \
                 parameters.perspective == AdaptivePerspective.TIME_DATA.name:

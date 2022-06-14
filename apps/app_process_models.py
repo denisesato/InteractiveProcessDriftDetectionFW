@@ -29,7 +29,7 @@ navbar = dbc.NavbarSimple(
         dbc.NavItem(dbc.NavLink("Manage Files", href="/apps/app_manage_files")),
         dbc.NavItem(dbc.NavLink("About IPDD", href="/")),
     ],
-    brand="IPDD Framework - Analyzing Process Drifts",
+    brand="IPDD - Detecting and Analyzing Process Drifts",
     color="primary",
     dark=True,
 )
@@ -349,9 +349,9 @@ def approach_or_perspective_selected(approach_value, adaptive_perspective_value)
             return hide, hide, hide, hide, hide
         else:
             print(f'Invalid approach type in app_process_models.approach_selected: {approach_value}')
-            return hide, hide, hide, hide
+            return hide, hide, hide, hide, hide
     else:  # first call
-        return hide, hide, hide, hide
+        return hide, hide, hide, hide, hide
 
 
 @app.callback(Output('mine_models_btn', 'disabled'),

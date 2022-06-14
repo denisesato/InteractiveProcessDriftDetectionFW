@@ -82,7 +82,7 @@ def calculate_quality_metric_footprints(metric_name, log, tree):
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
                  models_path, metrics_path, logs_path, current_log, discovery, user,
-                 drifts_output_path):
+                 output_path_adaptive_timeseries, output_path_adaptive_adwin):
 
         self.current_parameters = current_parameters
         self.user = user
@@ -91,7 +91,8 @@ class AnalyzeDrift:
         self.models_path = models_path
         self.metrics_path = metrics_path
         self.logs_path = logs_path
-        self.drifts_output_path = drifts_output_path
+        self.output_path_adaptive_timeseries = output_path_adaptive_timeseries
+        self.output_path_adaptive_adwin = output_path_adaptive_adwin
         self.model_type = model_type
 
         # instance of the MetricsManager
@@ -120,8 +121,8 @@ class AnalyzeDrift:
         self.discovery = discovery
 
     # generate the plot with the attribute selected for a specific activity
-    # used for adaptive change detection in an activity attribute
-    def plot_signal(self, values_for_activity, activity_name, change_points=None):
+    # used for adaptive change detection in an activity attribute (time or data perspectives)
+    def plot_signal_adaptive_time_data(self, values_for_activity, activity_name, change_points=None):
         # save data and plot about the data
         df = pd.DataFrame([values_for_activity.keys(), values_for_activity.values()]).T
         df.columns = ['trace', 'value']
@@ -129,7 +130,7 @@ class AnalyzeDrift:
             filename_attributes = f'{activity_name}_{self.current_parameters.attribute_name}.csv'
         else:
             filename_attributes = f'{activity_name}_{self.current_parameters.attribute}.csv'
-        output_filename = os.path.join(self.drifts_output_path, filename_attributes)
+        output_filename = os.path.join(self.output_path_adaptive_timeseries, filename_attributes)
         df.to_csv(output_filename, index=False)
         sns.set_style("whitegrid")
         plot = sns.lineplot(data=df, x='trace', y='value')
@@ -142,15 +143,53 @@ class AnalyzeDrift:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
         if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            filename = os.path.join(self.drifts_output_path,
+            filename = os.path.join(self.output_path_adaptive_adwin,
                                     f'{activity_name}_{self.current_parameters.attribute_name}.png')
         else:
-            filename = os.path.join(self.drifts_output_path, f'{activity_name}_{self.current_parameters.attribute}.png')
+            filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}_{self.current_parameters.attribute}.png')
         plt.savefig(filename)
         print(f'Saving plot for activity [{activity_name}]')
         plt.close()
         plt.cla()
         plt.clf()
+
+    # generate the plot with the fitness and precision metrics and the drifts
+    # used for adaptive change detection in the control-flow perspective
+    def plot_signal_adaptive_controlflow(self, values, metrics, approach, drifts=None):
+        plt.style.use('seaborn-whitegrid')
+        plt.clf()
+        for metric in metrics.keys():
+            plt.plot(values[metric], label=metrics[metric])
+            no_values = len(values[metric])
+        gap = int(no_values * 0.1)
+        if gap == 0:  # less than 10 values
+            gap = 1
+        xpos = range(0, no_values + 1, gap)
+
+        # draw a line for each reported drift
+        indexes = [int(x) for x in drifts]
+        for d in indexes:
+            plt.axvline(x=d, label=d, color='k', linestyle=':')
+
+        if len(drifts) > 0:
+            plt.xlabel('Trace')
+        else:
+            plt.xlabel('Trace - no drifts detected')
+
+        plt.xticks(xpos, xpos, rotation=90)
+        plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left')
+        plt.ylabel(f'Metric value')
+        output_name = os.path.join(self.output_path_adaptive_adwin,
+                                   f'adaptive_controlflow_{approach}.png')
+
+        plt.title(f'Adaptive control-flow {approach}')
+        # save the plot
+        print(f'Saving plot for adaptive control-flow {approach} - {self.current_parameters.logname}')
+        plt.savefig(output_name, bbox_inches='tight')
+        # save the time series (fitness and precision)
+        for m in metrics.keys():
+            df = pd.DataFrame(values[m])
+            df.to_excel(os.path.join(self.output_path_adaptive_timeseries, f'{metrics[m]}.xlsx'))
 
     # generate all the process models based on the windowing strategy
     # selected by the user and start the metrics calculation between
@@ -472,12 +511,12 @@ class AnalyzeDrift:
                     self.metrics[a].set_final_window(self.window_count[a])
                     # process final window for all activities where a drift has been detected
                     self.new_window(initial_index[a], len(event_data), a)
-                self.plot_signal(attribute_values[a], a, change_points[a])
+                self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a])
             else:
-                self.plot_signal(attribute_values[a], a)
+                self.plot_signal_adaptive_time_data(attribute_values[a], a)
         if find_any_drift:
             # save the change points for the activity
-            filename = os.path.join(self.drifts_output_path, f'Change_points_{self.current_parameters.attribute}.txt')
+            filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{self.current_parameters.attribute}.txt')
             with open(filename, 'w+') as file:
                 for a in activities:
                     if len(change_points[a]) > 0:
@@ -489,7 +528,7 @@ class AnalyzeDrift:
             print(f'Analyzing unique window because no drift is detected...')
             # save the plot with attribute values for each activity
             for a in activities:
-                self.plot_signal(attribute_values[a], a)
+                self.plot_signal_adaptive_time_data(attribute_values[a], a)
             # process the unique window
             initial_index[Activity.ALL.value] = 0
             initial_case_ids[Activity.ALL.value] = {}
@@ -652,12 +691,14 @@ class AnalyzeDrift:
             # print(f'Reading trace {i}')
             current_trace = EventLog(event_data[i:i + 1])
             if i == initial_trace_id_for_stable_period:
-                print(f'Setup phase - traces [{initial_trace_id_for_stable_period}-{initial_trace_id_for_stable_period + window_size - 1}]')
+                print(
+                    f'Setup phase - traces [{initial_trace_id_for_stable_period}-{initial_trace_id_for_stable_period + window_size - 1}]')
                 # initial of the stable period
                 # during the stable period we apply the same value for the metrics
                 # fitness - calculated using the initial trace of the stable period
                 # precision - calculated using all the traces inside the stable period
-                traces_stable_period = EventLog(event_data[initial_trace_id_for_stable_period:initial_trace_id_for_stable_period + window_size])
+                traces_stable_period = EventLog(
+                    event_data[initial_trace_id_for_stable_period:initial_trace_id_for_stable_period + window_size])
                 precision = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name],
                                                                 traces_stable_period,
                                                                 tree) * 100
@@ -721,7 +762,8 @@ class AnalyzeDrift:
             final_trace_id = initial_trace_id + window_size
             if final_trace_id > total_of_traces:
                 final_trace_id = total_of_traces
-            print(f'Analyzing final window... size {final_trace_id-initial_trace_id} window_count {self.window_count}')
+            print(
+                f'Analyzing final window... size {final_trace_id - initial_trace_id} window_count {self.window_count}')
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
@@ -736,17 +778,14 @@ class AnalyzeDrift:
             self.initial_case_ids[0] = case_id
             self.new_window(initial_trace_id, window_size)
 
+        # join all detected drifts for the plot
         all_drifts = []
         for m in metrics.keys():
             all_drifts += drifts[m]
-            df = pd.DataFrame(values[m])
         all_drifts = list(set(all_drifts))
         all_drifts.sort()
-        # filename = f'{logname}_win{winsize}'
-        # if delta:
-        #     filename = f'{filename}_delta{delta}'
-        # save_plot(metrics, values, output_folder, filename, all_drifts)
-        # return all_drifts
+        # save plot and data
+        self.plot_signal_adaptive_controlflow(values, metrics, "windowing", all_drifts)
 
         return self.window_count, self.metrics, self.initial_case_ids
 

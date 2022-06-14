@@ -25,7 +25,7 @@ navbar = dbc.NavbarSimple(
         dbc.NavItem(dbc.NavLink("Manage Files", href="/apps/app_manage_files")),
         dbc.NavItem(dbc.NavLink("About IPDD", href="/")),
     ],
-    brand="IPDD Framework - Preview Selected File",
+    brand="IPDD - Preview Selected File",
     color="primary",
     dark=True,
 )

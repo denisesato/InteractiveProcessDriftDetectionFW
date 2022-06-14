@@ -19,7 +19,7 @@ navbar = dbc.NavbarSimple(
     children=[
         dbc.NavItem(dbc.NavLink("Start IPDD", href="/apps/app_manage_files")),
     ],
-    brand="IPDD Framework - Interactive Process Drift Detection Framework",
+    brand="IPDD - Interactive Process Drift Detection Framework",
     color="primary",
     dark=True,
 )
@@ -27,20 +27,15 @@ navbar = dbc.NavbarSimple(
 info_ipdd = [
     dbc.CardBody(
         [
-            html.H5("The Interactive Process Drift Detection (IPDD) Framework is a tool for process drift visual "
-                    "analysis.", className="card-text"),
-            html.H5(dbc.CardLink(children='Start IPDD here', href="/apps/app_manage_files"), className="card-text mt-3"),
-            html.H5("A process drift, also named concept drift, indicates the process changed while being "
-                    "analyzed (Process Mining Manifesto, 2011). ", className="card-text mt-4"),
-            html.H5("IPDD allows the detection of process drifts in the control-flow perspective of the process by "
-                    "applying similarity metrics between process models mined over time. ",
-                    className="card-text mt-3"),
-
-            html.H5(['Source code available at: ',
-                     dbc.CardLink(children='https://github.com/denisesato/InteractiveProcessDriftDetectionFW',
-                                  id='link-github',
-                                  href='https://github.com/denisesato/InteractiveProcessDriftDetectionFW')],
-                    className="card-text mt-4"),
+            html.H5("The Interactive Process Drift Detection (IPDD) Framework is a tool for process drift detection and"
+                    " analysis.", className="card-text"),
+            html.H5(dbc.CardLink(children='Click to start the Interactive Process Drift Detection',
+                                 href="/apps/app_manage_files"), className="card-text mt-3"),
+            # html.H5("A process drift, also named concept drift, indicates the process changed while being "
+            #         "analyzed (Process Mining Manifesto, 2011). ", className="card-text mt-4"),
+            # html.H5("IPDD allows the detection of process drifts in the control-flow perspective of the process by "
+            #         "applying similarity metrics between process models mined over time. ",
+            #         className="card-text mt-3"),
 
             html.Hr(),
             html.H4("Academic Publications", className="card-subtitle mt-4"),
@@ -48,8 +43,19 @@ info_ipdd = [
                     "framework architecture and the current implementation are available in the related publications.",
                     className="card-text mt-3"),
 
-            html.P(dbc.CardLink("Interactive Process Drift Detection Framework - ICAISC 2021", href="https://link.springer.com/chapter/10.1007/978-3-030-87897-9_18", target="_blank")),
-            html.P(dbc.CardLink("Interactive Process Drift Detection: A Framework for Visual Analysis of Process Drifts (Extended Abstract) - ICPM 2021", href="https://icpmconference.org/2021/wp-content/uploads/sites/5/2021/10/L-Interactive-Process-Drift-Detection-A-Framework-for-Visual-Analysis-of-Process-Drifts.pdf", target="_blank"))
+            html.P(dbc.CardLink("Interactive Process Drift Detection Framework - ICAISC 2021",
+                                href="https://link.springer.com/chapter/10.1007/978-3-030-87897-9_18",
+                                target="_blank")),
+            html.P(dbc.CardLink("Interactive Process Drift Detection: A Framework for Visual Analysis of Process "
+                                "Drifts (Extended Abstract) - ICPM 2021",
+                                href="https://icpmconference.org/2021/wp-content/uploads/sites/5/2021/10/L"
+                                     "-Interactive-Process-Drift-Detection-A-Framework-for-Visual-Analysis-of-Process"
+                                     "-Drifts.pdf", target="_blank")),
+            html.H5(['Source code available at: ',
+                     dbc.CardLink(children='https://github.com/denisesato/InteractiveProcessDriftDetectionFW',
+                                  id='link-github',
+                                  href='https://github.com/denisesato/InteractiveProcessDriftDetectionFW')],
+                    className="card-text mt-4"),
         ]
     )
 ]

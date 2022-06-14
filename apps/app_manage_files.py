@@ -23,7 +23,7 @@ navbar = dbc.NavbarSimple(
     children=[
         dbc.NavItem(dbc.NavLink("About IPDD", href="/")),
     ],
-    brand="IPDD Framework - Manage Event Logs",
+    brand="IPDD - Manage Event Logs",
     color="primary",
     dark=True,
 )
