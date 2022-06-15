@@ -7,8 +7,12 @@ This installation process was tested on a Windows 10 machine.
 After you cloned the git repository, you can install the dependencies using the requirements.txt file (using pip):
 pip install -r requirements.txt
 
+Because of the issue reported at https://github.com/scikit-multiflow/scikit-multiflow/issues/306 we updated the 
+scikit-multiflow and apply a local builded version. For installing the local version run:
+pip install scikit-multiflow-0.6.dev0.tar.gz
+
 # Docker installation
-It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt. In this case you don't need to change requirements.txt file. 
+It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt.  
 
 # Running the web interface
 You can start the IPDD web interface by running the file index.py.
@@ -25,24 +29,28 @@ Steps for analyzing drifts using IPDD:
 
 3) Click on "Process Drift Analysis" to access the main page for drift analysis.
 
-3) On the main page, the user must define:
+4) On the main page, the user must define:
 
-   a. Read as - the log can be read as: 
+   1) Approach:
+   - Fixed: detect drifts in the control-flow perspective using a fixed sliding window
+   - Adaptive: detect drifts in the time, data and control-flow perspectives applying the ADWIN change detector
 
-     - Stream of traces: log is read trace by trace, sorting the traces based on the timestamp of the first event
-     - Event stream: log is read event by event, based on their timestamps
+   2) Paramaters for Fixed approach:
+   - Window size - a numeric value indicating the size of the window in traces 
 
-   b. Window type - define how the windowing strategy will split the log 
+   3) Paramaters for Adaptive approach:
+   - Perspective: select between Time/Data or Control-flow
+     - Time/Data: 
+       - Select the time or data attribute 
+       - You can change the ADWIN delta parameter by clicking on the "+"
+     - Control-flow: 
+       - Select between the two approaches: Trace by trace or Windowing 
+       - You can change the ADWIN delta parameter by clicking on the "+"
+       - Define the Window size in number of traces 
 
-     - Traces/events: number of traces or events (depending on the windowing strategy's choice)
-     - Days: number of days 
-     - Hours: number of hours
-     
-   c. Window size - a numeric value indicating the size of the window
+7) Click on "Analyze Process Drifts" to start the drift analysis. 
 
-5) Click on "Analyze Process Drifts" to start the drift analysis. 
-
-IPDD will inform the user when it finishes to mine the models and calculate the similarity metrics.
+IPDD will inform the user when it finishes mining the models and calculating the similarity metrics.
 
 After analyzing the process drifts, the user can navigate between windows to check the process models and the similarity metrics, visualing the drifts. The windows are named using the number of the window and the trace index of the first trace considered inside the window.
 
