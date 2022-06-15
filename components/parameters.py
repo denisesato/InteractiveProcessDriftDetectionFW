@@ -31,3 +31,26 @@ class ControlflowAdaptiveApproach(str, Enum):
 class Approach(str, Enum):
     FIXED = 'Fixed'
     ADAPTIVE = 'Adaptive'
+
+
+def get_value_of_parameter(name):
+    if name == ControlflowAdaptiveApproach.CONTROL_FLOW_TRACE.name:
+        return ControlflowAdaptiveApproach.CONTROL_FLOW_TRACE.value
+    elif name == ControlflowAdaptiveApproach.CONTROL_FLOW_WINDOW.name:
+        return ControlflowAdaptiveApproach.CONTROL_FLOW_WINDOW.value
+    elif name == Approach.ADAPTIVE.name:
+        return Approach.ADAPTIVE.value
+    elif name == Approach.FIXED.name:
+        return Approach.FIXED.value
+    elif name == AdaptivePerspective.CONTROL_FLOW.name:
+        return AdaptivePerspective.CONTROL_FLOW.value
+    elif name == AdaptivePerspective.TIME_DATA.name:
+        return AdaptivePerspective.TIME_DATA.value
+    elif name == AttributeAdaptive.SOJOURN_TIME.name:
+        return AttributeAdaptive.SOJOURN_TIME.value
+    elif name == AttributeAdaptive.WAITING_TIME.name:
+        return AttributeAdaptive.WAITING_TIME.value
+    elif name == AttributeAdaptive.OTHER.name:
+        return AttributeAdaptive.OTHER.value
+    else:
+        return "Parameter not recognized"

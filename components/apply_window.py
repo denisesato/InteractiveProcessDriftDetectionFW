@@ -26,7 +26,8 @@ from pm4py.algo.conformance.footprints.util import evaluation
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
-from components.parameters import Approach, AttributeAdaptive, AdaptivePerspective, ControlflowAdaptiveApproach
+from components.parameters import Approach, AttributeAdaptive, AdaptivePerspective, ControlflowAdaptiveApproach, \
+    get_value_of_parameter
 from components.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
 from components.parameters import ReadLogAs, WindowUnityFixed
@@ -135,9 +136,9 @@ class AnalyzeDrift:
         sns.set_style("whitegrid")
         plot = sns.lineplot(data=df, x='trace', y='value')
         if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            plot.set_ylabel(f'Activity {activity_name} - {self.current_parameters.attribute_name}')
+            plot.set_ylabel(f'Activity {activity_name}')
         else:
-            plot.set_ylabel(f'Activity {activity_name} - {self.current_parameters.attribute}')
+            plot.set_ylabel(f'Activity {activity_name}')
         if change_points:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
@@ -145,8 +146,12 @@ class AnalyzeDrift:
         if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
             filename = os.path.join(self.output_path_adaptive_adwin,
                                     f'{activity_name}_{self.current_parameters.attribute_name}.png')
+            attribute = self.current_parameters.attribute_name
         else:
+            attribute = get_value_of_parameter(self.current_parameters.attribute)
             filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}_{self.current_parameters.attribute}.png')
+
+        plt.title(f'Adaptive Time/Data {attribute}')
         plt.savefig(filename)
         print(f'Saving plot for activity [{activity_name}]')
         plt.close()
@@ -155,7 +160,7 @@ class AnalyzeDrift:
 
     # generate the plot with the fitness and precision metrics and the drifts
     # used for adaptive change detection in the control-flow perspective
-    def plot_signal_adaptive_controlflow(self, values, metrics, approach, drifts=None):
+    def plot_signal_adaptive_controlflow(self, values, metrics, drifts=None):
         plt.style.use('seaborn-whitegrid')
         plt.clf()
         for metric in metrics.keys():
@@ -179,10 +184,11 @@ class AnalyzeDrift:
         plt.xticks(xpos, xpos, rotation=90)
         plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left')
         plt.ylabel(f'Metric value')
+        approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
         output_name = os.path.join(self.output_path_adaptive_adwin,
                                    f'adaptive_controlflow_{approach}.png')
 
-        plt.title(f'Adaptive control-flow {approach}')
+        plt.title(f'Adaptive Control-flow {approach}')
         # save the plot
         print(f'Saving plot for adaptive control-flow {approach} - {self.current_parameters.logname}')
         plt.savefig(output_name, bbox_inches='tight')
@@ -644,14 +650,14 @@ class AnalyzeDrift:
             self.initial_case_ids[0] = case_id
             self.new_window(initial_trace_id, window_size)
 
+        # join all detected drifts for the plot
         all_drifts = []
-        for dimension in metrics.keys():
-            all_drifts += drifts[dimension]
-            df = pd.DataFrame(values[dimension])
+        for m in metrics.keys():
+            all_drifts += drifts[m]
         all_drifts = list(set(all_drifts))
         all_drifts.sort()
-        # save_plot(metrics, values, output_folder, f'{logname}_d{delta}_w{window_size}', all_drifts)
-        # return all_drifts
+        # save plot and data
+        self.plot_signal_adaptive_controlflow(values, metrics, all_drifts)
         return self.window_count, self.metrics, self.initial_case_ids
 
     # IPDD adaptive windowing approach
@@ -785,7 +791,7 @@ class AnalyzeDrift:
         all_drifts = list(set(all_drifts))
         all_drifts.sort()
         # save plot and data
-        self.plot_signal_adaptive_controlflow(values, metrics, "windowing", all_drifts)
+        self.plot_signal_adaptive_controlflow(values, metrics, all_drifts)
 
         return self.window_count, self.metrics, self.initial_case_ids
 

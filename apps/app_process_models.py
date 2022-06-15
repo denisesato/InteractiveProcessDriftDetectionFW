@@ -200,7 +200,7 @@ parameters_panel = [
 models_card = [
     dbc.Row([
         dbc.Col([
-            dbc.CardImg(id='activity_plot', top=True),
+            dbc.CardImg(id='adaptive-plot', top=True),
             dbc.Card(
                 dbc.CardBody([
                     html.Div([
@@ -492,12 +492,14 @@ def update_figure(window_value, activity, file):
 @app.callback([Output('window-slider', 'marks'),
                Output('window-slider', 'max'),
                Output('window-slider', 'value'),
-               Output('activity_plot', 'src')],
+               Output('adaptive-plot', 'src')],
               Input('activity', 'value'),
               State('attribute', 'value'),
               State('approach', 'value'),
               State('adaptive-perspective', 'value'))
 def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
+    print(f'update_slider_and_plot - activity: {activity} attribute: {attribute} '
+          f'approach {approach} adaptive_perspective {adaptive_perspective}')
     marks = {}
     max_slider = 0
     selected = -1
@@ -546,6 +548,11 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
                     activity != Activity.ALL.value and attribute:
                 plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
                 # print(f'Trying to show plot {plot_filename}')
+                encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
+                plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
+            elif approach == Approach.ADAPTIVE.name and \
+                    adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                plot_filename = framework.get_adaptive_plot_src(get_user_id())
                 encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
                 plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
     # print(f'update_slider_and_plot: {marks} {max_slider}')

@@ -13,12 +13,11 @@
 """
 import os
 import shutil
-from pm4py.objects.log.util import interval_lifecycle
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
-from components.parameters import Approach, ReadLogAs, AdaptivePerspective
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from threading import Thread
@@ -133,6 +132,7 @@ class IPDDParametersFixed(IPDDParameters):
         self.win_size = winsize
 
     def print(self):
+        super().print()
         print(f'----- IPDD fixed window for control-flow drifts - parameters -----')
         print(f'Read log as: {self.win_unity}')
         print(f'Window size: {self.win_size}')
@@ -152,6 +152,7 @@ class IPDDParametersAdaptive(IPDDParameters):
             self.delta = 0.002
 
     def print(self):
+        super().print()
         print(f'----- Adaptive IPDD for time and data drifts - parameters ----- ')
         print(f'Perspective: {self.perspective}')
         print(f'Attribute name: {self.attribute_name}')
@@ -173,6 +174,7 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
             self.delta = 0.002
 
     def print(self):
+        super().print()
         print(f'----- Adaptive IPDD for time and data drifts - parameters -----')
         print(f'Perspective: {self.perspective}')
         print(f'Approach: {self.adaptive_controlflow_approach}')
@@ -489,6 +491,13 @@ class InteractiveProcessDriftDetectionFW:
         filename = os.path.join(self.get_adaptive_path(user), self.current_log.filename,
                                 self.current_parameters.read_log_as, f'delta{self.current_parameters.delta}',
                                 f'{activity}_{attribute}.png')
+        return filename
+
+    def get_adaptive_plot_src(self, user):
+        adaptive_approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
+        filename = os.path.join(self.get_adaptive_path(user), self.current_log.filename,
+                                self.current_parameters.read_log_as, f'delta{self.current_parameters.delta}',
+                                f'adaptive_controlflow_{adaptive_approach}.png')
         return filename
 
     # method that verify if one execution of IPDD finished running
