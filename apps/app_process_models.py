@@ -516,8 +516,9 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
             last_window = framework.get_total_of_windows(activity)
         else:
             print(f'Approach not identified {approach} in app_process_models.update_slider_and_plot')
-        # print(f'update_slider - activity {activity} - last_window {last_window} - indexes {initial_indexes}')
+        print(f'update_slider_and_plot: initial_indexes {initial_indexes} last_window {last_window}')
         windows_with_drifts = ()
+
         if initial_indexes:
             selected = 0
             # get the number of windows generated and the windows reported as containing drifts

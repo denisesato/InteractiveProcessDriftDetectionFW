@@ -121,6 +121,22 @@ class AnalyzeDrift:
         # class that implements the discovery method for the current model
         self.discovery = discovery
 
+    # save the change points in an txt file
+    # used in the adaptive approaches
+    def save_change_points(self, filename, change_points, change_points_info, activities=None):
+        with open(filename, 'w+') as file:
+            if activities:
+                for a in activities:
+                    if len(change_points[a]) > 0:
+                        file.write(change_points_info[a].serialize())
+                        file.write('\n')
+            else:
+                if len(change_points) > 0:
+                    file.write(change_points_info.serialize())
+                    file.write('\n')
+        print(f'Saving change points to file {filename}')
+
+
     # generate the plot with the attribute selected for a specific activity
     # used for adaptive change detection in an activity attribute (time or data perspectives)
     def plot_signal_adaptive_time_data(self, values_for_activity, activity_name, change_points=None):
@@ -162,7 +178,6 @@ class AnalyzeDrift:
     # used for adaptive change detection in the control-flow perspective
     def plot_signal_adaptive_controlflow(self, values, metrics, drifts=None):
         plt.style.use('seaborn-whitegrid')
-        plt.clf()
         for metric in metrics.keys():
             plt.plot(values[metric], label=metrics[metric])
             no_values = len(values[metric])
@@ -196,6 +211,9 @@ class AnalyzeDrift:
         for m in metrics.keys():
             df = pd.DataFrame(values[m])
             df.to_excel(os.path.join(self.output_path_adaptive_timeseries, f'{metrics[m]}.xlsx'))
+        plt.close()
+        plt.cla()
+        plt.clf()
 
     # generate all the process models based on the windowing strategy
     # selected by the user and start the metrics calculation between
@@ -523,12 +541,7 @@ class AnalyzeDrift:
         if find_any_drift:
             # save the change points for the activity
             filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{self.current_parameters.attribute}.txt')
-            with open(filename, 'w+') as file:
-                for a in activities:
-                    if len(change_points[a]) > 0:
-                        file.write(change_points_info[a].serialize())
-                        file.write('\n')
-            print(f'Saving change points...')
+            self.save_change_points(filename, change_points, change_points_info, activities)
         else:
             # if no drift is detected, generate the complete model and the plot with attribute values for each activity
             print(f'Analyzing unique window because no drift is detected...')
@@ -568,6 +581,11 @@ class AnalyzeDrift:
         adwin_detection = {}
         drifts = {}
         values = {}
+        # for saving the change points
+        change_points = []
+        detector_info = ChangePointInfo('ADWIN')
+        detector_info.add_detector_attribute('delta', delta)
+        change_points_info = detector_info
         for dimension in metrics.keys():
             # instantiate one detector for each evaluated dimension (fitness and precision)
             adwin_detection[dimension] = ADWIN(delta=self.current_parameters.delta)
@@ -604,6 +622,9 @@ class AnalyzeDrift:
 
             # if at least one metric report a drift a new model is discovered
             if drift_detected:
+                # save information about change point for saving the file
+                change_points.append(i)
+                change_points_info.add_change_point(i)
                 # process new window
                 self.new_window(initial_trace_id, final_trace_id)
                 # get the  case id
@@ -630,7 +651,7 @@ class AnalyzeDrift:
                 # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
                 # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
         # process remaining items as the last window
-        if initial_trace_id < total_of_traces:
+        if 0 < initial_trace_id < total_of_traces:
             final_trace_id = initial_trace_id + window_size
             if final_trace_id > total_of_traces:
                 final_trace_id = total_of_traces
@@ -642,7 +663,7 @@ class AnalyzeDrift:
             self.new_window(initial_trace_id, final_trace_id)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
-        else:
+        elif initial_trace_id == 0:
             # if no drift is detected, generate the complete model and the plot with attribute values for each activity
             print(f'Analyzing unique window because no drift is detected...')
             # process the unique window
@@ -658,6 +679,11 @@ class AnalyzeDrift:
         all_drifts.sort()
         # save plot and data
         self.plot_signal_adaptive_controlflow(values, metrics, all_drifts)
+        # save information about drifts
+        if len(all_drifts) > 0:
+            approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
+            filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{approach}.txt')
+            self.save_change_points(filename, change_points, change_points_info)
         return self.window_count, self.metrics, self.initial_case_ids
 
     # IPDD adaptive windowing approach
@@ -684,6 +710,12 @@ class AnalyzeDrift:
         values = dict.fromkeys(metrics)
         adwin = dict.fromkeys(metrics)
         drifts = dict.fromkeys(metrics)
+        # for saving the change points
+        change_points = []
+        detector_info = ChangePointInfo('ADWIN')
+        detector_info.add_detector_attribute('delta', delta)
+        change_points_info = detector_info
+
         for m in metrics.keys():
             values[m] = []
             if delta:
@@ -742,6 +774,8 @@ class AnalyzeDrift:
                 drift_detected = True
 
             if drift_detected:
+                change_points.append(change_point)
+                change_points_info.add_change_point(change_point)
                 # process new window
                 final_trace_id = initial_trace_id + window_size
                 if final_trace_id > total_of_traces:
@@ -764,7 +798,7 @@ class AnalyzeDrift:
                 print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
 
         # process remaining items as the last window
-        if initial_trace_id < total_of_traces:
+        if 0 < initial_trace_id < total_of_traces:
             final_trace_id = initial_trace_id + window_size
             if final_trace_id > total_of_traces:
                 final_trace_id = total_of_traces
@@ -776,7 +810,7 @@ class AnalyzeDrift:
             self.new_window(initial_trace_id, final_trace_id)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
-        else:
+        elif initial_trace_id == 0:
             # if no drift is detected, generate the complete model and the plot with attribute values for each activity
             print(f'Analyzing unique window because no drift is detected...')
             # process the unique window
@@ -792,7 +826,11 @@ class AnalyzeDrift:
         all_drifts.sort()
         # save plot and data
         self.plot_signal_adaptive_controlflow(values, metrics, all_drifts)
-
+        # save information about drifts
+        if len(all_drifts) > 0:
+            approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
+            filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{approach}.txt')
+            self.save_change_points(filename, change_points, change_points_info)
         return self.window_count, self.metrics, self.initial_case_ids
 
     def get_current_timestamp(self, item):

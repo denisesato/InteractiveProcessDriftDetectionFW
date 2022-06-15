@@ -331,6 +331,8 @@ class InteractiveProcessDriftDetectionFW:
 
     @threaded
     def run(self, parameters, user_id='script'):
+        # reset information about windows
+        self.initial_indexes = None
         parameters.print()
         self.user_id = user_id
         if not self.script:
