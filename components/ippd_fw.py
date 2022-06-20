@@ -365,7 +365,8 @@ class InteractiveProcessDriftDetectionFW:
             parameters.metrics = self.model_type_definitions.get_default_metrics()
 
         # initializing attributes that depend of the approach
-        outputpath_adaptive = ''
+        outputpath_adaptive_timeseries = ''
+        outputpath_adaptive_adwin = ''
         if parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}

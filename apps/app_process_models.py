@@ -93,6 +93,7 @@ parameters_panel = [
                     dbc.Button(
                         "Show/Hide Parameters",
                         id="button-parameters",
+                        n_clicks=0,
                         className='btn btn-secondary'
                     ), width=8
                 ),
@@ -389,14 +390,17 @@ def last_option_selected(winsize, attribute, adaptive_controlflow_approach, appr
                State('models-col', 'style')])
 # used to start or stop the interval component for checking similarity calculation
 def check_status_ipdd(status, window_size, interval_disabled, button_clicks, models_col_style):
+    show = {'display': 'block'}
+    hide = {'display': 'none'}
+
     ctx = dash.callback_context
-    # print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
+    print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
 
     # when the user starts a new process drift analysis
     if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:
         if status == IPDDProcessingStatus.NOT_STARTED or status == IPDDProcessingStatus.IDLE:
             # starts the interval and hide the parameters panel
-            return False, 1, {'display': 'none'}
+            return False, 1, hide
         else:
             # IPDD is still running
             return interval_disabled, button_clicks, models_col_style
@@ -406,13 +410,13 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
         if status == IPDDProcessingStatus.RUNNING:
             return interval_disabled, button_clicks, models_col_style
         if status == IPDDProcessingStatus.IDLE:
-            return True, 0, {'display': 'block'}
+            return True, 0, show
     # user selected a new event log
     else:
         if status == IPDDProcessingStatus.IDLE:
             framework.restart_status()
-            return False, 0, {'display': 'none'}
-        return True, 0, {'display': 'none'}
+            return False, 0, hide
+        return True, 0, hide
 
 
 @app.callback(Output('window-size', 'children'),
