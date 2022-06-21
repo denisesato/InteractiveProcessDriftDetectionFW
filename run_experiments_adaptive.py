@@ -35,8 +35,8 @@ def trace_by_trace():
     winsizes = [75]
 
     # for testing
-    change_patterns = ['cd']
-    sizes = ['2.5k']
+    # change_patterns = ['cd']
+    # sizes = ['2.5k']
     for cp in change_patterns:
         for s in sizes:
             for w in winsizes:
