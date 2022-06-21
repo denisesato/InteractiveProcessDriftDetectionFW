@@ -15,7 +15,6 @@ import os
 from threading import Thread
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
-from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.objects.log.util import interval_lifecycle
 from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
@@ -23,12 +22,14 @@ from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
 from pm4py.algo.evaluation.replay_fitness import algorithm as replay_fitness_evaluator
 from pm4py.algo.discovery.footprints import algorithm as fp_discovery
 from pm4py.algo.conformance.footprints.util import evaluation
+from pm4py.objects.petri_net.exporter import exporter as pnml_exporter
+from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
 from components.parameters import Approach, AttributeAdaptive, AdaptivePerspective, ControlflowAdaptiveApproach, \
     get_value_of_parameter
-from components.manage_similarity_metrics import ManageSimilarityMetrics
+from components.compare_models.manage_similarity_metrics import ManageSimilarityMetrics
 from skmultiflow.drift_detection.adwin import ADWIN
 from components.parameters import ReadLogAs, WindowUnityFixed
 import pandas as pd
@@ -83,7 +84,8 @@ def calculate_quality_metric_footprints(metric_name, log, tree):
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
                  models_path, metrics_path, logs_path, current_log, discovery, user,
-                 output_path_adaptive_timeseries, output_path_adaptive_adwin):
+                 output_path_adaptive_adwin,
+                 output_path_adaptive_models_adwin):
 
         self.current_parameters = current_parameters
         self.user = user
@@ -92,8 +94,8 @@ class AnalyzeDrift:
         self.models_path = models_path
         self.metrics_path = metrics_path
         self.logs_path = logs_path
-        self.output_path_adaptive_timeseries = output_path_adaptive_timeseries
         self.output_path_adaptive_adwin = output_path_adaptive_adwin
+        self.output_path_adaptive_models_adwin = output_path_adaptive_models_adwin
         self.model_type = model_type
 
         # instance of the MetricsManager
@@ -136,7 +138,6 @@ class AnalyzeDrift:
                     file.write('\n')
         print(f'Saving change points to file {filename}')
 
-
     # generate the plot with the attribute selected for a specific activity
     # used for adaptive change detection in an activity attribute (time or data perspectives)
     def plot_signal_adaptive_time_data(self, values_for_activity, activity_name, change_points=None):
@@ -147,7 +148,7 @@ class AnalyzeDrift:
             filename_attributes = f'{activity_name}_{self.current_parameters.attribute_name}.csv'
         else:
             filename_attributes = f'{activity_name}_{self.current_parameters.attribute}.csv'
-        output_filename = os.path.join(self.output_path_adaptive_timeseries, filename_attributes)
+        output_filename = os.path.join(self.output_path_adaptive_adwin, filename_attributes)
         df.to_csv(output_filename, index=False)
         sns.set_style("whitegrid")
         plot = sns.lineplot(data=df, x='trace', y='value')
@@ -165,7 +166,8 @@ class AnalyzeDrift:
             attribute = self.current_parameters.attribute_name
         else:
             attribute = get_value_of_parameter(self.current_parameters.attribute)
-            filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}_{self.current_parameters.attribute}.png')
+            filename = os.path.join(self.output_path_adaptive_adwin,
+                                    f'{activity_name}_{self.current_parameters.attribute}.png')
 
         plt.title(f'Adaptive Time/Data {attribute}')
         plt.savefig(filename)
@@ -201,7 +203,7 @@ class AnalyzeDrift:
         plt.ylabel(f'Metric value')
         approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
         output_name = os.path.join(self.output_path_adaptive_adwin,
-                                   f'adaptive_controlflow_{approach}.png')
+                                   f'adaptive_controlflow_metrics.png')
 
         plt.title(f'Adaptive Control-flow {approach}')
         # save the plot
@@ -210,7 +212,7 @@ class AnalyzeDrift:
         # save the time series (fitness and precision)
         for m in metrics.keys():
             df = pd.DataFrame(values[m])
-            df.to_excel(os.path.join(self.output_path_adaptive_timeseries, f'{metrics[m]}.xlsx'))
+            df.to_excel(os.path.join(self.output_path_adaptive_adwin, f'{metrics[m]}.xlsx'))
         plt.close()
         plt.cla()
         plt.clf()
@@ -272,7 +274,7 @@ class AnalyzeDrift:
                                                          activities,
                                                          self.user)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
-                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.CONTROL_FLOW_TRACE.name:
+                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.TRACE.name:
                 # IPDD adaptive trace by trace approach
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector_on_quality_metrics_trace_by_trace(self.event_data,
@@ -280,7 +282,7 @@ class AnalyzeDrift:
                                                                           self.current_parameters.win_size,
                                                                           self.user)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
-                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.CONTROL_FLOW_WINDOW.name:
+                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.WINDOW.name:
                 # IPDD adaptive windowing approach
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector_on_quality_metrics_windowing(self.event_data,
@@ -479,6 +481,9 @@ class AnalyzeDrift:
                     except AttributeError as err:
                         # print(f'Error getting the value of attribute: {err}')
                         continue
+                    except KeyError as kerr:
+                        print(f'Error getting the value of attribute: {kerr}')
+                        continue
                     attribute_values[activity][i] = value
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
@@ -574,6 +579,9 @@ class AnalyzeDrift:
         print(f'Initial model discovered using traces from 0 to {window_size - 1}')
         log_for_model = EventLog(event_data[0:window_size])
         net, im, fm = inductive_miner.apply(log_for_model)
+        pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                     f'model1_0-{window_size-1}.pnml')
+        pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
         # other discovery algorithms can be applied
         # net, im, fm = heuristics_miner.apply(log_for_model)
         # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
@@ -627,6 +635,9 @@ class AnalyzeDrift:
                 change_points_info.add_change_point(i)
                 # process new window
                 self.new_window(initial_trace_id, final_trace_id)
+                # save the sublog
+                if self.current_parameters.save_sublogs:
+                    self.save_sublog(initial_trace_id, i)
                 # get the  case id
                 case_id = self.get_case_id(event_data[initial_trace_id])
                 # save the initial of the processed window
@@ -646,6 +657,9 @@ class AnalyzeDrift:
                 print(f'Discover a new model using traces from {i} to {final_trace_id - 1}')
                 log_for_model = EventLog(event_data[i:final_trace_id])
                 net, im, fm = inductive_miner.apply(log_for_model)
+                pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                             f'model{self.window_count+1}_{i}-{final_trace_id - 1}.pnml')
+                pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                 # other discovery algorithms can be applied
                 # net, im, fm = heuristics_miner.apply(log_for_model)
                 # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
@@ -661,6 +675,9 @@ class AnalyzeDrift:
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
             self.new_window(initial_trace_id, final_trace_id)
+            # save the sublog
+            if self.current_parameters.save_sublogs:
+                self.save_sublog(initial_trace_id, total_of_traces)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -669,7 +686,12 @@ class AnalyzeDrift:
             # process the unique window
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[0] = case_id
-            self.new_window(initial_trace_id, window_size)
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            self.new_window(initial_trace_id, total_of_traces)
+            # save the sublog
+            if self.current_parameters.save_sublogs:
+                self.save_sublog(initial_trace_id, total_of_traces)
 
         # join all detected drifts for the plot
         all_drifts = []
@@ -699,6 +721,9 @@ class AnalyzeDrift:
         final_trace_id = initial_trace_id_for_stable_period + window_size
         log_for_model = EventLog(event_data[initial_trace_id_for_stable_period:final_trace_id])
         net, im, fm = inductive_miner.apply(log_for_model)
+        pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                     f'model1_{initial_trace_id_for_stable_period}-{final_trace_id - 1}.pnml')
+        pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
         tree = inductive_miner.apply_tree(log_for_model)
         print(f'Initial model discovered using traces [{initial_trace_id_for_stable_period}-{final_trace_id - 1}]')
         # initialize similarity metrics manager
@@ -781,6 +806,9 @@ class AnalyzeDrift:
                 if final_trace_id > total_of_traces:
                     final_trace_id = total_of_traces
                 self.new_window(initial_trace_id, final_trace_id)
+                # save the sublog
+                if self.current_parameters.save_sublogs:
+                    self.save_sublog(initial_trace_id, change_point)
                 # get the current case id
                 case_id = self.get_case_id(event_data[initial_trace_id])
                 # save the initial of the processed window
@@ -794,6 +822,9 @@ class AnalyzeDrift:
                 # Discover a new model using window
                 log_for_model = EventLog(event_data[change_point:change_point + window_size])
                 net, im, fm = inductive_miner.apply(log_for_model)
+                pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                             f'model{self.window_count+1}_{change_point}-{change_point + window_size - 1}.pnml')
+                pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                 tree = inductive_miner.apply_tree(log_for_model)
                 print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
 
@@ -808,6 +839,9 @@ class AnalyzeDrift:
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
             self.new_window(initial_trace_id, final_trace_id)
+            # save the sublog
+            if self.current_parameters.save_sublogs:
+                self.save_sublog(initial_trace_id, total_of_traces)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -816,7 +850,12 @@ class AnalyzeDrift:
             # process the unique window
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[0] = case_id
-            self.new_window(initial_trace_id, window_size)
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            self.new_window(initial_trace_id, total_of_traces)
+            # save the sublog
+            if self.current_parameters.save_sublogs:
+                self.save_sublog(initial_trace_id, total_of_traces)
 
         # join all detected drifts for the plot
         all_drifts = []
@@ -856,6 +895,15 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
         return date_aux
 
+    def save_sublog(self, begin, end):
+        output_path = self.logs_path
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        output_filename = os.path.join(output_path,
+                                       f'sublog{self.window_count}_{begin}_{end - 1}.xes')
+        sub_log = EventLog(self.event_data[begin:end])
+        xes_exporter.apply(sub_log, output_filename)
+
     def new_window(self, begin, end, activity=''):
         # increment the id of the window
         if activity:  # when using a detector for an attribute of the activity
@@ -874,17 +922,6 @@ class AnalyzeDrift:
             sub_log = EventLog(self.event_data[begin:end])
         else:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
-
-        # save the sub-log
-        # TODO create a parameter to save the sublogs
-        # output_path = os.path.join(self.logs_path, self.current_parameters.logname, activity)
-        # if not os.path.exists(output_path):
-        #     os.makedirs(output_path)
-        # if activity and activity != '':
-        #     output_filename = os.path.join(output_path, f'sublog_w{self.window_count[activity]}_{begin}_{end - 1}.xes')
-        # else:
-        #     output_filename = os.path.join(output_path, f'sublog_w{self.window_count}_{begin}_{end - 1}.xes')
-        # xes_exporter.apply(sub_log, output_filename)
 
         self.execute_processes_for_window(sub_log, begin, activity)
 

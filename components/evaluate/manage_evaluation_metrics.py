@@ -127,11 +127,11 @@ class ManageEvaluationMetrics:
         if not os.path.exists(self.path):
             print(f'Creating evaluation path {self.path}')
             os.makedirs(self.path)
-        else:
-            # remove file that contains the evaluation metrics calculated from previous run
-            if os.path.isfile(self.filename):
-                print(f'Remove file {self.filename}')
-                os.remove(self.filename)
+        # else:
+        #     # remove file that contains the evaluation metrics calculated from previous run
+        #     if os.path.isfile(self.filename):
+        #         print(f'Remove file {self.filename}')
+        #         os.remove(self.filename)
 
     def add_real_drift(self, trace_index):
         self.real_drifts.append(trace_index)

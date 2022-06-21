@@ -83,6 +83,7 @@ def selected_experiments():
         subprocess.run(f"ipdd_cli.py -a a -l {file} -at OTHER -atname Temperatura -d {delta} -rd {str_changepoints}",
                        shell=True)
 
+
 def one_experiment_for_testing():
     folder = '"C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/LogsProducao/Artificiais/SelecionadosArtigo"'
     log_name = [
@@ -107,5 +108,5 @@ def one_experiment_for_testing():
 
 
 if __name__ == '__main__':
-    # selected_experiments()
-    one_experiment_for_testing()
+    selected_experiments()
+    # one_experiment_for_testing()

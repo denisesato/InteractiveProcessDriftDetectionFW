@@ -65,7 +65,8 @@ class Control:
     # applied for CLI
     def finished_run(self):
         if self.metrics_manager is not None:
-            result = self.metrics_status == MetricsProcessingStatus.FINISHED and \
+            result = (self.metrics_status == MetricsProcessingStatus.FINISHED or \
+                      self.metrics_status == MetricsProcessingStatus.IDLE) and \
                      self.mining_status == IPDDProcessingStatus.FINISHED
         else:
             result = self.mining_status == IPDDProcessingStatus.FINISHED
@@ -163,7 +164,7 @@ class IPDDParametersAdaptive(IPDDParameters):
 
 class IPDDParametersAdaptiveControlflow(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, win_size, metrics,
-                 adaptive_controlflow_approach, delta=None):
+                 adaptive_controlflow_approach, delta=None, save_sublogs=False):
         super().__init__(logname, approach, read_log_as, metrics)
         self.win_size = win_size
         self.perspective = perspective
@@ -172,22 +173,15 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
             self.delta = delta
         else:  # default value
             self.delta = 0.002
+        self.save_sublogs = save_sublogs
 
     def print(self):
         super().print()
-        print(f'----- Adaptive IPDD for time and data drifts - parameters -----')
+        print(f'----- Adaptive IPDD for control-flow drifts - parameters -----')
         print(f'Perspective: {self.perspective}')
         print(f'Approach: {self.adaptive_controlflow_approach}')
         print(f'Window size: {self.win_size}')
         print(f'ADWIN delta: {self.delta}')
-
-
-def check_user_path(generic_path, user_id):
-    path = os.path.join(generic_path, user_id)
-    if not os.path.exists(path):
-        print(f'Creating path {generic_path} for user {user_id}')
-        os.makedirs(path)
-    return path
 
 
 class InteractiveProcessDriftDetectionFW:
@@ -210,9 +204,6 @@ class InteractiveProcessDriftDetectionFW:
         self.status_similarity_metrics = ''
         self.status_mining = ''
         self.control = Control()
-        self.input_path = None
-        self.models_path = None
-        self.metrics_path = None
         self.script = False
         self.user_id = None
         self.model_type_definitions = None
@@ -236,12 +227,25 @@ class InteractiveProcessDriftDetectionFW:
         self.manage_evaluation = None  # evaluation module
 
         # paths for saving the results
-        self.input_path = os.path.join('data', 'input')
-        self.models_path = os.path.join('data', 'models')
-        self.logs_path = os.path.join('data', 'sublogs')
-        self.metrics_path = os.path.join('data', 'metrics')
-        self.adaptive_path = os.path.join('data', 'adaptive')
-        self.evaluation_path = os.path.join('data', 'evaluation')
+        self.data_path = 'data'
+        self.output_path = 'output'
+        self.input_path = 'input'
+        self.models_path = 'models'
+        self.similarity_metrics_path = 'similarity_metrics'
+        self.logs_path = 'sublogs'
+        self.adaptive_path = 'adaptive'
+        self.evaluation_path = 'evaluation'
+
+    def check_user_path(self, generic_path, user_id, output=True):
+        if output:
+            path = os.path.join(self.data_path, self.output_path, user_id, generic_path)
+        else:
+            path = os.path.join(self.data_path, generic_path, user_id)
+
+        if not os.path.exists(path):
+            print(f'Creating path "{generic_path}" for user {user_id}')
+            os.makedirs(path)
+        return path
 
     # return the activities where a drift was detected in the last run
     def get_activities_with_drifts(self):
@@ -287,22 +291,45 @@ class InteractiveProcessDriftDetectionFW:
         return [item for item in EvaluationMetricList]
 
     def get_input_path(self, user_id=''):
-        return check_user_path(self.input_path, user_id)
+        path = self.check_user_path(self.input_path, user_id, False)
+        print(f'get_input_path: {path}')
+        return path
 
     def get_models_path(self, user_id):
-        return check_user_path(self.models_path, user_id)
+        return self.check_user_path(self.models_path, user_id)
 
-    def get_metrics_path(self, user_id):
-        return check_user_path(self.metrics_path, user_id)
+    def get_similarity_metrics_path(self, user_id):
+        return self.check_user_path(self.similarity_metrics_path, user_id)
+
+    def get_adaptive_logs_path(self, user_id):
+        path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+                            f'{self.current_parameters.perspective}'
+                            f'_{self.current_parameters.adaptive_controlflow_approach}'
+                            f'_win{self.current_parameters.win_size}'
+                            f'_delta{self.current_parameters.delta}', self.logs_path)
+        return self.check_user_path(path, user_id)
 
     def get_evaluation_path(self, user_id):
-        return check_user_path(self.evaluation_path, user_id)
-
-    def get_logs_path(self, user_id):
-        return check_user_path(self.logs_path, user_id)
+        return self.check_user_path(self.evaluation_path, user_id)
 
     def get_adaptive_path(self, user_id):
-        return check_user_path(self.adaptive_path, user_id)
+        return self.check_user_path(self.adaptive_path, user_id)
+
+    def get_adaptive_adwin_path(self, user_id):
+        path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+                            f'{self.current_parameters.perspective}'
+                            f'_{self.current_parameters.adaptive_controlflow_approach}'
+                            f'_win{self.current_parameters.win_size}'
+                            f'_delta{self.current_parameters.delta}')
+        return self.check_user_path(path, user_id)
+
+    def get_adaptive_adwin_models_path(self, user_id):
+        path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+                            f'{self.current_parameters.perspective}'
+                            f'_{self.current_parameters.adaptive_controlflow_approach}'
+                            f'_win{self.current_parameters.win_size}'
+                            f'_delta{self.current_parameters.delta}', self.models_path)
+        return self.check_user_path(path, user_id)
 
     def import_log(self, complete_filename, filename):
         # import the chosen event log and calculate some statistics
@@ -333,62 +360,63 @@ class InteractiveProcessDriftDetectionFW:
     def run(self, parameters, user_id='script'):
         # reset information about windows
         self.initial_indexes = None
-        parameters.print()
+        # set the parameters selected for the current run
+        self.current_parameters = parameters
+        self.discovery.set_current_parameters(parameters)
+        self.current_parameters.print()
         self.user_id = user_id
         if not self.script:
             # clean data generated from previous runs
             self.clean_generated_data(user_id)
         self.control.start_mining_calculation()
+        self.control.reset_metrics_calculation()
 
         # if the user is running from command line
         # first IPDD needs to copy the event log into the folder data\input
         # then, remove the original path
         if self.script:
             complete_filename = parameters.logname
-            parameters.logname = self.copy_event_log(complete_filename)
-            if parameters.logname is None:
+            self.current_parameters.logname = self.copy_event_log(complete_filename)
+            if self.current_parameters.logname is None:
                 self.control.finish_mining_calculation()
                 self.control.finish_metrics_calculation()
                 return
-            print(f'Importing event log: {parameters.logname}')
+            print(f'Importing event log: {self.current_parameters.logname}')
             # import the event log from the XES file and save it into self.current_log object
             # if the user is using the web interface, the log was imported by the app_preview_file
-            self.import_log(complete_filename, parameters.logname)
+            self.import_log(complete_filename, self.current_parameters.logname)
         elif self.current_log is None:  # to prevent problems when user reload the process drift analysis page
-            complete_filename = os.path.join(self.get_input_path(user_id), parameters.logname)
+            complete_filename = os.path.join(self.get_input_path(user_id), self.current_parameters.logname)
 
-            print(f'Importing event log: {parameters.logname}')
-            self.import_log(complete_filename, parameters.logname)
+            print(f'Importing event log: {self.current_parameters.logname}')
+            self.import_log(complete_filename, self.current_parameters.logname)
 
         # if metrics not defined, use default metrics for process model
-        if not parameters.metrics:
-            parameters.metrics = self.model_type_definitions.get_default_metrics()
+        if not self.current_parameters.metrics:
+            self.current_parameters.metrics = self.model_type_definitions.get_default_metrics()
 
         # initializing attributes that depend of the approach
         outputpath_adaptive_timeseries = ''
         outputpath_adaptive_adwin = ''
-        if parameters.approach == Approach.FIXED.name:
+        if self.current_parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
             evaluation_path = os.path.join(self.get_evaluation_path(user_id),
-                                           parameters.logname, parameters.approach,
-                                           parameters.read_log_as,
-                                           f'win_{parameters.win_size}')
-        elif parameters.approach == Approach.ADAPTIVE.name:
+                                           self.current_parameters.logname,
+                                           self.current_parameters.approach,
+                                           self.current_parameters.read_log_as,
+                                           f'win_{self.current_parameters.win_size}')
+        elif self.current_parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
             # ADWIN adaptive path
             # output_path for saving plots, attribute values, drift, and evaluation metrics
-            outputpath_adaptive_timeseries = os.path.join(self.get_adaptive_path(user_id),
-                                                     parameters.logname, parameters.read_log_as)
-            outputpath_adaptive_adwin = os.path.join(self.get_adaptive_path(user_id),
-                                               parameters.logname, parameters.read_log_as,
-                                               f'delta{parameters.delta}')
+            outputpath_adaptive_adwin = self.get_adaptive_adwin_path(user_id)
+            outputpath_adaptive_adwin_models = self.get_adaptive_adwin_models_path(user_id)
+            outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
             evaluation_path = os.path.join(self.get_evaluation_path(user_id),
                                            parameters.logname, parameters.approach,
                                            f'delta{parameters.delta}')
-            if not os.path.exists(outputpath_adaptive_timeseries):
-                os.makedirs(outputpath_adaptive_timeseries)
             if not os.path.exists(outputpath_adaptive_adwin):
                 os.makedirs(outputpath_adaptive_adwin)
         else:
@@ -398,20 +426,17 @@ class InteractiveProcessDriftDetectionFW:
         self.manage_evaluation = ManageEvaluationMetrics(self.get_implemented_evaluation_metrics(),
                                                          evaluation_path)
 
-        # set the parameters selected for the current run
-        self.current_parameters = parameters
-        self.discovery.set_current_parameters(parameters)
-        print(f'User selected approach={parameters.approach} reading log as={parameters.read_log_as}')
-        print(f'Metrics={parameters.metrics}')
+        print(f'User selected approach={self.current_parameters.approach} reading log as={self.current_parameters.read_log_as}')
+        print(f'Metrics={self.current_parameters.metrics}')
         print(f'Starting windowing process...')
-        analyze = AnalyzeDrift(self.model_type, parameters, self.control,
+        analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
-                               self.get_metrics_path(user_id), self.get_logs_path(user_id),
-                               self.current_log, self.discovery, user_id, outputpath_adaptive_timeseries,
-                               outputpath_adaptive_adwin)
+                               self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
+                               self.current_log, self.discovery, user_id,
+                               outputpath_adaptive_adwin, outputpath_adaptive_adwin_models)
         self.total_of_windows, self.initial_indexes, self.all_activities = analyze.start_drift_analysis()
-        if parameters.approach == Approach.ADAPTIVE.name and \
-                parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+        if self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
             print(f'Setting the activities with drifts: {self.activities}')
 
@@ -497,10 +522,8 @@ class InteractiveProcessDriftDetectionFW:
         return filename
 
     def get_adaptive_plot_src(self, user):
-        adaptive_approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
-        filename = os.path.join(self.get_adaptive_path(user), self.current_log.filename,
-                                self.current_parameters.read_log_as, f'delta{self.current_parameters.delta}',
-                                f'adaptive_controlflow_{adaptive_approach}.png')
+        path = self.get_adaptive_adwin_path(user)
+        filename = os.path.join(path, f'adaptive_controlflow_metrics.png')
         return filename
 
     # method that verify if one execution of IPDD finished running
@@ -565,10 +588,7 @@ class InteractiveProcessDriftDetectionFW:
         models_path = self.get_models_path(user_id)
         if os.path.exists(models_path):
             shutil.rmtree(models_path)
-        logs_path = self.get_logs_path(user_id)
-        if os.path.exists(logs_path):
-            shutil.rmtree(logs_path)
-        metrics_path = self.get_metrics_path(user_id)
+        metrics_path = self.get_similarity_metrics_path(user_id)
         if os.path.exists(metrics_path):
             shutil.rmtree(metrics_path)
         adaptive_path = self.get_adaptive_path(user_id)

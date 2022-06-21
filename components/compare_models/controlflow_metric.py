@@ -12,7 +12,7 @@
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
 from components.compare_models.controlflow_metric_info import ControlFlowMetricInfo
-from components.metric import Metric
+from components.compare_models.metric import Metric
 
 
 class ControlFlowMetric(Metric):

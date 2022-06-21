@@ -11,7 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-from components.metric_info import MetricInfo, MetricAdditionalInfo
+from components.compare_models.metric_info import MetricInfo, MetricAdditionalInfo
 
 
 class ControlFlowMetricInfo(MetricInfo):

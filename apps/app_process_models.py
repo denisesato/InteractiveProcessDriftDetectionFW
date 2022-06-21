@@ -394,7 +394,7 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
     hide = {'display': 'none'}
 
     ctx = dash.callback_context
-    print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
+    # print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
 
     # when the user starts a new process drift analysis
     if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:
@@ -502,8 +502,8 @@ def update_figure(window_value, activity, file):
               State('approach', 'value'),
               State('adaptive-perspective', 'value'))
 def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
-    print(f'update_slider_and_plot - activity: {activity} attribute: {attribute} '
-          f'approach {approach} adaptive_perspective {adaptive_perspective}')
+    # print(f'update_slider_and_plot - activity: {activity} attribute: {attribute} '
+    #       f'approach {approach} adaptive_perspective {adaptive_perspective}')
     marks = {}
     max_slider = 0
     selected = -1
@@ -520,7 +520,7 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
             last_window = framework.get_total_of_windows(activity)
         else:
             print(f'Approach not identified {approach} in app_process_models.update_slider_and_plot')
-        print(f'update_slider_and_plot: initial_indexes {initial_indexes} last_window {last_window}')
+        # print(f'update_slider_and_plot: initial_indexes {initial_indexes} last_window {last_window}')
         windows_with_drifts = ()
 
         if initial_indexes:

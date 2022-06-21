@@ -24,8 +24,8 @@ class AttributeAdaptive(str, Enum):
 
 
 class ControlflowAdaptiveApproach(str, Enum):
-    CONTROL_FLOW_TRACE = 'Trace by trace'
-    CONTROL_FLOW_WINDOW = 'Windowing'
+    TRACE = 'Trace by trace'
+    WINDOW = 'Windowing'
 
 
 class Approach(str, Enum):
@@ -34,10 +34,10 @@ class Approach(str, Enum):
 
 
 def get_value_of_parameter(name):
-    if name == ControlflowAdaptiveApproach.CONTROL_FLOW_TRACE.name:
-        return ControlflowAdaptiveApproach.CONTROL_FLOW_TRACE.value
-    elif name == ControlflowAdaptiveApproach.CONTROL_FLOW_WINDOW.name:
-        return ControlflowAdaptiveApproach.CONTROL_FLOW_WINDOW.value
+    if name == ControlflowAdaptiveApproach.TRACE.name:
+        return ControlflowAdaptiveApproach.TRACE.value
+    elif name == ControlflowAdaptiveApproach.WINDOW.name:
+        return ControlflowAdaptiveApproach.WINDOW.value
     elif name == Approach.ADAPTIVE.name:
         return Approach.ADAPTIVE.value
     elif name == Approach.FIXED.name:
