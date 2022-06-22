@@ -17,7 +17,7 @@ from threading import RLock, Thread
 from components.dfg_definitions import DfgDefinitions
 from json_tricks import loads
 
-from components.parameters import Approach
+from components.parameters import Approach, AdaptivePerspective
 from components.pn_definitions import PnDefinitions
 
 
@@ -177,9 +177,20 @@ class ManageSimilarityMetrics:
 
             if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
                 filename = os.path.join(self.metrics_path,
-                                        f'winsize_{self.current_parameters.win_size}_drift_windows.txt')
+                                        f'{self.current_parameters.approach}_win{self.current_parameters.win_size}_drift_windows.txt')
             elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
-                filename = os.path.join(self.metrics_path, f'adaptive_drift_windows.txt')
+                if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+                    filename = os.path.join(self.metrics_path,
+                                            f'{self.current_parameters.approach}_{self.current_parameters.attribute}'
+                                            f'_delta{self.current_parameters.delta}_drift_windows.txt')
+                elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                    filename = os.path.join(self.metrics_path,
+                                            f'{self.current_parameters.approach}'
+                                            f'_{self.current_parameters.adaptive_controlflow_approach}'
+                                            f'_win{self.current_parameters.win_size}_'
+                                            f'_delta{self.current_parameters.delta}_drift_windows.txt')
+                else:
+                    print(f'Adaptive approach not defined {self.current_parameters.adaptive_controlflow_approach} - using default filename...')
             else:
                 if not self.current_parameters:
                     print(f'Current parameters not defined - using default filename...')

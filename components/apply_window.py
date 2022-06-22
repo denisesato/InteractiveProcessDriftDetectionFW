@@ -113,7 +113,7 @@ class AnalyzeDrift:
         # set the event_data as requested by the user (read event by event or trace by trace)
         if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
             self.event_data = self.converted_log
-        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+        elif self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             # convert the log into an event stream
             self.event_data = log_converter.apply(self.converted_log, variant=log_converter.Variants.TO_EVENT_STREAM)
         else:
@@ -221,6 +221,8 @@ class AnalyzeDrift:
     # selected by the user and start the metrics calculation between
     # consecutive windows
     def start_drift_analysis(self):
+        window_count = 0
+        initial_indexes = {}
         if self.current_parameters.approach == Approach.FIXED.name or \
                 (self.current_parameters.approach == Approach.ADAPTIVE.name and \
                  self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name):
@@ -290,7 +292,7 @@ class AnalyzeDrift:
                                                                      self.current_parameters.win_size,
                                                                      self.user)
             else:
-                print(f'Incorrect approach: {self.current_parameters.approach}')
+                print(f'Incorrect approach (start_drift_analysis): {self.current_parameters.approach}')
 
             # stores the instance of the metrics manager, responsible to manage the asynchronous
             # calculation of the metrics
@@ -307,7 +309,7 @@ class AnalyzeDrift:
         elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
             case_id = item.attributes['concept:name']
         else:
-            print(f'Incorrect window type: {self.window_type}.')
+            print(f'Incorrect window type (start_drift_analysis): {self.window_type}.')
         return case_id
 
     # Sliding window approach implemented for fixed window - NOT USED

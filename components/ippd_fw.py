@@ -292,7 +292,7 @@ class InteractiveProcessDriftDetectionFW:
 
     def get_input_path(self, user_id=''):
         path = self.check_user_path(self.input_path, user_id, False)
-        print(f'get_input_path: {path}')
+        # print(f'get_input_path: {path}')
         return path
 
     def get_models_path(self, user_id):
@@ -316,12 +316,42 @@ class InteractiveProcessDriftDetectionFW:
         return self.check_user_path(self.adaptive_path, user_id)
 
     def get_adaptive_adwin_path(self, user_id):
-        path = os.path.join(self.adaptive_path, self.current_parameters.logname,
-                            f'{self.current_parameters.perspective}'
-                            f'_{self.current_parameters.adaptive_controlflow_approach}'
-                            f'_win{self.current_parameters.win_size}'
-                            f'_delta{self.current_parameters.delta}')
+        path = os.path.join(self.adaptive_path, self.current_parameters.logname)
+        if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+                                f'{self.current_parameters.perspective}'
+                                f'_{self.current_parameters.attribute}'
+                                f'_delta{self.current_parameters.delta}')
+        elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+                                f'{self.current_parameters.perspective}'
+                                f'_{self.current_parameters.adaptive_controlflow_approach}'
+                                f'_win{self.current_parameters.win_size}'
+                                f'_delta{self.current_parameters.delta}')
+        else:
+            print(f'Incorrect adaptive perspective, using default path for evaluation: {path}')
         return self.check_user_path(path, user_id)
+
+    def get_adaptive_evaluation_path(self, user_id):
+        path = os.path.join(self.get_evaluation_path(user_id),
+                                self.current_parameters.logname)
+        if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            path = os.path.join(self.get_evaluation_path(user_id),
+                                self.current_parameters.logname,
+                                f'{self.current_parameters.approach}'
+                                f'_{self.current_parameters.perspective}'
+                                f'_{self.current_parameters.attribute}'
+                                f'_delta{self.current_parameters.delta}')
+        elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            path = os.path.join(self.get_evaluation_path(user_id),
+                                self.current_parameters.logname,
+                                f'{self.current_parameters.approach}'
+                                f'_{self.current_parameters.perspective}'
+                                f'_w{self.current_parameters.win_size}'
+                                f'_delta{self.current_parameters.delta}')
+        else:
+            print(f'Incorrect adaptive perspective, using default path for evaluation: {path}')
+        return path
 
     def get_adaptive_adwin_models_path(self, user_id):
         path = os.path.join(self.adaptive_path, self.current_parameters.logname,
@@ -396,37 +426,34 @@ class InteractiveProcessDriftDetectionFW:
             self.current_parameters.metrics = self.model_type_definitions.get_default_metrics()
 
         # initializing attributes that depend of the approach
-        outputpath_adaptive_timeseries = ''
+        outputpath_adaptive_sublogs = ''
         outputpath_adaptive_adwin = ''
+        outputpath_adaptive_adwin_models = ''
         if self.current_parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
-            evaluation_path = os.path.join(self.get_evaluation_path(user_id),
-                                           self.current_parameters.logname,
-                                           self.current_parameters.approach,
-                                           self.current_parameters.read_log_as,
-                                           f'win_{self.current_parameters.win_size}')
+
         elif self.current_parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
             # ADWIN adaptive path
             # output_path for saving plots, attribute values, drift, and evaluation metrics
             outputpath_adaptive_adwin = self.get_adaptive_adwin_path(user_id)
-            outputpath_adaptive_adwin_models = self.get_adaptive_adwin_models_path(user_id)
-            outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
-            evaluation_path = os.path.join(self.get_evaluation_path(user_id),
-                                           parameters.logname, parameters.approach,
-                                           f'delta{parameters.delta}')
-            if not os.path.exists(outputpath_adaptive_adwin):
-                os.makedirs(outputpath_adaptive_adwin)
+            if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                outputpath_adaptive_adwin_models = self.get_adaptive_adwin_models_path(user_id)
+                outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
+            # if not os.path.exists(outputpath_adaptive_adwin):
+            #     os.makedirs(outputpath_adaptive_adwin)
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
 
+        evaluation_path = self.get_evaluation_path(user_id)
         # initialize evaluation module
         self.manage_evaluation = ManageEvaluationMetrics(self.get_implemented_evaluation_metrics(),
                                                          evaluation_path)
 
-        print(f'User selected approach={self.current_parameters.approach} reading log as={self.current_parameters.read_log_as}')
+        print(
+            f'User selected approach={self.current_parameters.approach} reading log as={self.current_parameters.read_log_as}')
         print(f'Metrics={self.current_parameters.metrics}')
         print(f'Starting windowing process...')
         analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
@@ -571,16 +598,20 @@ class InteractiveProcessDriftDetectionFW:
         return self.status_similarity_metrics
 
     def get_drifts_info(self, activity=''):
-        if self.get_approach() == Approach.ADAPTIVE.name and \
-                self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name and activity != '':
-            return self.get_metrics_manager(activity).get_drifts_info()
-        elif self.get_approach() == Approach.FIXED.name or \
-                (self.get_approach() == Approach.ADAPTIVE.name and
-                 self.get_adaptive_perpective() == AdaptivePerspective.CONTROL_FLOW.name):
-            return self.get_metrics_manager().get_drifts_info()
+        if self.get_metrics_manager():
+            if self.get_approach() == Approach.ADAPTIVE.name and \
+                    self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name and activity != '':
+                return self.get_metrics_manager(activity).get_drifts_info()
+            elif self.get_approach() == Approach.FIXED.name or \
+                    (self.get_approach() == Approach.ADAPTIVE.name and
+                     self.get_adaptive_perpective() == AdaptivePerspective.CONTROL_FLOW.name):
+                return self.get_metrics_manager().get_drifts_info()
+            else:
+                print(f'Approach not identified {self.get_approach()} in self.get_approach()')
+                return [], []
         else:
-            print(f'Approach not identified {self.get_approach()} in self.get_approach()')
-            return ()
+            print(f'Metrics manager not instantiated')
+            return [], []
 
     def clean_generated_data(self, user_id):
         # cleaning data from previous executions - only for web acess

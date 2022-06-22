@@ -32,7 +32,9 @@ def trace_by_trace():
     deltas = [
         0.002
     ]
-    winsizes = [75]
+    winsizes = [
+        75
+    ]
 
     # for testing
     # change_patterns = ['cd']
@@ -43,8 +45,8 @@ def trace_by_trace():
                 for d in deltas:
                     log = f'{cp}{s}.xes'
                     filename = os.path.join(folder, log)
-                    print(f'Adaptive IPDD control-flow Trace by Trace {filename} - delta {d}')
-                    subprocess.run(f"ipdd_cli.py -l {filename} -w {w} -a a -p cf -cfa t -d {d}", shell=True)
+                    print(f'Adaptive IPDD control-flow Trace by Trace {filename} - window {w} delta {d}')
+                    subprocess.run(f"ipdd_cli.py -l {filename} -w {w} -a a -p cf -cfa t -d {d} -sub True", shell=True)
 
 
 if __name__ == '__main__':
