@@ -531,11 +531,11 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
                      adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name):
                 total_of_windows = framework.get_total_of_windows()
                 if total_of_windows > 1:
-                    windows_with_drifts, traces = framework.get_drifts_info()
+                    windows_with_drifts, traces = framework.get_windows_with_drifts()
             elif approach == Approach.ADAPTIVE.name:
                 total_of_windows = framework.get_total_of_windows(activity)
                 if total_of_windows > 1:
-                    windows_with_drifts, traces = framework.get_drifts_info(activity)
+                    windows_with_drifts, traces = framework.get_windows_with_drifts(activity)
             else:
                 print(f'Approach not identified {approach} in app_process_models.update_slider_and_plot')
 
@@ -642,8 +642,8 @@ def evaluate(n_clicks, real_drifts, window_size, activity):
                         print(f'Input values must be integer - ignoring [{item}]')
                     list_real_drifts.append(item_int)
             print(f'Real drifts {list_real_drifts}')
-            windows, traces = framework.get_drifts_info(activity)
-            metrics_summary = framework.evaluate(list_real_drifts, traces, window_size, framework.get_number_of_items())
+            windows, traces = framework.get_windows_with_drifts(activity)
+            metrics_summary = framework.evaluate(list_real_drifts, traces, framework.get_number_of_items())
             metric = []
             for metric_name in metrics_summary.keys():
                 metric_print = f'{metric_name}: {"{:.2f}".format(metrics_summary[metric_name])}'

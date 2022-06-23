@@ -14,13 +14,16 @@
 import os
 import time
 import pandas as pd
+import re
 
+from components.evaluate.manage_evaluation_metrics import EvaluationMetricList
 from components.parameters import ReadLogAs, WindowUnityFixed, Approach, AttributeAdaptive, AdaptivePerspective, \
     ControlflowAdaptiveApproach
 from components.ippd_fw import InteractiveProcessDriftDetectionFW, IPDDParametersFixed, IPDDParametersAdaptive, \
     IPDDParametersAdaptiveControlflow
 
-DRIFTS = 'drifts'
+DRIFTS_KEY = 'drifts - '
+DETECTED_AT_KEY = 'detected at - '
 
 
 def run_massive_fixed_controlflow(input_path, lognames, windows, metrics=None):
@@ -51,10 +54,10 @@ def run_massive_fixed_controlflow(input_path, lognames, windows, metrics=None):
                 time.sleep(2)  # in seconds
                 running = framework.get_status_running()
             print(f'Fixed IPDD finished drift analysis')
-            windows_with_drifts, detected_drifts = framework.get_drifts_info()
-            dict_results[log][f'{DRIFTS} - w={w}'] = detected_drifts
+            windows_with_drifts, detected_drifts = framework.get_windows_with_drifts()
+            dict_results[log][f'{DRIFTS_KEY}w={w}'] = detected_drifts
             print(f'Fixed IPDD detect control-flow drift in windows {windows_with_drifts} - traces {detected_drifts}')
-    out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.FIXED.value}.xlsx')
+    out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.FIXED.name}.xlsx')
     df = pd.DataFrame.from_dict(dict_results, orient='index')
     df.to_excel(out_filename)
 
@@ -93,13 +96,17 @@ def run_massive_adaptive_controlflow(input_path, lognames, windows, deltas, adap
                     time.sleep(20)  # in seconds
                     running = framework.get_status_running()
                 print(f'Adaptive IPDD finished drift analysis')
-                windows_with_drifts, detected_drifts = framework.get_drifts_info()
-                dict_results[log][f'{DRIFTS} - w={w} d={delta}'] = detected_drifts
-                print(f'Adaptive IPDD detect control-flow drift in windows {windows_with_drifts} - traces {detected_drifts}')
+                detected_drifts = framework.get_initial_trace_indexes()
+                # remove the index 0
+                detected_drifts = detected_drifts[1:]
+                dict_results[log][f'{DRIFTS_KEY}w={w} d={delta}'] = detected_drifts
+                print(
+                    f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
+
     out_filename = os.path.join(framework.get_evaluation_path('script'),
-                                f'results_IPDD_{Approach.ADAPTIVE.value}'
-                                f'_{AdaptivePerspective.CONTROL_FLOW.value}'
-                                f'_{adaptive_approach.value}.xlsx')
+                                f'results_IPDD_{Approach.ADAPTIVE.name}'
+                                f'_{AdaptivePerspective.CONTROL_FLOW.name}'
+                                f'_{adaptive_approach.name}.xlsx')
     df = pd.DataFrame.from_dict(dict_results, orient='index')
     df.to_excel(out_filename)
 
@@ -111,6 +118,91 @@ def run_massive_adaptive_controlflow_trace_by_trace(path, logs, windows, deltas,
 
 
 def run_massive_adaptive_controlflow_windowing(path, logs, windows, deltas, metrics=None):
-    run_massive_adaptive_controlflow(path, logs, windows,
-                                     ControlflowAdaptiveApproach.WINDOW, deltas,
+    run_massive_adaptive_controlflow(path, logs, windows, deltas,
+                                     ControlflowAdaptiveApproach.WINDOW,
                                      metrics)
+
+
+def convert_list_to_int(string_list):
+    number_of_itens = len(string_list)
+    integer_list = []
+    if number_of_itens > 0 and string_list[0] != '':  # to avoid error in case of list with ''
+        integer_map = map(int, string_list.copy())
+        integer_list = list(integer_map)
+    return integer_list
+
+
+def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for_calculation=False):
+    metrics = [item for item in EvaluationMetricList]
+    # getting instance of the IPDD
+    framework = InteractiveProcessDriftDetectionFW(script=True)
+
+    input_filename = os.path.join(filepath, filename)
+    print(f'*****************************************************************')
+    print(f'Calculating metrics for file {input_filename}...')
+    print(f'*****************************************************************')
+    df = pd.read_excel(input_filename, index_col=0)
+    complete_results = df.T.to_dict()
+    metrics_results = {}
+    for logname in complete_results.keys():
+        if logname not in dataset_config.lognames:
+            print(f'Logname {logname} not configured for the dataset. IGNORING...')
+            continue
+        metrics_results[logname] = {}
+        regexp = r'(\d.*).xes'
+        if match := re.search(regexp, logname):
+            logsize = match.group(1)
+        else:
+            print(f'Problem getting the logsize. File {input_filename} NOT PROCESSED!')
+            return
+
+        change_points = {}
+        detected_at = {}
+        for key in complete_results[logname].keys():
+            # get list of trace ids from excel and convert to a list of integers
+            trace_ids_list = complete_results[logname][key][1:-1].split(",")
+            trace_ids_list = convert_list_to_int(trace_ids_list)
+
+            # insert into change points or detected points
+            if DRIFTS_KEY in key:
+                configuration = key[len(DRIFTS_KEY):]
+                change_points[configuration] = trace_ids_list
+            elif DETECTED_AT_KEY in key:
+                configuration = key[len(DETECTED_AT_KEY):]
+                detected_at[configuration] = trace_ids_list
+
+        for configuration in change_points.keys():
+            # get the actual change points
+            # check first in the exceptions
+            if logname in dataset_config.exceptions_in_actual_change_points.keys():
+                real_change_points = dataset_config.exceptions_in_actual_change_points[logname]['actual_change_points']
+                instances = dataset_config.exceptions_in_actual_change_points[logname]['number_of_instances']
+            else:
+                # if it is not an exception, get the real change points by the logsize
+                real_change_points = dataset_config.actual_change_points[logsize]
+                instances = dataset_config.number_of_instances[logsize]
+
+            # get the detected at information if available and convert to a list of integers
+            metrics_summary = framework.evaluate(change_points[configuration],
+                                         real_change_points, instances)
+           # metrics = calculate_metrics(metrics, change_points[configuration], real_change_points,
+           #                                  instances)
+            # add the calculated metrics to the dictionary
+            if save_input_for_calculation:
+                metrics_results[logname][f'Detected drifts {configuration}'] = change_points[configuration]
+                if len(detected_at) > 0:
+                    metrics_results[logname][f'Detected at {configuration}'] = detected_at[configuration]
+                metrics_results[logname][f'Real drifts {configuration}'] = real_change_points
+            for m in metrics:
+                metrics_results[logname][f'{m} {configuration}'] = metrics_summary[m]
+    df = pd.DataFrame(metrics_results).T
+    out_filename = filename[:-(len('.xlsx'))]
+    out_filename = f'metrics_{out_filename}.xlsx'
+    out_complete_filename = os.path.join(filepath, out_filename)
+    print(f'*****************************************************************')
+    print(f'Metrics for file {input_filename} calculated')
+    print(f'Saving results at file {out_complete_filename}...')
+    df.to_excel(out_complete_filename)
+    print(f'*****************************************************************')
+
+

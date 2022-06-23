@@ -20,14 +20,13 @@ from components.evaluate.evaluation_metric_info import EvaluationMetricInfo
 class EvaluationMetricList(str, Enum):
     F_SCORE = 'F-score'
     FPR = 'False positive rate (FPR)'
+    MEAN_DELAY = 'Mean delay'
 
 
 class EvaluationMetric:
     def __init__(self, real_drifts, detected_drifts, error_tolerance, items):
         self.real_drifts = real_drifts
         self.detected_drifts = detected_drifts
-        # tolerance in number of items, used in the F-score, for instance
-        self.error_tolerance = error_tolerance
         # traces or events, according to the selected option for reading the log
         self.number_of_items = items
         # basic metrics
@@ -35,43 +34,49 @@ class EvaluationMetric:
         self.fp = 0
         self.fn = 0
         self.tn = 0
-        self.recall = 0
-        self.precision = 0
+        self.total_distance = 0  # used for the mean delay
         # value of the calculated metric
         self.value = 0
 
     # count the basic metrics TP, FP, FN, and TN
     def calculate_basic_metrics(self):
-        tps = []
-        fns = []
-        self.real_drifts.sort()
+        real_drifts = self.real_drifts.copy()
+        # sort the both lists (real and detected drifts)
+        real_drifts.sort()
         self.detected_drifts.sort()
-        for i, real_drift in enumerate(self.real_drifts):
-            tp_found = False
-            for detected_drift in self.detected_drifts:
-                tolerance_interval = self.error_tolerance
-                # if there is another real drift, check the interval of tolerance
-                if (i+1) < len(self.real_drifts):
-                    interval_to_next_drift = self.real_drifts[i+1] - real_drift
-                    if self.error_tolerance > interval_to_next_drift:
-                        # if error_tolerance is greater than the distance to the next real drift
-                        # use the distance as interval
-                        tolerance_interval = interval_to_next_drift
 
-                if real_drift <= detected_drift < (real_drift + tolerance_interval):
-                    # real drift is within a detected window
-                    tps.append(real_drift)
-                    tp_found = True
-                    # remove the drift counted as TP
-                    self.detected_drifts.remove(detected_drift)
-                    break
-            if not tp_found:
-                # if the real drift it is not detected, it is counted as a false negative
-                fns.append(real_drift)
-        self.tp = len(tps)
-        self.fn = len(fns)
-        self.fp = len(self.detected_drifts)  # the true positives are removed from the list
-        self.tn = self.number_of_items - self.tp - self.fn - self.fp
+        # create lists to store the tp's and fp's
+        tp_list = []
+        fp_list = []
+        fn_list = []
+        self.total_distance = 0
+        for i, detected_cp in enumerate(self.detected_drifts):
+            possible_real_drifts = [cp for cp in real_drifts if detected_cp >= cp]
+            possible_real_drifts.sort(reverse=True)
+            if len(possible_real_drifts) > 0:
+                detected_real_cp = possible_real_drifts[0]
+                # the mean delay considers the distance between the real change point and the reported change point
+                delay = detected_cp - detected_real_cp
+                self.total_distance += delay
+
+                tp_list.append(detected_cp)
+                real_drifts.remove(detected_real_cp)
+                possible_real_drifts.remove(detected_real_cp)
+                # if other possible real drifts are not detected they are FALSE NEGATIVES
+                for rp in possible_real_drifts:
+                    fn_list.append(rp)
+                    real_drifts.remove(rp)
+            else:
+                fp_list.append(detected_cp)
+
+        # the remaining real drifts are also FALSE NEGATIVES
+        for d in real_drifts:
+            fn_list.append(d)
+
+        self.tp = len(tp_list)
+        self.fp = len(fp_list)
+        self.fn = len(fn_list)
+        self.tn = self.number_of_items - self.tp - self.fp - self.fn
 
     def calculate(self):
         pass
@@ -86,24 +91,14 @@ class Fscore(EvaluationMetric):
 
     def calculate(self):
         self.calculate_basic_metrics()
-        precision = self.calculate_precision()
-        recall = self.calculate_recall()
-        fscore = 0
-        if precision + recall > 0:
-            fscore = 2 * ((precision * recall) / (precision + recall))
-        return fscore
-
-    def calculate_precision(self):
-        precision = 0
         if self.tp + self.fp > 0:
             precision = self.tp / (self.tp + self.fp)
-        return precision
-
-    def calculate_recall(self):
-        recall = 0
-        if self.tp + self.fn > 0:
-            recall = self.tp / (self.tp + self.fn)
-        return recall
+            if self.tp + self.fn > 0:
+                recall = self.tp / (self.tp + self.fn)
+            if precision > 0 or recall > 0:
+                f_score = 2 * ((precision * recall) / (precision + recall))
+                return f_score
+        return 0
 
 
 # False positive rate
@@ -116,6 +111,15 @@ class FPR(EvaluationMetric):
         fpr = self.fp / (self.fp + self.tn)
         return fpr
 
+class MeanDelay(EvaluationMetric):
+    def __init__(self, real_drifts, detected_drifts, error_tolerance, items):
+        super().__init__(real_drifts, detected_drifts, error_tolerance, items)
+
+    def calculate(self):
+        if self.total_distance == 0:
+            return 0
+        return self.total_distance / self.tp
+
 
 class ManageEvaluationMetrics:
     def __init__(self, evaluation_metrics, evaluation_path):
@@ -127,11 +131,6 @@ class ManageEvaluationMetrics:
         if not os.path.exists(self.path):
             print(f'Creating evaluation path {self.path}')
             os.makedirs(self.path)
-        # else:
-        #     # remove file that contains the evaluation metrics calculated from previous run
-        #     if os.path.isfile(self.filename):
-        #         print(f'Remove file {self.filename}')
-        #         os.remove(self.filename)
 
     def add_real_drift(self, trace_index):
         self.real_drifts.append(trace_index)
@@ -147,13 +146,14 @@ class ManageEvaluationMetrics:
                 file.write('\n')
         print(f'Saving evaluation metrics...')
 
-    def calculate_selected_evaluation_metrics(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
+    def calculate_selected_evaluation_metrics(self, real_drifts, detected_drifts, items,
+                                              activity=None):
         metrics_info = []
         metrics_summary = {}
         for metric_name in self.metrics_list:
             print(f'Calculating evaluation metric [{metric_name}]')
-            metric = ManageEvaluationMetrics.evaluation_metrics_factory(metric_name, real_drifts, detected_drifts,
-                                                                 error_tolerance, items)
+            metric = ManageEvaluationMetrics.evaluation_metrics_factory(metric_name, real_drifts,
+                                                                        detected_drifts, items)
             value = metric.calculate()
             metric_info = EvaluationMetricInfo(metric_name, real_drifts, detected_drifts, value)
             if activity:  # used when the user selected the ADAPTIVE approach
@@ -164,12 +164,13 @@ class ManageEvaluationMetrics:
         return metrics_summary
 
     @staticmethod
-    def evaluation_metrics_factory(metric_name, real_drifts, detected_drifts, error_tolerance, items):
+    def evaluation_metrics_factory(metric_name, real_drifts, detected_drifts, items):
         # define all implemented evaluation metrics
         real_drifts_copy = real_drifts.copy()
         detected_drifts_copy = detected_drifts.copy()
         classes = {
-            EvaluationMetricList.F_SCORE.value: Fscore(real_drifts_copy, detected_drifts_copy, error_tolerance, items),
-            EvaluationMetricList.FPR.value: FPR(real_drifts_copy, detected_drifts_copy, error_tolerance, items),
+            EvaluationMetricList.F_SCORE.value: Fscore(real_drifts_copy, detected_drifts_copy, items),
+            EvaluationMetricList.FPR.value: FPR(real_drifts_copy, detected_drifts_copy, items),
+            EvaluationMetricList.MEAN_DELAY.value: MeanDelay(real_drifts_copy, detected_drifts_copy, items),
         }
         return classes[metric_name]

@@ -386,7 +386,7 @@ class InteractiveProcessDriftDetectionFW:
             # convert to interval time log if needed
             # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
 
-    @threaded
+    # @threaded
     def run(self, parameters, user_id='script'):
         # reset information about windows
         self.initial_indexes = None
@@ -498,9 +498,9 @@ class InteractiveProcessDriftDetectionFW:
             print(
                 f'Parameter ReadLogAs not identified in ipdd_fw.get_number_of_items(): {self.current_parameters.read_log_as}')
 
-    def evaluate(self, real_drifts, detected_drifts, error_tolerance, items, activity=None):
+    def evaluate(self, real_drifts, detected_drifts, items, activity=None):
         return self.manage_evaluation.calculate_selected_evaluation_metrics(real_drifts, detected_drifts,
-                                                                            error_tolerance, items, activity)
+                                                                            items, activity)
 
     def get_initial_trace_indexes(self, activity=''):
         if self.initial_indexes:
@@ -597,7 +597,7 @@ class InteractiveProcessDriftDetectionFW:
 
         return self.status_similarity_metrics
 
-    def get_drifts_info(self, activity=''):
+    def get_windows_with_drifts(self, activity=''):
         if self.get_metrics_manager():
             if self.get_approach() == Approach.ADAPTIVE.name and \
                     self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name and activity != '':

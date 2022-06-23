@@ -175,26 +175,39 @@ def main():
     detected_drifts = None
     total_of_itens = framework.get_number_of_items()
     if approach == Approach.FIXED.name:
-        windows, detected_drifts = framework.get_drifts_info()
+        windows, detected_drifts = framework.get_windows_with_drifts()
         print(f'IPDD detect control-flow drift in windows {windows} - traces {detected_drifts}')
     elif approach == Approach.ADAPTIVE.name:
-        detected_drifts = {}
-        # get the activities that report a drift using the change detector
-        for activity in framework.get_activities_with_drifts():
-            indexes = framework.initial_indexes[activity]
-            detected_drifts[activity] = list(indexes.keys())[1:]
+        if perspective == AdaptivePerspective.TIME_DATA.name:
+            detected_drifts = {}
+            # get the activities that report a drift using the change detector
+            for activity in framework.get_activities_with_drifts():
+                indexes = framework.initial_indexes[activity]
+                detected_drifts[activity] = list(indexes.keys())[1:]
+                print(
+                    f'IPDD detect drifts for attribute {attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
+                # get information about control-flow metrics
+                windows, traces = framework.get_windows_with_drifts(activity)
+                if len(traces) > 0:
+                    print(f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+        elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            detected_drifts = framework.get_initial_trace_indexes()
+            # remove the index 0
+            detected_drifts = detected_drifts[1:]
             print(
-                f'IPDD detect drifts for attribute {attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
+                f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
             # get information about control-flow metrics
-            windows, traces = framework.get_drifts_info(activity)
-            if len(traces) > 0:
-                print(f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+            windows, traces = framework.get_windows_with_drifts()
+            print(
+                f'Similarity metrics confirm the drifts in  {traces}')
+        else:
+            print(f'Perspective not identified: {perspective}')
     else:
         print(f'Approach not identified: {approach}')
 
     if approach == Approach.FIXED.name:
         if args.real_drifts is not None:
-            f_score = framework.evaluate(real_drifts, detected_drifts, error_tolerance, total_of_itens)
+            f_score = framework.evaluate(real_drifts, detected_drifts, total_of_itens)
             print(f'IPDD F-score: {f_score}')
     elif approach == Approach.ADAPTIVE.name:
         if args.real_drifts is not None:
@@ -202,11 +215,11 @@ def main():
             print(f'********* IPDD evaluation metrics results *********')
             for activity in framework.get_all_activities():
                 if activity in detected_drifts.keys():
-                    framework.evaluate(real_drifts, detected_drifts[activity], error_tolerance, total_of_itens,
+                    framework.evaluate(real_drifts, detected_drifts[activity], total_of_itens,
                                        activity)
                 else:
                     # if IPDD do not detect any drift in the activity
-                    framework.evaluate(real_drifts, [], error_tolerance, total_of_itens, activity)
+                    framework.evaluate(real_drifts, [], total_of_itens, activity)
             # else:
             #     print(f'********* IPDD did not detect any drift. No F-score results *********')
     else:

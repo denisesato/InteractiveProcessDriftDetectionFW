@@ -187,7 +187,7 @@ class ManageSimilarityMetrics:
                     filename = os.path.join(self.metrics_path,
                                             f'{self.current_parameters.approach}'
                                             f'_{self.current_parameters.adaptive_controlflow_approach}'
-                                            f'_win{self.current_parameters.win_size}_'
+                                            f'_win{self.current_parameters.win_size}'
                                             f'_delta{self.current_parameters.delta}_drift_windows.txt')
                 else:
                     print(f'Adaptive approach not defined {self.current_parameters.adaptive_controlflow_approach} - using default filename...')
