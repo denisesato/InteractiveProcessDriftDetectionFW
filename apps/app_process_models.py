@@ -398,7 +398,7 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
 
     if status and window_size:
         ctx = dash.callback_context
-        print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
+        # print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
 
         # when the user starts a new process drift analysis
         if ctx.triggered[0]['prop_id'] == 'window-size.value' and window_size > 0:
@@ -410,7 +410,7 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
                 return interval_disabled, button_clicks, models_col_style
         # interval check
         elif window_size > 0:
-            print(f'interval check: status {status}')
+            # print(f'interval check: status {status}')
             if status == IPDDProcessingStatus.RUNNING:
                 return interval_disabled, button_clicks, models_col_style
             if status == IPDDProcessingStatus.IDLE:
@@ -586,7 +586,7 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
               Input('check-ipdd-finished', 'n_intervals'),
               State('div-status', 'children'))
 def update_status_and_drifts(n, div_status):
-    print(f'update_status_and_drifts')
+    # print(f'update_status_and_drifts')
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT MINING THE MODELS
     ###################################################################
