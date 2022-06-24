@@ -30,6 +30,7 @@ navbar = dbc.NavbarSimple(
 
 
 def get_layout():
+    framework.restart_status()
     div_instructions = html.H5('Start by loading and selecting the event log (XES format) to be analyzed.')
 
     load_files_div = html.Div([

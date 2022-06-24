@@ -399,7 +399,13 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             # convert to interval time log if needed
             # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
 
-    # @threaded
+    @threaded
+    def run_web(self, parameters, user_id):
+        self.run(parameters, user_id)
+
+    def run_script(self, parameters):
+        self.run(parameters, 'script')
+
     def run(self, parameters, user_id='script'):
         # reset information about windows
         self.initial_indexes = None
@@ -575,11 +581,14 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     # used by the web interface
     def get_status_framework(self):
         if self.get_mining_status() == IPDDProcessingStatus.NOT_STARTED:
+            print(f'get_status_framework IPDDProcessingStatus.NOT_STARTED')
             return IPDDProcessingStatus.NOT_STARTED
         if self.get_mining_status() == IPDDProcessingStatus.RUNNING or \
                 self.get_metrics_status() == IPDDProcessingStatus.RUNNING:
+            print(f'get_status_framework IPDDProcessingStatus.RUNNING')
             return IPDDProcessingStatus.RUNNING
         else:
+            print(f'get_status_framework IPDDProcessingStatus.IDLE')
             return IPDDProcessingStatus.IDLE
 
     def get_status_mining_text(self):

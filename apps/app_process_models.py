@@ -109,12 +109,13 @@ parameters_panel = [
                         [
                             dbc.PopoverHeader("Analyzing Process Drifts using IPDD Framework"),
                             dbc.PopoverBody(
-                                'Insert the parameters and click on Analyze Process Drifts to start. '
-                                'IPDD will show the process models over time and you can navigate between the '
-                                'models by clicking on the window. IPDD shows the similarity metrics calculated '
-                                'between the current model and the previous one. '
-                                'You can also evaluate the detected drifts using the F-score metric, which is '
-                                'calculate using the the actual drifts informed by the user. '),
+                                'Select the approach (Fixed or Adaptive), set the parameters, and click on Analyze '
+                                'Process Drifts to start. IPDD shows the process models over time, and you can '
+                                'navigate between the models by clicking on the window though the slider. Each window '
+                                'shows the initial trace index and highlight the drifts in red. You can localize the '
+                                'drift in the model by checking the similarity metrics information on the left. IPDD '
+                                'calculates the F-score, FPR and Mean Delay metrics by clicking on Evaluate results '
+                                'and informing the real drifts. '),
                         ],
                         id="popover",
                         target="popover-bottom-target",  # needs to be the same as dbc.Button id
@@ -210,6 +211,7 @@ models_card = [
                         html.Hr(id='activity_hr'),
                     ], id='activity_div'),
                     html.H6('Similarity Information', className='card-title'),
+                    html.Hr(),
                     html.Div(id='div-similarity-metrics-value', children=''),
                     html.Div(id='div-differences', children=''),
                 ]),
@@ -232,7 +234,8 @@ models_card = [
 
     dbc.Row([
         dbc.Col([
-            html.Div(id='status-ipdd', style={'display': 'none'}),
+            dbc.Input(id='status-ipdd', value=IPDDProcessingStatus.NOT_STARTED, style={'display': 'none'}),
+            # html.Div(id='status-ipdd', style={'display': 'none'}),
             html.Div(id='diff', style={'display': 'none'}),
 
             dcc.Interval(
@@ -297,7 +300,7 @@ def toggle_modal(n1, n2, is_open):
     Output("collapse-parameters", "is_open"),
     [Input("button-parameters", "n_clicks")],
     [State("collapse-parameters", "is_open"),
-     State('status-ipdd', 'children')],
+     State('status-ipdd', 'value')],
 )
 def toggle_collapse(n, is_open, status_ipdd):
     if n:
@@ -383,8 +386,8 @@ def last_option_selected(winsize, attribute, adaptive_controlflow_approach, appr
 @app.callback([Output('check-ipdd-finished', 'disabled'),
                Output('button-parameters', 'n_clicks'),
                Output('models-col', 'style')],
-              [Input('status-ipdd', 'children'),
-               Input('window-size', 'children')],
+              [Input('status-ipdd', 'value'),
+               Input('window-size', 'value')],
               [State('check-ipdd-finished', 'disabled'),
                State('button-parameters', 'n_clicks'),
                State('models-col', 'style')])
@@ -393,33 +396,35 @@ def check_status_ipdd(status, window_size, interval_disabled, button_clicks, mod
     show = {'display': 'block'}
     hide = {'display': 'none'}
 
-    ctx = dash.callback_context
-    # print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
+    if status and window_size:
+        ctx = dash.callback_context
+        print(f'check_status_ipdd {ctx.triggered} {status} {window_size}')
 
-    # when the user starts a new process drift analysis
-    if ctx.triggered[0]['prop_id'] == 'window-size.children' and window_size > 0:
-        if status == IPDDProcessingStatus.NOT_STARTED or status == IPDDProcessingStatus.IDLE:
-            # starts the interval and hide the parameters panel
-            return False, 1, hide
+        # when the user starts a new process drift analysis
+        if ctx.triggered[0]['prop_id'] == 'window-size.value' and window_size > 0:
+            if status == IPDDProcessingStatus.NOT_STARTED or status == IPDDProcessingStatus.IDLE:
+                # starts the interval and hide the parameters panel
+                return False, 1, hide
+            else:
+                # IPDD is still running
+                return interval_disabled, button_clicks, models_col_style
+        # interval check
+        elif window_size > 0:
+            print(f'interval check: status {status}')
+            if status == IPDDProcessingStatus.RUNNING:
+                return interval_disabled, button_clicks, models_col_style
+            if status == IPDDProcessingStatus.IDLE:
+                return True, 0, show
+        # user selected a new event log
         else:
-            # IPDD is still running
-            return interval_disabled, button_clicks, models_col_style
-    # interval check
-    elif window_size > 0:
-        # print(f'interval check: status {status}')
-        if status == IPDDProcessingStatus.RUNNING:
-            return interval_disabled, button_clicks, models_col_style
-        if status == IPDDProcessingStatus.IDLE:
-            return True, 0, show
-    # user selected a new event log
-    else:
-        if status == IPDDProcessingStatus.IDLE:
-            framework.restart_status()
-            return False, 0, hide
-        return True, 0, hide
+            if status == IPDDProcessingStatus.IDLE:
+                framework.restart_status()
+                return False, 0, hide
+            return True, 0, hide
+    return True, 0, hide
 
 
-@app.callback(Output('window-size', 'children'),
+@app.callback(Output('window-size', 'value'),
               [Input('mine_models_btn', 'n_clicks')],
               [State('approach', 'value'),
                State('input-window-size', 'value'),
@@ -442,17 +447,17 @@ def run_framework(n_clicks, approach, input_window_size, attribute, file, metric
                 parameters = IPDDParametersFixed(file, approach, ReadLogAs.TRACE.name, metrics,
                                                  WindowUnityFixed.UNITY.name,
                                                  int_input_size)
-                framework.run(parameters, user_id=user)
+                framework.run_web(parameters, user_id=user)
             elif approach == Approach.ADAPTIVE.name:
                 if adaptive_perspective == AdaptivePerspective.TIME_DATA.name:
                     parameters = IPDDParametersAdaptive(file, approach, adaptive_perspective, ReadLogAs.TRACE.name,
                                                         metrics, attribute, delta=deltaAdwin)
-                    framework.run(parameters, user_id=user)
+                    framework.run_web(parameters, user_id=user)
                 elif adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name:
                     parameters = IPDDParametersAdaptiveControlflow(file, approach, adaptive_perspective,
                                                                    ReadLogAs.TRACE.name, int_input_size, metrics,
                                                                    adaptive_controlflow_approach, deltaAdwin)
-                    framework.run(parameters, user_id=user)
+                    framework.run_web(parameters, user_id=user)
             else:
                 print(f'Incorrect approach {approach}')
         print(f'Setting window-size value {input_window_size}, indicating IPDD starts the analysis')
@@ -477,19 +482,24 @@ def update_figure(window_value, activity, file):
         if window_value > 1:
             previous_process_map = framework.get_model(file, window_value - 1, get_user_id(), activity)
         if framework.get_total_of_windows(
-                activity) > 1:  # if there is only one window the metrics manager is not initialized
+                activity) > 1 and window_value > 1:  # if there is only one window the metrics manager is not initialized
             if framework.get_metrics_status() == IPDDProcessingStatus.IDLE:
                 metrics = framework.get_metrics_manager(activity).get_metrics_info(window_value)
-                for metric in metrics:
-                    div_similarity.append(html.Span(f'{metric.metric_name}: '))
-                    div_similarity.append(html.Span("{:.2f}".format(metric.value), className='font-weight-bold'))
+                if len(metrics) == 0:
+                    div_similarity.append(html.Span(f'The current model is similar to the previous one.'))
+                else:
+                    for metric in metrics:
+                        div_similarity.append(html.Span(f'{metric.metric_name}: '))
+                        div_similarity.append(html.Span("{:.2f}".format(metric.value), className='font-weight-bold'))
 
-                    for additional_info in metric.get_additional_info():
-                        strType, strList = additional_info.get_status_info()
-                        div_similarity.append(html.Div([
-                            html.Span(f'{strType}', className='font-italic'),
-                            html.Span(f'{strList}', className='font-weight-bold')
-                        ]))
+                        for additional_info in metric.get_additional_info():
+                            strType, strList = additional_info.get_status_info()
+                            div_similarity.append(html.Div([
+                                html.Span(f'{strType}', className='font-italic'),
+                                html.Span(f'{strList}', className='font-weight-bold')
+                            ]))
+        else:
+            div_similarity.append(html.Span(f'First model, similarity metrics are not calculated.'))
     return process_map, html.Div(div_similarity)
 
 
@@ -568,16 +578,15 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
                Output('div-status-mining', 'children'),
                Output('evaluation-card', 'style'),
                Output('button-evaluation', 'style'),
-               Output('status-ipdd', 'children'),
+               Output('status-ipdd', 'value'),
                Output('div-status', 'children'),
                Output('activity', 'options'),
                Output('activity', 'value'),
                Output('activity_div', 'style')],
               Input('check-ipdd-finished', 'n_intervals'),
-              State('div-status', 'children'),
-              State('activity', 'value'),
-              State('approach', 'value'))
-def update_status_and_drifts(n, div_status, activity, approach):
+              State('div-status', 'children'))
+def update_status_and_drifts(n, div_status):
+    print(f'update_status_and_drifts')
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT MINING THE MODELS
     ###################################################################

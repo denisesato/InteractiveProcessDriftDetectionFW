@@ -73,7 +73,7 @@ def run_massive_fixed_controlflow(dataset_config, metrics=None):
             log_filename = os.path.join(dataset_config.input_path, log)
             parameters = IPDDParametersFixed(log_filename, Approach.FIXED.name, ReadLogAs.TRACE.name,
                                              metrics, WindowUnityFixed.UNITY.name, w)
-            framework.run(parameters, user_id='script')
+            framework.run_script(parameters)
 
             running = framework.get_status_running()
             while running:
@@ -115,7 +115,7 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                                                                ReadLogAs.TRACE.name,
                                                                w, metrics, adaptive_approach.name,
                                                                delta)
-                framework.run(parameters, user_id='script')
+                framework.run_script(parameters)
 
                 running = framework.get_status_running()
                 while running:

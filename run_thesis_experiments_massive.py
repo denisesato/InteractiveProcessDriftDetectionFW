@@ -143,7 +143,7 @@ class Dataset1Configuration:
 
 if __name__ == '__main__':
     dataset1 = Dataset1Configuration()
-    # run_massive_fixed_controlflow(dataset1)
+    run_massive_fixed_controlflow(dataset1)
     run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
     run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
 

@@ -163,7 +163,7 @@ def main():
                                                            metrics,
                                                            adaptive_controlflow_approach, args.delta,
                                                            args.save_sublogs)
-    framework.run(parameters, user_id='script')
+    framework.run_script(parameters)
 
     running = framework.get_status_running()
     while running:
