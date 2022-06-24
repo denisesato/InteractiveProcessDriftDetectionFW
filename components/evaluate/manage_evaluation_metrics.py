@@ -15,6 +15,7 @@ import os
 from enum import Enum
 
 from components.evaluate.evaluation_metric_info import EvaluationMetricInfo
+from components.parameters import Approach, AdaptivePerspective
 
 
 class EvaluationMetricList(str, Enum):
@@ -24,7 +25,7 @@ class EvaluationMetricList(str, Enum):
 
 
 class EvaluationMetric:
-    def __init__(self, real_drifts, detected_drifts, error_tolerance, items):
+    def __init__(self, real_drifts, detected_drifts, items):
         self.real_drifts = real_drifts
         self.detected_drifts = detected_drifts
         # traces or events, according to the selected option for reading the log
@@ -86,8 +87,8 @@ class EvaluationMetric:
 
 
 class Fscore(EvaluationMetric):
-    def __init__(self, real_drifts, detected_drifts, error_tolerance, items):
-        super().__init__(real_drifts, detected_drifts, error_tolerance, items)
+    def __init__(self, real_drifts, detected_drifts, items):
+        super().__init__(real_drifts, detected_drifts, items)
 
     def calculate(self):
         self.calculate_basic_metrics()
@@ -103,34 +104,64 @@ class Fscore(EvaluationMetric):
 
 # False positive rate
 class FPR(EvaluationMetric):
-    def __init__(self, real_drifts, detected_drifts, error_tolerance, items):
-        super().__init__(real_drifts, detected_drifts, error_tolerance, items)
+    def __init__(self, real_drifts, detected_drifts, items):
+        super().__init__(real_drifts, detected_drifts, items)
 
     def calculate(self):
         self.calculate_basic_metrics()
         fpr = self.fp / (self.fp + self.tn)
         return fpr
 
+
 class MeanDelay(EvaluationMetric):
-    def __init__(self, real_drifts, detected_drifts, error_tolerance, items):
-        super().__init__(real_drifts, detected_drifts, error_tolerance, items)
+    def __init__(self, real_drifts, detected_drifts, items):
+        super().__init__(real_drifts, detected_drifts, items)
 
     def calculate(self):
+        self.calculate_basic_metrics()
         if self.total_distance == 0:
             return 0
         return self.total_distance / self.tp
 
 
 class ManageEvaluationMetrics:
-    def __init__(self, evaluation_metrics, evaluation_path):
+    def __init__(self, evaluation_metrics, evaluation_path, parameters):
         # get the metrics selected by the user
         self.metrics_list = evaluation_metrics
-        # create the path if it does not exist
+        self.parameters = parameters
         self.path = evaluation_path
-        self.filename = os.path.join(self.path, f'Evaluation_metrics.txt')
+        self.define_evaluation_filename()
+
+    def define_evaluation_filename(self):
+        # create the path if it does not exist
+        if self.parameters.approach == Approach.FIXED.name:
+            self.path = os.path.join(self.path, self.parameters.logname,
+                                     f'{self.parameters.approach}'
+                                     f'_win{self.parameters.win_size}')
+        elif self.parameters.approach == Approach.ADAPTIVE.name:
+            if self.parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+                self.path = os.path.join(self.path, self.parameters.logname,
+                                         f'{self.parameters.approach}'
+                                         f'_{self.parameters.perspective}'
+                                         f'_{self.parameters.attribute}'
+                                         f'_delta{self.parameters.delta}')
+            elif self.parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                self.path = os.path.join(self.path, self.parameters.logname,
+                                         f'{self.parameters.approach}'
+                                         f'_{self.parameters.perspective}'
+                                         f'_{self.parameters.adaptive_controlflow_approach}'
+                                         f'_win{self.parameters.win_size}'
+                                         f'_delta{self.parameters.delta}')
+            else:
+                print(f'Adaptive perspective not identified: {self.parameters.perspective}, using default '
+                      f'evaluation path...')
+        else:
+            print(f'Approach not identified: {self.parameters.approach}, using default evaluation path...')
         if not os.path.exists(self.path):
             print(f'Creating evaluation path {self.path}')
             os.makedirs(self.path)
+
+        self.filename = os.path.join(self.path, f'evaluation_metrics.txt')
 
     def add_real_drift(self, trace_index):
         self.real_drifts.append(trace_index)

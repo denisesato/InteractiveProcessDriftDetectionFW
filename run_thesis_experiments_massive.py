@@ -26,7 +26,7 @@ class Dataset1Configuration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
-    input_folder = 'data/input/logs/Controlflow/dataset1'
+    input_path = 'C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
     lognames2500 = [
         'cb2.5k.xes',
         'cd2.5k.xes',
@@ -109,13 +109,13 @@ class Dataset1Configuration:
     ]
 
     lognames = lognames2500 + lognames5000 + lognames7500 + lognames10000
-    winsizes = [i for i in range(25, 301, 25)]
+    windows = [i for i in range(25, 301, 25)]
     deltas = [0.002, 0.05, 0.1, 0.3]
 
     # for testing one specific scenario
-    # lognames = ['cb2.5k.xes']
-    # winsizes = [100]
-    # deltas = [0.002]
+    lognames = ['cb2.5k.xes', 'cd5k.xes']
+    windows = [75, 100]
+    deltas = [0.002]
 
     ###############################################################
     # Information for calculating evaluation metrics
@@ -142,30 +142,9 @@ class Dataset1Configuration:
 
 
 if __name__ == '__main__':
-    # path = 'C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
-    # logs = [
-    #     'cb2.5k.xes',
-    #     'cd5k.xes'
-    # ]
-    # windows = [
-    #     125, 250
-    # ]
-    # run_massive_fixed_controlflow(path, logs, windows)
+    dataset1 = Dataset1Configuration()
+    # run_massive_fixed_controlflow(dataset1)
+    run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
+    run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
 
-    path = 'C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
-    logs = [
-        'cb2.5k.xes',
-        'cd5k.xes'
-    ]
-    windows = [
-        75, 100
-    ]
-    deltas = [
-        0.002
-    ]
-    run_massive_adaptive_controlflow_trace_by_trace(path, logs, windows, deltas)
-    run_massive_adaptive_controlflow_windowing(path, logs, windows, deltas)
 
-    # path = 'data/output/script/evaluation'
-    # file_trace = 'results_IPDD_Adaptive_Control-flow'
-    # calculate_metrics_massive()

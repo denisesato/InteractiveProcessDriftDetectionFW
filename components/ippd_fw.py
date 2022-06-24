@@ -184,14 +184,27 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
         print(f'ADWIN delta: {self.delta}')
 
 
-class InteractiveProcessDriftDetectionFW:
-    __instance = None
+class SingletonMeta(type):
+    """
+    The Singleton class can be implemented in different ways in Python. Some
+    possible methods include: base class, decorator, metaclass. We will use the
+    metaclass because it is best suited for this purpose.
+    """
 
-    def __new__(cls, *args, **kwargs):
-        if not InteractiveProcessDriftDetectionFW.__instance:
-            InteractiveProcessDriftDetectionFW.__instance = object.__new__(cls)
-        return InteractiveProcessDriftDetectionFW.__instance
+    _instances = {}
 
+    def __call__(cls, *args, **kwargs):
+        """
+        Possible changes to the value of the `__init__` argument do not affect
+        the returned instance.
+        """
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def __init__(self, script=False, model_type='dfg'):
         mode = 'web interface'
         if script:
@@ -450,7 +463,7 @@ class InteractiveProcessDriftDetectionFW:
         evaluation_path = self.get_evaluation_path(user_id)
         # initialize evaluation module
         self.manage_evaluation = ManageEvaluationMetrics(self.get_implemented_evaluation_metrics(),
-                                                         evaluation_path)
+                                                         evaluation_path, self.current_parameters)
 
         print(
             f'User selected approach={self.current_parameters.approach} reading log as={self.current_parameters.read_log_as}')

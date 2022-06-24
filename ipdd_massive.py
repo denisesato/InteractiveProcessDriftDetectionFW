@@ -11,6 +11,33 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
+
+"""
+For running IPDD massively, the user must define the dataset configuration:
+
+class DatasetSampleConfiguration:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_folder = '/IPDD_Datasets/dataset1'
+    lognames = ['cb2.5k.xes', cd5k.xes]
+    windows = [25, 50]
+    deltas = [0.002, 0.05]
+
+    ###############################################################
+    # Information for calculating evaluation metrics
+    ###############################################################
+    actual_change_points = {
+        '2.5k': define_change_points_dataset1(250),
+        '5k': define_change_points_dataset1(500),
+    }
+
+    number_of_instances = {
+        '2.5k': 2500,
+        '5k': 5000,
+    } 
+"""
+
 import os
 import time
 import pandas as pd
@@ -26,16 +53,16 @@ DRIFTS_KEY = 'drifts - '
 DETECTED_AT_KEY = 'detected at - '
 
 
-def run_massive_fixed_controlflow(input_path, lognames, windows, metrics=None):
+def run_massive_fixed_controlflow(dataset_config, metrics=None):
     # getting instance of the IPDD
     framework = InteractiveProcessDriftDetectionFW(script=True)
     if not metrics:
         metrics = framework.get_default_metrics()
 
     dict_results = {}
-    for log in lognames:
+    for log in dataset_config.lognames:
         dict_results[log] = {}
-        for w in windows:
+        for w in dataset_config.windows:
             print('----------------------------------------------')
             print(f'Running new scenario')
             print(f'Approach: {Approach.FIXED.value}')
@@ -43,7 +70,7 @@ def run_massive_fixed_controlflow(input_path, lognames, windows, metrics=None):
             print(f'Metrics: {[m.value for m in metrics]}')
             print(f'Event log: {log}')
             print('----------------------------------------------')
-            log_filename = os.path.join(input_path, log)
+            log_filename = os.path.join(dataset_config.input_path, log)
             parameters = IPDDParametersFixed(log_filename, Approach.FIXED.name, ReadLogAs.TRACE.name,
                                              metrics, WindowUnityFixed.UNITY.name, w)
             framework.run(parameters, user_id='script')
@@ -62,17 +89,17 @@ def run_massive_fixed_controlflow(input_path, lognames, windows, metrics=None):
     df.to_excel(out_filename)
 
 
-def run_massive_adaptive_controlflow(input_path, lognames, windows, deltas, adaptive_approach, metrics=None):
+def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=None, evaluate=False):
     # getting instance of the IPDD
     framework = InteractiveProcessDriftDetectionFW(script=True)
     if not metrics:
         metrics = framework.get_default_metrics()
 
     dict_results = {}
-    for log in lognames:
+    for log in dataset_config.lognames:
         dict_results[log] = {}
-        for w in windows:
-            for delta in deltas:
+        for w in dataset_config.windows:
+            for delta in dataset_config.deltas:
                 print('----------------------------------------------')
                 print(f'Running new scenario')
                 print(f'Approach: {Approach.ADAPTIVE.value}')
@@ -82,7 +109,7 @@ def run_massive_adaptive_controlflow(input_path, lognames, windows, deltas, adap
                 print(f'Metrics: {[m.value for m in metrics]}')
                 print(f'Event log: {log}')
                 print('----------------------------------------------')
-                log_filename = os.path.join(input_path, log)
+                log_filename = os.path.join(dataset_config.input_path, log)
                 parameters = IPDDParametersAdaptiveControlflow(log_filename, Approach.ADAPTIVE.name,
                                                                AdaptivePerspective.CONTROL_FLOW.name,
                                                                ReadLogAs.TRACE.name,
@@ -103,24 +130,28 @@ def run_massive_adaptive_controlflow(input_path, lognames, windows, deltas, adap
                 print(
                     f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
 
-    out_filename = os.path.join(framework.get_evaluation_path('script'),
-                                f'results_IPDD_{Approach.ADAPTIVE.name}'
-                                f'_{AdaptivePerspective.CONTROL_FLOW.name}'
-                                f'_{adaptive_approach.name}.xlsx')
+    out_filename = f'results_IPDD_{Approach.ADAPTIVE.name}' \
+                   f'_{AdaptivePerspective.CONTROL_FLOW.name}' \
+                   f'_{adaptive_approach.name}.xlsx'
+    out_complete_filename = os.path.join(framework.get_evaluation_path('script'),
+                                         out_filename)
     df = pd.DataFrame.from_dict(dict_results, orient='index')
-    df.to_excel(out_filename)
+    df.to_excel(out_complete_filename)
+    if evaluate:
+        calculate_metrics_massive(framework.get_evaluation_path('script'),
+                                  out_filename, dataset_config, True)
 
 
-def run_massive_adaptive_controlflow_trace_by_trace(path, logs, windows, deltas, metrics=None):
-    run_massive_adaptive_controlflow(path, logs, windows, deltas,
+def run_massive_adaptive_controlflow_trace_by_trace(dataset_config, metrics=None, evaluate=False):
+    run_massive_adaptive_controlflow(dataset_config,
                                      ControlflowAdaptiveApproach.TRACE,
-                                     metrics)
+                                     metrics, evaluate)
 
 
-def run_massive_adaptive_controlflow_windowing(path, logs, windows, deltas, metrics=None):
-    run_massive_adaptive_controlflow(path, logs, windows, deltas,
+def run_massive_adaptive_controlflow_windowing(dataset_config, metrics=None, evaluate=False):
+    run_massive_adaptive_controlflow(dataset_config,
                                      ControlflowAdaptiveApproach.WINDOW,
-                                     metrics)
+                                     metrics, evaluate)
 
 
 def convert_list_to_int(string_list):
@@ -173,20 +204,13 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
 
         for configuration in change_points.keys():
             # get the actual change points
-            # check first in the exceptions
-            if logname in dataset_config.exceptions_in_actual_change_points.keys():
-                real_change_points = dataset_config.exceptions_in_actual_change_points[logname]['actual_change_points']
-                instances = dataset_config.exceptions_in_actual_change_points[logname]['number_of_instances']
-            else:
-                # if it is not an exception, get the real change points by the logsize
-                real_change_points = dataset_config.actual_change_points[logsize]
-                instances = dataset_config.number_of_instances[logsize]
+            real_change_points = dataset_config.actual_change_points[logsize]
+            instances = dataset_config.number_of_instances[logsize]
 
             # get the detected at information if available and convert to a list of integers
-            metrics_summary = framework.evaluate(change_points[configuration],
-                                         real_change_points, instances)
-           # metrics = calculate_metrics(metrics, change_points[configuration], real_change_points,
-           #                                  instances)
+            metrics_summary = framework.evaluate(real_change_points,
+                                                        change_points[configuration],
+                                                        instances)
             # add the calculated metrics to the dictionary
             if save_input_for_calculation:
                 metrics_results[logname][f'Detected drifts {configuration}'] = change_points[configuration]
@@ -204,5 +228,3 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
     print(f'Saving results at file {out_complete_filename}...')
     df.to_excel(out_complete_filename)
     print(f'*****************************************************************')
-
-
