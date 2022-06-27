@@ -36,7 +36,6 @@ navbar = dbc.NavbarSimple(
 
 evaluation_card = html.Div([
     dbc.Collapse([
-        dbc.CardHeader(['Evaluation metrics']),
         dbc.CardBody([
             dbc.Row([
                 dbc.Col(html.Span('Real drifts: '), width=2),
@@ -44,11 +43,15 @@ evaluation_card = html.Div([
                                   placeholder='Fill with real drifts separated by space'), width=4),
                 dbc.Col(dbc.Button(id='submit-evaluation',
                                    n_clicks=0, children='Evaluate',
-                                   className='btn btn-secondary'), width=2)
+                                   className='btn btn-secondary'), width=2),
             ]),
             dbc.Row([
-                dbc.Col(html.H4(id='div-fscore', className='mt-2')),
-            ])
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody(dbc.Row(id='div-metrics')),
+                    ),
+                ),
+            ], id='row-metrics', style={'display': 'none'}, className='mt-2')
         ])
     ], id='collapse-evaluation', is_open=False)
 ], id='evaluation-card', className='mt-1', style={'display': 'none'})
@@ -628,12 +631,15 @@ def update_status_and_drifts(n, div_status):
            div_status, activities, first_activity, style_activity
 
 
-@app.callback(Output('div-fscore', 'children'),
+@app.callback(Output('row-metrics', 'style'),
+              Output('div-metrics', 'children'),
               [Input('submit-evaluation', 'n_clicks')],
               [State('input-real-drifts', 'value'),
                State('window-size', 'children'),
                State('activity', 'value')])
 def evaluate(n_clicks, real_drifts, window_size, activity):
+    show = {'display': 'block'}
+    hide = {'display': 'none'}
     if n_clicks and real_drifts and real_drifts != '':
         if framework.get_status_framework() == IPDDProcessingStatus.NOT_STARTED:
             return f'It is not possible to evaluate yet because framework was not started.'
@@ -654,9 +660,11 @@ def evaluate(n_clicks, real_drifts, window_size, activity):
             windows, traces = framework.get_windows_with_drifts(activity)
             metrics_summary = framework.evaluate(list_real_drifts, traces, framework.get_number_of_items())
             metric = []
+            metric_txt = ''
             for metric_name in metrics_summary.keys():
                 metric_print = f'{metric_name}: {"{:.2f}".format(metrics_summary[metric_name])}'
                 print(f'IPDD evaluated: {metric_print}')
-                metric.append(html.H5(metric_print))
-        return metric
-    return ''
+                # metric_txt = metric_txt + metric_print + ' '
+                metric.append(dbc.Col([html.H6(metric_print)]))
+        return show, metric
+    return hide, ''

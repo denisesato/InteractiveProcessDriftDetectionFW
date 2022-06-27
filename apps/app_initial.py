@@ -40,7 +40,8 @@ info_ipdd = [
             html.Hr(),
             html.H4("Academic Publications", className="card-subtitle mt-4"),
             html.H6("More details about the "
-                    "framework architecture and the current implementation are available in the related publications.",
+                    "IPDD framework architecture and the current implementation are available in the related "
+                    "publications:",
                     className="card-text mt-3"),
 
             html.P(dbc.CardLink("Interactive Process Drift Detection Framework - ICAISC 2021",
@@ -51,6 +52,13 @@ info_ipdd = [
                                 href="https://icpmconference.org/2021/wp-content/uploads/sites/5/2021/10/L"
                                      "-Interactive-Process-Drift-Detection-A-Framework-for-Visual-Analysis-of-Process"
                                      "-Drifts.pdf", target="_blank")),
+            html.H6("More details about concept drift in process mining are available in the survey: ",
+                    className="card-text mt-3"),
+
+            html.P(dbc.CardLink("A Survey on Concept Drift in Process Mining - ACM Computing Surveys 2022",
+                                href="https://dl.acm.org/doi/10.1145/3472752?sid=SCITRUS",
+                                target="_blank")),
+
             html.H5(['Source code available at: ',
                      dbc.CardLink(children='https://github.com/denisesato/InteractiveProcessDriftDetectionFW',
                                   id='link-github',
@@ -62,10 +70,6 @@ info_ipdd = [
 
 
 def get_layout():
-    # if not session.get('user'):
-    #     print(f'Creating user session...')
-    #     session['user'] = str(uuid.uuid4())
-
     # main layout of the page
     layout = [
         dbc.Row([
