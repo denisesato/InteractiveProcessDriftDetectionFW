@@ -92,6 +92,8 @@ class Fscore(EvaluationMetric):
 
     def calculate(self):
         self.calculate_basic_metrics()
+        precision = 0
+        recall = 0
         if self.tp + self.fp > 0:
             precision = self.tp / (self.tp + self.fp)
             if self.tp + self.fn > 0:

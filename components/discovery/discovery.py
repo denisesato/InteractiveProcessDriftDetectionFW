@@ -28,10 +28,4 @@ class Discovery:
             gviz = Source.from_file(filename=map_file, directory=models_path)
             return gviz.source
 
-        return """
-                digraph  {
-                  node[style="filled"]
-                  a ->b->d
-                  a->c->d
-                }
-                """
+        return ""

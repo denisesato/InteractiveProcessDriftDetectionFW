@@ -531,7 +531,7 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
     #       f'approach {approach} adaptive_perspective {adaptive_perspective}')
     marks = {}
     max_slider = 0
-    selected = -1
+    selected = 0
     plot = ''
     if approach:
         initial_indexes = None
@@ -664,14 +664,18 @@ def update_status_and_drifts(n, div_status, progress_value, progress):
 def evaluate(n_clicks, real_drifts, window_size, activity):
     show = {'display': 'block'}
     hide = {'display': 'none'}
-    if n_clicks:  # and real_drifts and real_drifts != '':
+    if n_clicks:
+        metric = []
         if framework.get_status_framework() == IPDDProcessingStatus.NOT_STARTED:
             return f'It is not possible to evaluate yet because framework was not started.'
         if framework.get_status_framework() == IPDDProcessingStatus.RUNNING:
             return f'It is not possible to evaluate yet because framework is still running.'
         if framework.get_status_framework() != IPDDProcessingStatus.NOT_STARTED and \
-                framework.get_status_framework() == IPDDProcessingStatus.IDLE and real_drifts:
-            drifts = real_drifts.split(" ")
+                framework.get_status_framework() == IPDDProcessingStatus.IDLE:
+            if not real_drifts:
+                drifts = []
+            else:
+                drifts = real_drifts.split(" ")
             list_real_drifts = []
             for item in drifts:
                 if item != '':
@@ -683,7 +687,6 @@ def evaluate(n_clicks, real_drifts, window_size, activity):
             print(f'Real drifts {list_real_drifts}')
             windows, traces = framework.get_windows_with_drifts(activity)
             metrics_summary = framework.evaluate(list_real_drifts, traces, framework.get_number_of_items())
-            metric = []
             for metric_name in metrics_summary.keys():
                 metric_print = f'{metric_name}: {"{:.2f}".format(metrics_summary[metric_name])}'
                 print(f'IPDD evaluated: {metric_print}')
