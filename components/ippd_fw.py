@@ -226,6 +226,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.total_of_windows = None
         self.windows_with_drifts = None
         self.initial_indexes = None
+        self.analyze = None
         self.activities = []
         self.all_activities = []
         # mine the process model and save it
@@ -347,7 +348,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def get_adaptive_evaluation_path(self, user_id):
         path = os.path.join(self.get_evaluation_path(user_id),
-                                self.current_parameters.logname)
+                            self.current_parameters.logname)
         if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             path = os.path.join(self.get_evaluation_path(user_id),
                                 self.current_parameters.logname,
@@ -398,6 +399,14 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
             # convert to interval time log if needed
             # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
+
+    def get_running_percentage(self):
+        if not self.analyze or not self.current_log:
+            p = 0
+        else:
+            p = float(self.analyze.current_trace) / float(self.current_log.total_of_cases) * 100.0
+            # print(f'get_running_percentage: {self.analyze.current_trace} - {p}')
+        return p
 
     @threaded
     def run_web(self, parameters, user_id):
@@ -461,8 +470,6 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                 outputpath_adaptive_adwin_models = self.get_adaptive_adwin_models_path(user_id)
                 outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
-            # if not os.path.exists(outputpath_adaptive_adwin):
-            #     os.makedirs(outputpath_adaptive_adwin)
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
 
@@ -475,12 +482,12 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             f'User selected approach={self.current_parameters.approach} reading log as={self.current_parameters.read_log_as}')
         print(f'Metrics={self.current_parameters.metrics}')
         print(f'Starting windowing process...')
-        analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
+        self.analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
                                self.get_input_path(user_id), self.get_models_path(user_id),
                                self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
                                self.current_log, self.discovery, user_id,
                                outputpath_adaptive_adwin, outputpath_adaptive_adwin_models)
-        self.total_of_windows, self.initial_indexes, self.all_activities = analyze.start_drift_analysis()
+        self.total_of_windows, self.initial_indexes, self.all_activities = self.analyze.start_drift_analysis()
         if self.current_parameters.approach == Approach.ADAPTIVE.name and \
                 self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
@@ -561,10 +568,9 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_model(self, original_filename, window, user, activity=''):
         return self.discovery.get_process_model(self.get_models_path(user), original_filename, window, activity)
 
-    def get_activity_plot_src(self, user, activity, attribute):
-        filename = os.path.join(self.get_adaptive_path(user), self.current_log.filename,
-                                self.current_parameters.read_log_as, f'delta{self.current_parameters.delta}',
-                                f'{activity}_{attribute}.png')
+    def get_activity_plot_src(self, user, activity):
+        filename = os.path.join(self.get_adaptive_adwin_path(user),
+                                f'{activity}.png')
         return filename
 
     def get_adaptive_plot_src(self, user):
@@ -621,19 +627,22 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def get_windows_with_drifts(self, activity=''):
         if self.get_metrics_manager():
-            if self.get_approach() == Approach.ADAPTIVE.name and \
-                    self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name and activity != '':
-                return self.get_metrics_manager(activity).get_drifts_info()
-            elif self.get_approach() == Approach.FIXED.name or \
-                    (self.get_approach() == Approach.ADAPTIVE.name and
-                     self.get_adaptive_perpective() == AdaptivePerspective.CONTROL_FLOW.name):
+            if self.get_approach() == Approach.FIXED.name:
                 return self.get_metrics_manager().get_drifts_info()
+            elif self.get_approach() == Approach.ADAPTIVE.name:
+                if self.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name:
+                    windows, traces = self.get_metrics_manager().get_drifts_info(activity)
+                    return windows, self.get_initial_trace_indexes(activity)[1:]
+                else:
+                    windows, traces = self.get_metrics_manager().get_drifts_info()
+                    return windows, self.get_initial_trace_indexes()[1:]
             else:
                 print(f'Approach not identified {self.get_approach()} in self.get_approach()')
                 return [], []
         else:
             print(f'Metrics manager not instantiated')
             return [], []
+
 
     def clean_generated_data(self, user_id):
         # cleaning data from previous executions - only for web acess

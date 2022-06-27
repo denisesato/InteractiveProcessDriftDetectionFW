@@ -97,6 +97,7 @@ class AnalyzeDrift:
         self.output_path_adaptive_adwin = output_path_adaptive_adwin
         self.output_path_adaptive_models_adwin = output_path_adaptive_models_adwin
         self.model_type = model_type
+        self.current_trace = 0
 
         # instance of the MetricsManager
         if current_parameters.approach == Approach.FIXED.name or \
@@ -145,9 +146,9 @@ class AnalyzeDrift:
         df = pd.DataFrame([values_for_activity.keys(), values_for_activity.values()]).T
         df.columns = ['trace', 'value']
         if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            filename_attributes = f'{activity_name}_{self.current_parameters.attribute_name}.csv'
+            filename_attributes = f'{activity_name}.csv'
         else:
-            filename_attributes = f'{activity_name}_{self.current_parameters.attribute}.csv'
+            filename_attributes = f'{activity_name}.csv'
         output_filename = os.path.join(self.output_path_adaptive_adwin, filename_attributes)
         df.to_csv(output_filename, index=False)
         sns.set_style("whitegrid")
@@ -162,12 +163,12 @@ class AnalyzeDrift:
         # save the plot
         if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
             filename = os.path.join(self.output_path_adaptive_adwin,
-                                    f'{activity_name}_{self.current_parameters.attribute_name}.png')
+                                    f'{activity_name}.png')
             attribute = self.current_parameters.attribute_name
         else:
             attribute = get_value_of_parameter(self.current_parameters.attribute)
             filename = os.path.join(self.output_path_adaptive_adwin,
-                                    f'{activity_name}_{self.current_parameters.attribute}.png')
+                                    f'{activity_name}.png')
 
         plt.title(f'Adaptive Time/Data {attribute}')
         plt.savefig(filename)
@@ -346,6 +347,7 @@ class AnalyzeDrift:
 
     # windowing method for fixed window approach
     def apply_tumbling_window(self, event_data):
+        self.current_trace = 0
         initial_index = 0
         initial_indexes = {}
         initial_trace_index = None
@@ -355,6 +357,7 @@ class AnalyzeDrift:
                                                self.models_path, self.metrics_path)
 
         for i, item in enumerate(event_data):
+            self.current_trace = i+1
             # get the current case id
             case_id = self.get_case_id(item)
 
@@ -442,6 +445,7 @@ class AnalyzeDrift:
 
     # IPDD adaptive approach for time or data attributes
     def apply_detector_on_attribute(self, event_data, attribute_class, delta, activities, user):
+        self.current_trace = 0
         print(f'Applying ADWIN to log {self.current_log.filename} attribute {attribute_class.name} delta {delta}')
         adwin = {}
         attribute_values = {}
@@ -466,6 +470,7 @@ class AnalyzeDrift:
 
         self.current_parameters.total_of_activities = len(activities)
         for i, item in enumerate(event_data):
+            self.current_trace = i + 1
             # get the current case id
             case_id = self.get_case_id(item)
             # save the first case id as the beginning of the first window
@@ -570,6 +575,7 @@ class AnalyzeDrift:
     # When a drift is detected a new model may be discovered using the next traces (stable_period)
     # The process model is discovered using the inductive miner
     def apply_detector_on_quality_metrics_trace_by_trace(self, event_data, delta, window_size, user):
+        self.current_trace = 0
         print(f'Trace by trace approach - ADWIN to log {self.current_log.filename} delta {delta}')
         # different metrics can be used for each dimension evaluated
         # by now we expected one metric for fitness quality dimension and other for precision quality dimension
@@ -612,6 +618,7 @@ class AnalyzeDrift:
         final_trace_id = initial_trace_id + window_size
         total_of_traces = len(event_data)
         for i in range(0, total_of_traces):
+            self.current_trace = i + 1
             print(f'Reading trace [{i}]...')
             last_trace = EventLog(event_data[i:(i + 1)])
             # check if one of the metrics report a drift
@@ -712,6 +719,7 @@ class AnalyzeDrift:
 
     # IPDD adaptive windowing approach
     def apply_detector_on_quality_metrics_windowing(self, event_data, delta, window_size, user):
+        self.current_trace = 0
         print(f'Windowing approach - ADWIN to log {self.current_log.filename} delta {delta}')
         metrics = {
             QualityDimension.FITNESS.name: 'fitnessTBR',
@@ -753,6 +761,7 @@ class AnalyzeDrift:
 
         initial_trace_id = 0  # start of the window (change point)
         for i in range(0, total_of_traces):
+            self.current_trace = i + 1
             # print(f'Reading trace {i}')
             current_trace = EventLog(event_data[i:i + 1])
             if i == initial_trace_id_for_stable_period:

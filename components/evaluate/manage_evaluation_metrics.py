@@ -181,8 +181,8 @@ class ManageEvaluationMetrics:
                                               activity=None):
         metrics_info = []
         metrics_summary = {}
+        print(f'Calculating metric real drifts {real_drifts} - detected drifts {detected_drifts} - total of traces {items}')
         for metric_name in self.metrics_list:
-            print(f'Calculating evaluation metric [{metric_name}]')
             metric = ManageEvaluationMetrics.evaluation_metrics_factory(metric_name, real_drifts,
                                                                         detected_drifts, items)
             value = metric.calculate()

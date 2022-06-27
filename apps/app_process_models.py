@@ -57,11 +57,23 @@ evaluation_card = html.Div([
 ], id='evaluation-card', className='mt-1', style={'display': 'none'})
 
 status_panel = [
-    html.Div([html.H5('Status: ', style={'display': 'inline'})], id='div-status',
-             style={'display': 'inline'}),
-    html.Div(id='div-status-mining', children='Not started',
-             style={'display': 'inline'}),
-    html.Div(id='div-status-similarity', children='', style={'display': 'inline'})
+    dbc.Row([
+        dbc.Col([
+            html.Div([html.H5('Status: ', style={'display': 'inline'})], id='div-status',
+                     style={'display': 'inline'}),
+            html.Div(id='div-status-mining', children='Not started',
+                     style={'display': 'inline'}),
+            html.Div(id='div-status-similarity', children='', style={'display': 'inline'}),
+        ]),
+    ]),
+    dbc.Row([
+        dbc.Col([
+            html.Span('Windowing process: '),
+            dbc.Progress(id='progress',
+                         label='0%', value=0, max=100, striped=True,
+                         color='success', animated=True)
+        ], id='col-progress', width={'size': 5}, style={'display': 'none'}),
+    ])
 ]
 
 modal_extended_adaptive_options = [
@@ -564,7 +576,7 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
                     adaptive_perspective == AdaptivePerspective.TIME_DATA.name and \
                     activity and activity != '' and \
                     activity != Activity.ALL.value and attribute:
-                plot_filename = framework.get_activity_plot_src(get_user_id(), activity, attribute)
+                plot_filename = framework.get_activity_plot_src(get_user_id(), activity)
                 # print(f'Trying to show plot {plot_filename}')
                 encoded_image = base64.b64encode(open(plot_filename, 'rb').read())
                 plot = 'data:image/png;base64,{}'.format(encoded_image.decode())
@@ -577,7 +589,10 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
     return marks, max_slider, selected, plot
 
 
-@app.callback([Output('div-status-similarity', 'children'),
+@app.callback([Output('col-progress', 'style'),
+               Output('progress', 'value'),
+               Output('progress', 'label'),
+               Output('div-status-similarity', 'children'),
                Output('div-status-mining', 'children'),
                Output('evaluation-card', 'style'),
                Output('button-evaluation', 'style'),
@@ -587,19 +602,28 @@ def update_slider_and_plot(activity, attribute, approach, adaptive_perspective):
                Output('activity', 'value'),
                Output('activity_div', 'style')],
               Input('check-ipdd-finished', 'n_intervals'),
-              State('div-status', 'children'))
-def update_status_and_drifts(n, div_status):
-    # print(f'update_status_and_drifts')
+              State('div-status', 'children'),
+              State('progress', 'value'),
+              State('progress', 'label'))
+def update_status_and_drifts(n, div_status, progress_value, progress):
+    hide = {'display': 'none'}
+    show = {'display': 'block'}
+    # print(f'update_status_and_drifts: {progress_value}')
     ###################################################################
     # UPDATE THE USER INTERFACE ABOUT MINING THE MODELS
     ###################################################################
     div_status_mining = framework.get_status_mining_text() + "  "
     ipdd_status = framework.get_status_framework()
 
-    # display or not the spinner (loading behavior)
+    show_progress = hide
+    # display or not the spinner (loading behavior) and the progress bar
     if ipdd_status == IPDDProcessingStatus.RUNNING:
         if len(div_status) == 1:
             div_status = [dbc.Spinner(size="sm"), " "] + div_status
+        show_progress = show
+        progress_value = framework.get_running_percentage()
+        progress = f'{progress_value:.2f}%'
+        # print(f'update_status_and_drifts: {progress_value}')
     elif ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
         div_status = [html.H5('Status: ', style={'display': 'inline'})]
 
@@ -610,12 +634,12 @@ def update_status_and_drifts(n, div_status):
     div_similarity_status = framework.get_status_similarity_metrics_text()
 
     # display or not
-    display_evaluation = {'display': 'none'}
-    style_activity = {'display': 'none'}
+    display_evaluation = hide
+    style_activity = hide
     activities = []
     first_activity = ''
     if ipdd_status == IPDDProcessingStatus.FINISHED or ipdd_status == IPDDProcessingStatus.IDLE:
-        display_evaluation = {'display': 'block'}
+        display_evaluation = show
 
         if framework.get_approach() and framework.get_approach() == Approach.ADAPTIVE.name and \
                 framework.get_adaptive_perpective() == AdaptivePerspective.TIME_DATA.name:
@@ -627,7 +651,7 @@ def update_status_and_drifts(n, div_status):
                 first_activity = framework.get_first_activity()
                 print(f'Activities with drifts {activities} - selected activity {first_activity}')
 
-    return div_similarity_status, div_status_mining, display_evaluation, display_evaluation, ipdd_status, \
+    return show_progress, progress_value, progress, div_similarity_status, div_status_mining, display_evaluation, display_evaluation, ipdd_status, \
            div_status, activities, first_activity, style_activity
 
 
@@ -640,7 +664,7 @@ def update_status_and_drifts(n, div_status):
 def evaluate(n_clicks, real_drifts, window_size, activity):
     show = {'display': 'block'}
     hide = {'display': 'none'}
-    if n_clicks and real_drifts and real_drifts != '':
+    if n_clicks:  # and real_drifts and real_drifts != '':
         if framework.get_status_framework() == IPDDProcessingStatus.NOT_STARTED:
             return f'It is not possible to evaluate yet because framework was not started.'
         if framework.get_status_framework() == IPDDProcessingStatus.RUNNING:
@@ -660,11 +684,9 @@ def evaluate(n_clicks, real_drifts, window_size, activity):
             windows, traces = framework.get_windows_with_drifts(activity)
             metrics_summary = framework.evaluate(list_real_drifts, traces, framework.get_number_of_items())
             metric = []
-            metric_txt = ''
             for metric_name in metrics_summary.keys():
                 metric_print = f'{metric_name}: {"{:.2f}".format(metrics_summary[metric_name])}'
                 print(f'IPDD evaluated: {metric_print}')
-                # metric_txt = metric_txt + metric_print + ' '
                 metric.append(dbc.Col([html.H6(metric_print)]))
         return show, metric
     return hide, ''
