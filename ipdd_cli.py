@@ -36,7 +36,7 @@ def main():
     parser.add_argument('--event_log', '-l', required=True,
                         help='Event log: path and name of the event log using XES format')
     parser.add_argument('--real_drifts', '-rd', type=int, nargs='+',
-                        help='Real drifts: list of trace indexes (starting from 1) of the real drifts (separated by a '
+                        help='Real drifts: list of trace indexes of the real drifts (separated by a '
                              'space), used for evaluation. If no real drift exists, then fill with 0.')
     parser.add_argument('--metrics', '-mt', nargs='+',
                         help=f'Similarity Metrics: list of similarity metrics that IPDD should '
