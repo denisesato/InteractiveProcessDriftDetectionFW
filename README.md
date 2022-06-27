@@ -62,20 +62,13 @@ IPDD shows the F-score, FPR and Mean Delay metrics calculated using the informed
 
 It is also possible to execute IPDD by the command line. In this case, IPDD saves the outputted information about the process drifts into the “data/output” folder. You have to create a virtual environment containing the dependencies of IPDD (numpy, requirements.txt, and scikit-multiflow-0.6.dev0.tar.gz)
 
-To run IPDD via command line you can (“wz” indicates the window size and “l” refers to the event log):
+To run IPDD via command line you can verify the parameter by running from the virtual environment: 
+python ipdd_cli.py -h
 
-The following line executes Fixed IPDD using a window size of 250.
-python ipdd_cli.py -wz 250 -l "C:\logs\cb2.5k.xes" 
+You may also check the file run_manufaturing_synthetic_experiments_CLI.py, which performed several experiments using the CLI interface.
 
-For IPDD also calculates the F-score, inform the real drifts in the “rd” parameter:
+# Running the massive interface of IPDD 
 
-python ipdd_cli.py -wz 250 -l "C: \logs\cb2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250
+If you want to perform the drift analysis using different parameters, e.g, analysing the same log with a range of window sizes, you can use the massive interface (ipdd_massive.py). 
 
-Parameters:
--wt: Window type: t - stream of traces or e - event stream (default t)
--wu: Window unity: u - amount of traces or events, h - hours, or d – days (default u)
--wz: Window size: numeric value indicating the total of window unities for each window
--l: Event log: path and name of the event log using XES format
--rd: Real drifts: list of trace indexes from actual drifts (separated by a space), used for evaluation
-
-# Running the massive interface of IPDD (for performing several scenarios, e.g., running the same approach with different windo sizes)
+You can check the file run_thesis_experiments_massive.py, which performed massive experiments on a dataset containing 68 event logs.
