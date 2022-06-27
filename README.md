@@ -31,13 +31,13 @@ Steps for analyzing drifts using IPDD:
 
 5) On the main page, the user must define:
 
-   - Approach - Fixed or Adaptive 
+Approach - Fixed or Adaptive 
    
    - Parameters for Fixed IPDD:
-   1) Window size - a numeric value indicating the size of the window (number of traces)
+   Window size - a numeric value indicating the size of the window (number of traces)
    
    - Parameters for Adaptive IPDD:
-   1) Perspective - Time/Data or Control-flow
+   Perspective - Time/Data or Control-flow
    
    In case of Time/Data you can select the attribute for applying the adaptive drift detection.
    
