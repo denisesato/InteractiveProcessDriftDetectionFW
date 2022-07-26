@@ -48,11 +48,12 @@ Approach - Fixed or Adaptive
 
 IPDD will inform the user when it finishes to mine the models and calculate the similarity metrics.
 
-After analyzing the process drifts, the user can navigate between windows to check the process models and the similarity metrics, visualing the drifts. The windows are named using the number of the window and the trace index of the first trace considered inside the window.
+After analyzing the process drifts, the user can navigate between windows to check the process models and the similarity metrics, visualizing the drifts. The windows are named using the number of the window and the trace index of the initial trace of the window.
 
 Windows marked as read indicates a process drift. 
 
 Optionally the user can evaluate the detected drifts. This is possible when the event log is artificial and the position of the drifts is a priori known.
+
 1) Select "Evaluate results"
 2) Inform all the actual drifts, using the trace/event indexes, separated by a space.
 3) Click on "Evaluate"
