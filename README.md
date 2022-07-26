@@ -5,6 +5,7 @@ This is a public repository for Interactive Process Drift Detection (IPDD) Frame
 This installation process was tested on a Windows 10 machine.
 
 After you cloned the git repository, go to the project directory and install the dependencies (using pip):
+
 	pip install -U numpy
 	pip install -r requirements.txt
 	pip install /scikit-multiflow-0.6.dev0.tar.gz
