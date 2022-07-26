@@ -32,17 +32,19 @@ Steps for analyzing drifts using IPDD:
 
 5) On the main page, the user must define:
 
-Approach - Fixed or Adaptive 
+	Approach - Fixed or Adaptive 
    
-   - Parameters for Fixed IPDD:
-   Window size - a numeric value indicating the size of the window (number of traces)
+   	- Parameters for Fixed IPDD:
+   	
+	Window size - a numeric value indicating the size of the window (number of traces)
    
-   - Parameters for Adaptive IPDD:
-   Perspective - Time/Data or Control-flow
+   	- Parameters for Adaptive IPDD:
+   	
+	Perspective - Time/Data or Control-flow
    
-   In case of Time/Data you can select the attribute for applying the adaptive drift detection.
+   	In case of Time/Data you can select the attribute for applying the adaptive drift detection.
    
-   In case of Control-flow you can select between the two approaches: Trace by Trace or windowing, and set the Window size (a numeric value indicating the size of the window - number of traces)
+   	In case of Control-flow you can select between the two approaches: Trace by Trace or windowing, and set the Window size (a numeric value indicating the size of the window - number of traces)
 
 6) Click on "Analyze Process Drifts" to start the drift analysis. 
 
