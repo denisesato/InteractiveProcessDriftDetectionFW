@@ -575,6 +575,7 @@ class AnalyzeDrift:
     # When a drift is detected a new model may be discovered using the next traces (stable_period)
     # The process model is discovered using the inductive miner
     def apply_detector_on_quality_metrics_trace_by_trace(self, event_data, delta, window_size, user):
+        factor = 100
         self.current_trace = 0
         print(f'Trace by trace approach - ADWIN to log {self.current_log.filename} delta {delta}')
         # different metrics can be used for each dimension evaluated
@@ -627,7 +628,7 @@ class AnalyzeDrift:
                 # calculate the metric for each dimension
                 # for each dimension decide if the metric should be calculated using only the last trace read or all
                 # the traces read since the last drift
-                new_value = calculate_quality_metric(metrics[dimension], last_trace, net, im, fm) * 100
+                new_value = calculate_quality_metric(metrics[dimension], last_trace, net, im, fm) * factor
                 values[dimension].append(new_value)
                 # update the new value in the detector
                 adwin_detection[dimension].add_element(new_value)
@@ -663,16 +664,17 @@ class AnalyzeDrift:
                 if final_trace_id > total_of_traces:
                     final_trace_id = total_of_traces
 
-                print(f'Discover a new model using traces from {i} to {final_trace_id - 1}')
-                log_for_model = EventLog(event_data[i:final_trace_id])
-                net, im, fm = inductive_miner.apply(log_for_model)
-                pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                             f'model{self.window_count+1}_{i}-{final_trace_id - 1}.pnml')
-                pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
-                # other discovery algorithms can be applied
-                # net, im, fm = heuristics_miner.apply(log_for_model)
-                # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
-                # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
+                if self.current_parameters.update_model:
+                    print(f'Discover a new model using traces from {i} to {final_trace_id - 1}')
+                    log_for_model = EventLog(event_data[i:final_trace_id])
+                    net, im, fm = inductive_miner.apply(log_for_model)
+                    pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                                 f'model{self.window_count+1}_{i}-{final_trace_id - 1}.pnml')
+                    pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
+                    # other discovery algorithms can be applied
+                    # net, im, fm = heuristics_miner.apply(log_for_model)
+                    # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
+                    # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
         # process remaining items as the last window
         if 0 < initial_trace_id < total_of_traces:
             final_trace_id = initial_trace_id + window_size
@@ -719,6 +721,7 @@ class AnalyzeDrift:
 
     # IPDD adaptive windowing approach
     def apply_detector_on_quality_metrics_windowing(self, event_data, delta, window_size, user):
+        factor = 100
         self.current_trace = 0
         print(f'Windowing approach - ADWIN to log {self.current_log.filename} delta {delta}')
         metrics = {
@@ -775,17 +778,17 @@ class AnalyzeDrift:
                     event_data[initial_trace_id_for_stable_period:initial_trace_id_for_stable_period + window_size])
                 precision = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name],
                                                                 traces_stable_period,
-                                                                tree) * 100
+                                                                tree) * factor
                 fitness = calculate_quality_metric(metrics[QualityDimension.FITNESS.name], current_trace, net, im,
-                                                   fm) * 100
+                                                   fm) * factor
             elif i >= initial_trace_id_for_stable_period + window_size:
                 print(f'Detection phase - reading trace {i}')
                 window = EventLog(event_data[i - window_size + 1:i + 1])
                 # after the stable period calculate the metrics after reading a new trace
                 precision = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name], window,
-                                                                tree) * 100
+                                                                tree) * factor
                 fitness = calculate_quality_metric(metrics[QualityDimension.FITNESS.name], current_trace, net, im,
-                                                   fm) * 100
+                                                   fm) * factor
 
             values[QualityDimension.PRECISION.name].append(precision)
             adwin[QualityDimension.PRECISION.name].add_element(precision)
@@ -830,14 +833,15 @@ class AnalyzeDrift:
                 for m in metrics:
                     # reset the detectors to avoid a new drift during the stable period
                     adwin[m].reset()
-                # Discover a new model using window
-                log_for_model = EventLog(event_data[change_point:change_point + window_size])
-                net, im, fm = inductive_miner.apply(log_for_model)
-                pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                             f'model{self.window_count+1}_{change_point}-{change_point + window_size - 1}.pnml')
-                pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
-                tree = inductive_miner.apply_tree(log_for_model)
-                print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
+                if self.current_parameters.update_model:
+                    # Discover a new model using window
+                    log_for_model = EventLog(event_data[change_point:change_point + window_size])
+                    net, im, fm = inductive_miner.apply(log_for_model)
+                    pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                                 f'model{self.window_count+1}_{change_point}-{change_point + window_size - 1}.pnml')
+                    pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
+                    tree = inductive_miner.apply_tree(log_for_model)
+                    print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
 
         # process remaining items as the last window
         if 0 < initial_trace_id < total_of_traces:

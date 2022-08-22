@@ -69,6 +69,9 @@ def main():
                         default='t')
     parser.add_argument('--save_sublogs', '-sub', help='Option for exporting the sub-logs derived between the detected change points',
                         type=bool, default=False)
+    parser.add_argument('--no_update_model',
+                        help='Option for update process model after detecting a change point',
+                        action='store_true')
 
     args = parser.parse_args()
     approach = ''
@@ -139,6 +142,9 @@ def main():
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
             print(f'Window size: {win_size}')
             print(f'Adaptive control-flow approach: {adaptive_controlflow_approach}')
+            print(f'Export sublogs: {args.save_sublogs}')
+            print(f'Update process models: {args.no_update_model}')
+
 
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
@@ -161,8 +167,8 @@ def main():
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
             parameters = IPDDParametersAdaptiveControlflow(event_log, approach, perspective, ReadLogAs.TRACE.name, win_size,
                                                            metrics,
-                                                           adaptive_controlflow_approach, args.delta,
-                                                           args.save_sublogs)
+                                                           adaptive_controlflow_approach, delta=args.delta,
+                                                           save_sublogs=args.save_sublogs, update_model=not args.no_update_model)
     framework.run_script(parameters)
 
     running = framework.get_status_running()
