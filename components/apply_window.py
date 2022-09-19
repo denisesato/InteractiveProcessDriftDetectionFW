@@ -688,7 +688,7 @@ class AnalyzeDrift:
             self.new_window(initial_trace_id, final_trace_id)
             # save the sublog
             if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, total_of_traces)
+                self.save_sublog(initial_trace_id, final_trace_id)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -856,7 +856,7 @@ class AnalyzeDrift:
             self.new_window(initial_trace_id, final_trace_id)
             # save the sublog
             if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, total_of_traces)
+                self.save_sublog(initial_trace_id, final_trace_id)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
