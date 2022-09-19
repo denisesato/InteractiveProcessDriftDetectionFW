@@ -44,6 +44,10 @@ class DfgDefinitions:
         map_file = f'{self.models_path}_w{window}.gv'
         return map_file
 
+    def get_model_filename_svg(self, window):
+        map_file = f'{self.models_path}_w{window}.svg'
+        return map_file
+
     def get_metrics_filename(self, current_parameters, metric_name):
         if current_parameters.approach == Approach.FIXED.name:
             filename = f'{metric_name}_{current_parameters.approach}_win{current_parameters.win_size}.txt'

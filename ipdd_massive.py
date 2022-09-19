@@ -89,7 +89,8 @@ def run_massive_fixed_controlflow(dataset_config, metrics=None):
     df.to_excel(out_filename)
 
 
-def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=None, evaluate=False):
+def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=None, evaluate=False,
+                                     save_sublogs=False, save_model_png=False):
     # getting instance of the IPDD
     framework = InteractiveProcessDriftDetectionFW(script=True)
     if not metrics:
@@ -114,7 +115,7 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                                                                AdaptivePerspective.CONTROL_FLOW.name,
                                                                ReadLogAs.TRACE.name,
                                                                w, metrics, adaptive_approach.name,
-                                                               delta)
+                                                               delta, save_sublogs, save_model_png)
                 framework.run_script(parameters)
 
                 running = framework.get_status_running()
@@ -142,16 +143,18 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                                   out_filename, dataset_config, True)
 
 
-def run_massive_adaptive_controlflow_trace_by_trace(dataset_config, metrics=None, evaluate=False):
+def run_massive_adaptive_controlflow_trace_by_trace(dataset_config, metrics=None, evaluate=False,
+                                                    save_sublogs=False, save_model_svg=False):
     run_massive_adaptive_controlflow(dataset_config,
                                      ControlflowAdaptiveApproach.TRACE,
-                                     metrics, evaluate)
+                                     metrics, evaluate, save_sublogs, save_model_svg)
 
 
-def run_massive_adaptive_controlflow_windowing(dataset_config, metrics=None, evaluate=False):
+def run_massive_adaptive_controlflow_windowing(dataset_config, metrics=None, evaluate=False,
+                                               save_sublogs=False, save_model_svg=False):
     run_massive_adaptive_controlflow(dataset_config,
                                      ControlflowAdaptiveApproach.WINDOW,
-                                     metrics, evaluate)
+                                     metrics, evaluate, save_sublogs, save_model_svg)
 
 
 def convert_list_to_int(string_list):
@@ -172,7 +175,7 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
     print(f'*****************************************************************')
     print(f'Calculating metrics for file {input_filename}...')
     print(f'*****************************************************************')
-    df = pd.read_excel(input_filename, index_col=0)
+    df = pd.read_(input_filename, index_col=0)
     complete_results = df.T.to_dict()
     metrics_results = {}
     for logname in complete_results.keys():

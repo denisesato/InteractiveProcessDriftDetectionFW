@@ -688,7 +688,7 @@ class AnalyzeDrift:
             self.new_window(initial_trace_id, final_trace_id)
             # save the sublog
             if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, final_trace_id)
+                self.save_sublog(initial_trace_id, total_of_traces)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -703,7 +703,6 @@ class AnalyzeDrift:
             # save the sublog
             if self.current_parameters.save_sublogs:
                 self.save_sublog(initial_trace_id, total_of_traces)
-
         # join all detected drifts for the plot
         all_drifts = []
         for m in metrics.keys():
@@ -856,7 +855,7 @@ class AnalyzeDrift:
             self.new_window(initial_trace_id, final_trace_id)
             # save the sublog
             if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, final_trace_id)
+                self.save_sublog(initial_trace_id, total_of_traces)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -978,7 +977,8 @@ class AnalyzeDrift:
     # def execute_processes_for_window(self, sub_log, initial_trace_index, change_point, activity):
     def execute_processes_for_window(self, sub_log, initial_trace_index, activity):
         model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
-                                                      self.window_count, activity)
+                                                      self.window_count, activity,
+                                                      self.current_parameters.save_model_svg)
         self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index, activity)
 
     # create for sliding windows

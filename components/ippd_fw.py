@@ -164,7 +164,7 @@ class IPDDParametersAdaptive(IPDDParameters):
 
 class IPDDParametersAdaptiveControlflow(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, win_size, metrics,
-                 adaptive_controlflow_approach, delta=None, save_sublogs=False, update_model=True):
+                 adaptive_controlflow_approach, delta=None, save_sublogs=False, save_model_svg=False, update_model=True):
         super().__init__(logname, approach, read_log_as, metrics)
         self.win_size = win_size
         self.perspective = perspective
@@ -174,6 +174,7 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
         else:  # default value
             self.delta = 0.002
         self.save_sublogs = save_sublogs
+        self.save_model_svg = save_model_svg
         self.update_model = update_model
 
     def print(self):

@@ -140,11 +140,49 @@ class Dataset1Configuration:
     # For defining the correct order for the legend of the plots
     order_legend = [1, 2, 3, 0]
 
+class Dataset1Configuration_Sample:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_path = 'C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    lognames = [
+        'cb2.5k.xes',
+        'cb7.5k.xes',
+        'cb5k.xes',
+        'cb10k.xes',
+    ]
+
+    # for testing one specific scenario
+    windows = [75]
+    deltas = [0.5]
+
+    ###############################################################
+    # Information for calculating evaluation metrics
+    ###############################################################
+    actual_change_points = {
+        '2.5k': define_change_points_dataset1(250),
+        '5k': define_change_points_dataset1(500),
+        '7.5k': define_change_points_dataset1(750),
+        '10k': define_change_points_dataset1(1000)
+    }
+
+    number_of_instances = {
+        '2.5k': 2500,
+        '5k': 5000,
+        '7.5k': 7500,
+        '10k': 10000
+    }
+
+    ###############################################################
+    # Plot specific information
+    ###############################################################
+    # For defining the correct order for the legend of the plots
+    order_legend = [1, 2, 3, 0]
+
 
 if __name__ == '__main__':
     dataset1 = Dataset1Configuration()
     run_massive_fixed_controlflow(dataset1)
     run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
     run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
-
 

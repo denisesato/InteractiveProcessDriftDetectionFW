@@ -28,7 +28,8 @@ class DiscoveryDfg(Discovery):
 
     # mine the DFG (directly-follows graph) from the sub-log
     # defined by the windowing strategy
-    def generate_process_model(self, sub_log, models_path, event_data_original_name, w_count, activity=''):
+    def generate_process_model(self, sub_log, models_path, event_data_original_name, w_count, activity='',
+                               save_model_svg=False):
         # create the folder for saving the process map if does not exist
         models_path = self.model_type_definitions.get_models_path(models_path, event_data_original_name, activity)
         if not os.path.exists(models_path):
@@ -37,21 +38,22 @@ class DiscoveryDfg(Discovery):
         # mine the DFG (using Pm4Py)
         dfg, sa, ea = pm4py.discover_directly_follows_graph(sub_log)
         activities_count = pm4py.get_attribute_values(sub_log, "concept:name")
+        # save the process model
+        if activity and activity != '':  # adaptive approach generates models per activity
+            output_filename = self.model_type_definitions.get_model_filename(event_data_original_name,
+                                                                             w_count[activity])
+            output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count[activity]))
+        else:  # fixed approach generate the models based on the window size
+            output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)
+            output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count))
+
+        print(f'Saving {models_path} - {output_filename}')
         parameters = {dfg_visualization.Variants.FREQUENCY.value.Parameters.START_ACTIVITIES: sa,
                       dfg_visualization.Variants.FREQUENCY.value.Parameters.END_ACTIVITIES: ea}
-        # testing
-        # dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea, activities_count, 0.6)
         gviz = dfg_visualization.apply(dfg, log=sub_log, parameters=parameters)
-
-        # dfg = dfg_discovery.apply(sub_log, variant=dfg_discovery.Variants.PERFORMANCE)
-        # gviz = dfg_visualization.apply(dfg, log=sub_log, variant=dfg_visualization.Variants.PERFORMANCE)
-
-        # save the process model
-        if activity and activity != '': # adaptive approach generates models per activity
-            output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count[activity])
-        else: # fixed approach generate the models based on the window size
-            output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)
-        print(f'Saving {models_path} - {output_filename}')
         gviz.save(filename=output_filename, directory=models_path)
-        return dfg
 
+        if save_model_svg:
+            print(f'Saving {models_path} - {output_filename} - SVG format')
+            pm4py.save_vis_performance_dfg(dfg, sa, ea, output_filename_svg)
+        return dfg
