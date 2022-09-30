@@ -16,7 +16,7 @@ import subprocess
 
 from components.dfg_definitions import Metric
 from ipdd_massive import run_massive_fixed_controlflow, run_massive_adaptive_controlflow_trace_by_trace, \
-    calculate_metrics_massive, run_massive_adaptive_controlflow_windowing
+    calculate_metrics_massive, run_massive_adaptive_controlflow_windowing, run_massive_adaptive_data
 
 
 def define_change_points_dataset1(inter_drift_distance):
@@ -39,6 +39,20 @@ class UTFPRConfiguration:
     windows = [20]
     deltas = [0.002]
 
+
+class UTFPRConfigurationData:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_path = 'C:/Users/denis/Documents/ProjetoUTFPR'
+    lognames = [
+        'log_formados.gz.xes.gz',
+        # 'log_desistentes.gz.xes.gz',
+    ]
+    deltas = [0.002]
+    attribute_name = 'Média'
+
+
 def one_experiment_for_testing():
     folder = 'C:/Users/denis/Documents/ProjetoUTFPR'
     lognames = [
@@ -53,14 +67,16 @@ def one_experiment_for_testing():
     for log in lognames:
         file = os.path.join(folder, log)
         for delta in deltas:
-            print(f'Executando experimento para o log {file} adaptativo OTHER ATTRIBUTE {attribute} com delta {delta} ...')
+            print(
+                f'Executando experimento para o log {file} adaptativo OTHER ATTRIBUTE {attribute} com delta {delta} ...')
             subprocess.run(f"ipdd_cli.py -a a -l {file} -d {delta} -p td -at ot -atname {attribute}", shell=True)
 
 
 if __name__ == '__main__':
-    # dataset1 = UTFPRConfiguration()
-    # run_massive_adaptive_controlflow_trace_by_trace(dataset1,
+    # datasetconfig_controlflow = UTFPRConfiguration()
+    # run_massive_adaptive_controlflow_trace_by_trace(datasetconfig_controlflow,
     #                                                 metrics=[Metric.NODES],
     #                                                 save_sublogs=True,
     #                                                 save_model_svg=True)
-    one_experiment_for_testing()
+    datasetconfig_data = UTFPRConfigurationData()
+    run_massive_adaptive_data(datasetconfig_data)

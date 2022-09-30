@@ -21,7 +21,7 @@ from components.parameters import Approach, AttributeAdaptive, AdaptivePerspecti
 
 class Metric(str, Enum):
     NODES = 'Nodes'
-    # EDGES = 'Edges'
+    EDGES = 'Edges'
 
 
 class DfgDefinitions:
@@ -38,7 +38,7 @@ class DfgDefinitions:
         return Metric
 
     def get_default_metrics(self):
-        return [Metric.NODES, Metric.EDGES]
+        return [Metric.NODES]
 
     def get_model_filename(self, log_name, window):
         map_file = f'{self.models_path}_w{window}.gv'

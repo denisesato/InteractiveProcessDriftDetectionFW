@@ -67,9 +67,10 @@ class OtherAttribute:
         # get the value of the attributed defined by the user
         # testes only using numeric attributes
         if self.column_name in event.keys():
-            value_str = event[f'{self.column_name}']
-            value_str = value_str.replace(",", ".")
-            value = float(value_str)
+            value = event[f'{self.column_name}']
+            if type(value) == str: # if the value is defined as string in the xes, we converted it here
+                value = value.replace(",", ".")
+                value = float(value)
             return value
         else:
             raise AttributeError(f'Attribute {self.column_name} not found in event {event}')

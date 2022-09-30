@@ -486,7 +486,7 @@ class AnalyzeDrift:
                     try:
                         value = attribute_class.get_value(event)
                     except AttributeError as err:
-                        # print(f'Error getting the value of attribute: {err}')
+                        print(f'Error getting the value of attribute: {err}')
                         continue
                     except KeyError as kerr:
                         print(f'Error getting the value of attribute: {kerr}')

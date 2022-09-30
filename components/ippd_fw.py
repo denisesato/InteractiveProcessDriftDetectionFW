@@ -141,7 +141,8 @@ class IPDDParametersFixed(IPDDParameters):
 
 class IPDDParametersAdaptive(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, metrics, attribute,
-                 attribute_name=None, activities=[], delta=None):
+                 attribute_name=None, activities=[], delta=None, save_sublogs=False, save_model_svg=False,
+                 update_model=True):
         super().__init__(logname, approach, read_log_as, metrics)
         self.perspective = perspective
         self.attribute = attribute
@@ -151,6 +152,10 @@ class IPDDParametersAdaptive(IPDDParameters):
             self.delta = delta
         else:  # default value
             self.delta = 0.002
+        self.save_sublogs = save_sublogs
+        self.save_model_svg = save_model_svg
+        self.update_model = update_model
+
 
     def print(self):
         super().print()
@@ -164,8 +169,10 @@ class IPDDParametersAdaptive(IPDDParameters):
 
 class IPDDParametersAdaptiveControlflow(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, win_size, metrics,
-                 adaptive_controlflow_approach, delta=None, save_sublogs=False, save_model_svg=False, update_model=True):
-        super().__init__(logname, approach, read_log_as, metrics)
+                 adaptive_controlflow_approach, delta=None, save_sublogs=False, save_model_svg=False,
+                 update_model=True):
+        super().__init__(logname=logname, approach=approach, read_log_as=read_log_as, metrics=metrics, save_sublogs=save_sublogs,
+                         save_model_svg=save_model_svg, update_model=update_model)
         self.win_size = win_size
         self.perspective = perspective
         self.adaptive_controlflow_approach = adaptive_controlflow_approach
@@ -173,9 +180,6 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
             self.delta = delta
         else:  # default value
             self.delta = 0.002
-        self.save_sublogs = save_sublogs
-        self.save_model_svg = save_model_svg
-        self.update_model = update_model
 
     def print(self):
         super().print()

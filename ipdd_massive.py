@@ -15,6 +15,9 @@
 """
 For running IPDD massively, the user must define the dataset configuration:
 
+1) For control-flow perspective analysis, create a class using the template
+below for defining the scenarios information:
+
 class DatasetSampleConfiguration:
     ###############################################################
     # Information about the data for performing the experiments
@@ -26,6 +29,8 @@ class DatasetSampleConfiguration:
 
     ###############################################################
     # Information for calculating evaluation metrics
+    # The information about change points and number of instances
+    # is only requested when defining option evaluate=True
     ###############################################################
     actual_change_points = {
         '2.5k': define_change_points_dataset1(250),
@@ -36,6 +41,18 @@ class DatasetSampleConfiguration:
         '2.5k': 2500,
         '5k': 5000,
     } 
+    
+2) For data perspective analysis, create a class using the template
+below for defining the scenarios information:
+
+class DatasetSampleConfiguration:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_folder = '/IPDD_Datasets/dataset1'
+    lognames = ['cb2.5k.xes', cd5k.xes]
+    deltas = [0.002, 0.05]
+    attribute_name = 'Attribute Name'
 """
 
 import os
@@ -51,6 +68,55 @@ from components.ippd_fw import InteractiveProcessDriftDetectionFW, IPDDParameter
 
 DRIFTS_KEY = 'drifts - '
 DETECTED_AT_KEY = 'detected at - '
+
+
+def run_massive_adaptive_data(dataset_config, metrics=None):
+    # getting instance of the IPDD
+    framework = InteractiveProcessDriftDetectionFW(script=True)
+    if not metrics:
+        metrics = framework.get_default_metrics()
+
+    dict_results = {}
+    for log in dataset_config.lognames:
+        dict_results[log] = {}
+        for d in dataset_config.deltas:
+            print('----------------------------------------------')
+            print(f'Running new scenario')
+            print(f'Approach: {Approach.ADAPTIVE.value}')
+            print(f'Metrics: {[m.value for m in metrics]}')
+            print(f'Event log: {log}')
+            print('----------------------------------------------')
+            log_filename = os.path.join(dataset_config.input_path, log)
+            parameters = IPDDParametersAdaptive(log_filename, Approach.ADAPTIVE.name,
+                                                AdaptivePerspective.TIME_DATA.name,
+                                                ReadLogAs.TRACE.name, metrics, AttributeAdaptive.OTHER.name,
+                                                attribute_name=dataset_config.attribute_name, delta=d)
+            framework.run_script(parameters)
+
+            running = framework.get_status_running()
+            while running:
+                print(f'Waiting for IPDD finishes ... Status running: {running}')
+                time.sleep(2)  # in seconds
+                running = framework.get_status_running()
+            print(f'Adaptive IPDD finished drift analysis on the data perspective')
+            detected_drifts = {}
+            # get the activities that report a drift using the change detector
+            for activity in framework.get_activities_with_drifts():
+                indexes = framework.initial_indexes[activity]
+                detected_drifts[activity] = list(indexes.keys())[1:]
+                print(
+                    f'Adaptive IPDD detect drifts for attribute {AttributeAdaptive.OTHER.name}-{dataset_config.attribute_name} in activity {activity} in indexes {detected_drifts}')
+                # get information about control-flow metrics
+                windows, traces = framework.get_windows_with_drifts(activity)
+                if len(traces) > 0:
+                    print(
+                        f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+    out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.ADAPTIVE.name}_'
+                                                                         f'{AdaptivePerspective.TIME_DATA.name}_'
+                                                                         f'{AttributeAdaptive.OTHER.name}-'
+                                                                         f'{dataset_config.attribute_name}.xlsx')
+    df = pd.DataFrame.from_dict(dict_results, orient='index')
+    df.to_excel(out_filename)
 
 
 def run_massive_fixed_controlflow(dataset_config, metrics=None):
@@ -212,8 +278,8 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
 
             # get the detected at information if available and convert to a list of integers
             metrics_summary = framework.evaluate(real_change_points,
-                                                        change_points[configuration],
-                                                        instances)
+                                                 change_points[configuration],
+                                                 instances)
             # add the calculated metrics to the dictionary
             if save_input_for_calculation:
                 metrics_results[logname][f'Detected drifts {configuration}'] = change_points[configuration]
