@@ -15,10 +15,11 @@ from json_tricks import dumps
 
 
 class MetricInfo:
-    def __init__(self, window, trace, metric_name):
+    def __init__(self, window, trace, timestamp, metric_name):
         self.value = 0
         self.window = window
         self.initial_trace = trace
+        self.initial_timestamp = timestamp.strftime("%m/%d/%Y, %H:%M:%S")
         self.metric_name = metric_name
         self.dissimilar = False
         self.info = []

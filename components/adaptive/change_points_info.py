@@ -20,12 +20,16 @@ class ChangePointInfo:
         self.detector_attributes = {}
         self.activity = activity
         self.change_points = []
+        self.timestamps = []
 
     def add_detector_attribute(self, name, value):
         self.detector_attributes[name] = value
 
     def add_change_point(self, cp):
         self.change_points.append(cp)
+
+    def add_timestamp(self, timestamp):
+        self.timestamps.append(timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
 
     def serialize(self):
         result = dumps(self)

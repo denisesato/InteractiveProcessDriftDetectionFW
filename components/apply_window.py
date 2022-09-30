@@ -503,6 +503,7 @@ class AnalyzeDrift:
 
                         change_points[activity].append(i)
                         change_points_info[activity].add_change_point(i)
+                        change_points_info[activity].add_timestamp(self.get_current_date(event_data[i]))
                         print(
                             f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
 
@@ -526,6 +527,7 @@ class AnalyzeDrift:
                                                                          self.models_path, self.metrics_path, activity)
                     change_points[activity].append(i)
                     change_points_info[activity].add_change_point(i)
+                    change_points_info[activity].add_timestamp(self.get_current_date(event_data[i]))
                     print(
                         f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
 
@@ -643,11 +645,9 @@ class AnalyzeDrift:
                 # save information about change point for saving the file
                 change_points.append(i)
                 change_points_info.add_change_point(i)
+                change_points_info.add_timestamp(self.get_current_date(event_data[i]))
                 # process new window
                 self.new_window(initial_trace_id, final_trace_id)
-                # save the sublog
-                if self.current_parameters.save_sublogs:
-                    self.save_sublog(initial_trace_id, i)
                 # get the  case id
                 case_id = self.get_case_id(event_data[initial_trace_id])
                 # save the initial of the processed window
@@ -686,9 +686,6 @@ class AnalyzeDrift:
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
             self.new_window(initial_trace_id, final_trace_id)
-            # save the sublog
-            if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, total_of_traces)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -700,9 +697,6 @@ class AnalyzeDrift:
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             self.new_window(initial_trace_id, total_of_traces)
-            # save the sublog
-            if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, total_of_traces)
         # join all detected drifts for the plot
         all_drifts = []
         for m in metrics.keys():
@@ -814,14 +808,12 @@ class AnalyzeDrift:
             if drift_detected:
                 change_points.append(change_point)
                 change_points_info.add_change_point(change_point)
+                change_points_info.add_timestamp(self.get_current_date(event_data[change_point]))
                 # process new window
                 final_trace_id = initial_trace_id + window_size
                 if final_trace_id > total_of_traces:
                     final_trace_id = total_of_traces
                 self.new_window(initial_trace_id, final_trace_id)
-                # save the sublog
-                if self.current_parameters.save_sublogs:
-                    self.save_sublog(initial_trace_id, change_point)
                 # get the current case id
                 case_id = self.get_case_id(event_data[initial_trace_id])
                 # save the initial of the processed window
@@ -853,9 +845,6 @@ class AnalyzeDrift:
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
             self.new_window(initial_trace_id, final_trace_id)
-            # save the sublog
-            if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, total_of_traces)
             case_id = self.get_case_id(event_data[initial_trace_id])
             self.initial_case_ids[initial_trace_id] = case_id
         elif initial_trace_id == 0:
@@ -867,9 +856,6 @@ class AnalyzeDrift:
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             self.new_window(initial_trace_id, total_of_traces)
-            # save the sublog
-            if self.current_parameters.save_sublogs:
-                self.save_sublog(initial_trace_id, total_of_traces)
 
         # join all detected drifts for the plot
         all_drifts = []
@@ -909,13 +895,12 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
         return date_aux
 
-    def save_sublog(self, begin, end):
+    def save_sublog(self, sub_log, begin, end):
         output_path = self.logs_path
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         output_filename = os.path.join(output_path,
                                        f'sublog{self.window_count}_{begin}_{end - 1}.xes')
-        sub_log = EventLog(self.event_data[begin:end])
         xes_exporter.apply(sub_log, output_filename)
 
     def new_window(self, begin, end, activity=''):
@@ -937,9 +922,15 @@ class AnalyzeDrift:
         else:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
 
-        self.execute_processes_for_window(sub_log, begin, activity)
+        # save the sublog
+        if self.current_parameters.save_sublogs:
+            self.save_sublog(sub_log, begin, end)
+        # get initial timestamp
+        initial_timestamp = self.get_current_date(sub_log[0])
+        self.execute_processes_for_window(sub_log, begin, initial_timestamp, activity)
 
-    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, activity):
+    def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, initial_timestamp,
+                                                      activity):
         if activity:
             if activity == Activity.ALL.value:  # adaptive approach with no drift detected, nothing to be done
                 return
@@ -961,7 +952,7 @@ class AnalyzeDrift:
         # calculate the similarity metrics between consecutive windows
         if window > 1:
             metrics.calculate_metrics(window, previous_model, model, previous_sub_log, sub_log, self.current_parameters,
-                                      initial_trace_index)
+                                      initial_trace_index, initial_timestamp)
 
         if activity:
             # save the current model and sub_log for the next window
@@ -974,12 +965,12 @@ class AnalyzeDrift:
 
     # after defining a window (fixed or adaptive) IPDD must mine the models and calculate the similarity metrics
     # between adjacent ones
-    # def execute_processes_for_window(self, sub_log, initial_trace_index, change_point, activity):
-    def execute_processes_for_window(self, sub_log, initial_trace_index, activity):
+    def execute_processes_for_window(self, sub_log, initial_trace_index, initial_timestamp, activity):
         model = self.discovery.generate_process_model(sub_log, self.models_path, self.current_parameters.logname,
                                                       self.window_count, activity,
                                                       self.current_parameters.save_model_svg)
-        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index, activity)
+        self.calculate_metrics_between_adjacent_time_slots(model, sub_log, initial_trace_index, initial_timestamp,
+                                                           activity)
 
     # create for sliding windows
     def process_two_fixed_sliding_windows(self, event_data, initial_index_w1, initial_index_w2, winsize):

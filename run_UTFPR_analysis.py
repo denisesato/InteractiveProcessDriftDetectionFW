@@ -73,10 +73,10 @@ def one_experiment_for_testing():
 
 
 if __name__ == '__main__':
-    # datasetconfig_controlflow = UTFPRConfiguration()
-    # run_massive_adaptive_controlflow_trace_by_trace(datasetconfig_controlflow,
-    #                                                 metrics=[Metric.NODES],
-    #                                                 save_sublogs=True,
-    #                                                 save_model_svg=True)
-    datasetconfig_data = UTFPRConfigurationData()
-    run_massive_adaptive_data(datasetconfig_data)
+    datasetconfig_controlflow = UTFPRConfiguration()
+    run_massive_adaptive_controlflow_trace_by_trace(datasetconfig_controlflow,
+                                                    metrics=[Metric.NODES],
+                                                    save_sublogs=False,
+                                                    save_model_svg=False)
+    # datasetconfig_data = UTFPRConfigurationData()
+    # run_massive_adaptive_data(datasetconfig_data)

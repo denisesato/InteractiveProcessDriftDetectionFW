@@ -15,8 +15,8 @@ from components.compare_models.metric_info import MetricInfo, MetricAdditionalIn
 
 
 class ControlFlowMetricInfo(MetricInfo):
-    def __init__(self, window, trace, metric_name):
-        super().__init__(window, trace, metric_name)
+    def __init__(self, window, trace, timestamp, metric_name):
+        super().__init__(window, trace, timestamp, metric_name)
 
     def set_diff_added(self, diff):
         if len(diff) > 0:

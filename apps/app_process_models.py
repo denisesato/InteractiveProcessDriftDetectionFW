@@ -382,7 +382,7 @@ def approach_or_perspective_selected(approach_value, adaptive_perspective_value)
               )
 def last_option_selected(winsize, attribute, adaptive_controlflow_approach, approach, adaptive_perspective):
     enable_mine_button = False
-    # print(f'options_selected {winsize} {attribute} {adaptive_controlflow_approach}')
+    print(f'options_selected {winsize} {attribute} {adaptive_controlflow_approach}')
     # check if the mine button should be enabled
     if approach and approach == Approach.ADAPTIVE.name:
         if adaptive_perspective and adaptive_perspective == AdaptivePerspective.TIME_DATA.name:

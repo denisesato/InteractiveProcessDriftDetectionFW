@@ -26,8 +26,8 @@ def threaded(fn):
 
 
 class DfgNodesSimilarityMetric(ControlFlowMetric):
-    def __init__(self, window, trace, metric_name, model1, model2, sublog1, sublog2):
-        super().__init__(window, trace, metric_name, model1, model2, sublog1, sublog2)
+    def __init__(self, window, trace, timestamp, metric_name, model1, model2, sublog1, sublog2):
+        super().__init__(window, trace, timestamp, metric_name, model1, model2, sublog1, sublog2)
 
     def is_dissimilar(self):
         return self.value < 1
@@ -46,8 +46,8 @@ class DfgNodesSimilarityMetric(ControlFlowMetric):
 
 
 class DfgEdgesSimilarityMetric(ControlFlowMetric):
-    def __init__(self, window, trace, metric_name, model1, model2, sublog1, sublog2):
-        super().__init__(window, trace, metric_name, model1, model2, sublog1, sublog2)
+    def __init__(self, window, trace, timestamp, metric_name, model1, model2, sublog1, sublog2):
+        super().__init__(window, trace, timestamp, metric_name, model1, model2, sublog1, sublog2)
 
     def is_dissimilar(self):
         return self.value < 1

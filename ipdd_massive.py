@@ -87,9 +87,10 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
             print(f'Event log: {log}')
             print('----------------------------------------------')
             log_filename = os.path.join(dataset_config.input_path, log)
-            parameters = IPDDParametersAdaptive(log_filename, Approach.ADAPTIVE.name,
-                                                AdaptivePerspective.TIME_DATA.name,
-                                                ReadLogAs.TRACE.name, metrics, AttributeAdaptive.OTHER.name,
+            parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
+                                                perspective=AdaptivePerspective.TIME_DATA.name,
+                                                read_log_as=ReadLogAs.TRACE.name, metrics=metrics,
+                                                attribute=AttributeAdaptive.OTHER.name,
                                                 attribute_name=dataset_config.attribute_name, delta=d)
             framework.run_script(parameters)
 
@@ -177,11 +178,13 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                 print(f'Event log: {log}')
                 print('----------------------------------------------')
                 log_filename = os.path.join(dataset_config.input_path, log)
-                parameters = IPDDParametersAdaptiveControlflow(log_filename, Approach.ADAPTIVE.name,
-                                                               AdaptivePerspective.CONTROL_FLOW.name,
-                                                               ReadLogAs.TRACE.name,
-                                                               w, metrics, adaptive_approach.name,
-                                                               delta, save_sublogs, save_model_png)
+                parameters = IPDDParametersAdaptiveControlflow(logname=log_filename, approach=Approach.ADAPTIVE.name,
+                                                               perspective=AdaptivePerspective.CONTROL_FLOW.name,
+                                                               read_log_as=ReadLogAs.TRACE.name,
+                                                               win_size=w, metrics=metrics,
+                                                               adaptive_controlflow_approach=adaptive_approach.name,
+                                                               delta=delta, save_sublogs=save_sublogs,
+                                                               save_model_svg=save_model_png)
                 framework.run_script(parameters)
 
                 running = framework.get_status_running()

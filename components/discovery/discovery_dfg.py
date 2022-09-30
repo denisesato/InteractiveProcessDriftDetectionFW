@@ -37,11 +37,13 @@ class DiscoveryDfg(Discovery):
 
         # mine the DFG (using Pm4Py)
         activities_count = pm4py.get_attribute_values(sub_log, "concept:name")
-        percentual_paths = 0.006
+
         dfg, sa, ea = pm4py.discover_directly_follows_graph(sub_log)
-        # filter only 6% of paths
-        dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea,
-                                                                                     activities_count, percentual_paths)
+        # filter only 6% of paths - FOR UTFPR analysis
+        # TODO - define a parameter
+        # percentual_paths = 0.006
+        # dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea,
+        #                                                                              activities_count, percentual_paths)
 
         # save the process model
         if activity and activity != '':  # adaptive approach generates models per activity

@@ -99,12 +99,12 @@ class DfgDefinitions:
     def get_metrics_list(self):
         return self.metrics
 
-    def metrics_factory(self, metric_name, window, initial_trace, name, m1, m2, l1, l2, parameters):
+    def metrics_factory(self, metric_name, window, initial_trace, initial_timestamp, name, m1, m2, l1, l2, parameters):
         # define todas as métricas existentes para o tipo de modelo de processo
         # porém só serão calculadas as escolhidas pelo usuário (definidas em self.metrics)
         classes = {
-            Metric.EDGES.value: DfgEdgesSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
-            Metric.NODES.value: DfgNodesSimilarityMetric(window, initial_trace, name, m1, m2, l1, l2),
+            Metric.EDGES.value: DfgEdgesSimilarityMetric(window, initial_trace, initial_timestamp, name, m1, m2, l1, l2),
+            Metric.NODES.value: DfgNodesSimilarityMetric(window, initial_trace, initial_timestamp, name, m1, m2, l1, l2),
         }
         return classes[metric_name]
 

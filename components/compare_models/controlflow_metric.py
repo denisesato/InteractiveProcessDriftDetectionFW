@@ -16,7 +16,7 @@ from components.compare_models.metric import Metric
 
 
 class ControlFlowMetric(Metric):
-    def __init__(self, window, trace, metric_name, model1, model2, sublog1, sublog2):
+    def __init__(self, window, trace, timestamp, metric_name, model1, model2, sublog1, sublog2):
         super().__init__(window, metric_name)
         self.diff_added = set()
         self.diff_removed = set()
@@ -26,7 +26,7 @@ class ControlFlowMetric(Metric):
         self.sublog2 = sublog2
 
         self.initial_trace = trace
-        self.metric_info = ControlFlowMetricInfo(window, trace, metric_name)
+        self.metric_info = ControlFlowMetricInfo(window, trace, timestamp, metric_name)
 
     def is_dissimilar(self):
         pass
