@@ -161,7 +161,7 @@ def main():
                                          WindowUnityFixed.UNITY.name, win_size)
     elif approach == Approach.ADAPTIVE.name:
         if perspective == AdaptivePerspective.TIME_DATA.name:
-            parameters = IPDDParametersAdaptive(event_log, approach, ReadLogAs.TRACE.name, metrics, attribute,
+            parameters = IPDDParametersAdaptive(event_log, approach, perspective, ReadLogAs.TRACE.name, metrics, attribute,
                                                 attribute_name,
                                                 activities, args.delta)
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:

@@ -21,7 +21,7 @@ from components.parameters import Approach, AttributeAdaptive, AdaptivePerspecti
 
 class Metric(str, Enum):
     NODES = 'Nodes'
-    EDGES = 'Edges'
+    # EDGES = 'Edges'
 
 
 class DfgDefinitions:
