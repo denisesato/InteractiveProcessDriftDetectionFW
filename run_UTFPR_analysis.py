@@ -26,14 +26,15 @@ def define_change_points_dataset1(inter_drift_distance):
     return actual_change_points
 
 
-class UTFPRConfiguration:
+class UTFPRConfigurationControlflow:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
     input_path = 'C:/Users/denis/Documents/ProjetoUTFPR'
     lognames = [
-        'log_formados.gz.xes.gz',
+        # 'log_formados.gz.xes.gz',
         # 'log_desistentes.gz.xes.gz',
+        'CP.Sheet1.xes.gz'
     ]
 
     windows = [20]
@@ -73,10 +74,10 @@ def one_experiment_for_testing():
 
 
 if __name__ == '__main__':
-    datasetconfig_controlflow = UTFPRConfiguration()
+    datasetconfig_controlflow = UTFPRConfigurationControlflow()
     run_massive_adaptive_controlflow_trace_by_trace(datasetconfig_controlflow,
                                                     metrics=[Metric.NODES],
-                                                    save_sublogs=False,
-                                                    save_model_svg=False)
+                                                    save_sublogs=True,
+                                                    save_model_svg=True)
     # datasetconfig_data = UTFPRConfigurationData()
     # run_massive_adaptive_data(datasetconfig_data)

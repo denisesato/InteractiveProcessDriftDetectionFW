@@ -33,6 +33,17 @@ class Approach(str, Enum):
     ADAPTIVE = 'Adaptive'
 
 
+class Paths(str, Enum):
+    DATA_PATH = 'data'
+    OUTPUT_PATH = 'output'
+    INPUT_PATH = 'input'
+    MODELS_PATH = 'models'
+    SIMILARITY_METRICS_PATH = 'similarity_metrics'
+    SUBLOGS_PATH = 'sublogs'
+    ADAPTIVE_PATH = 'adaptive'
+    EVALUATION_PATH = 'evaluation'
+
+
 def get_value_of_parameter(name):
     if name == ControlflowAdaptiveApproach.TRACE.name:
         return ControlflowAdaptiveApproach.TRACE.value

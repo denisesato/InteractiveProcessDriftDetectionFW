@@ -17,7 +17,7 @@ from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
-from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter, Paths
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from threading import Thread
@@ -250,14 +250,14 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.manage_evaluation = None  # evaluation module
 
         # paths for saving the results
-        self.data_path = 'data'
-        self.output_path = 'output'
-        self.input_path = 'input'
-        self.models_path = 'models'
-        self.similarity_metrics_path = 'similarity_metrics'
-        self.logs_path = 'sublogs'
-        self.adaptive_path = 'adaptive'
-        self.evaluation_path = 'evaluation'
+        self.data_path = Paths.DATA_PATH
+        self.output_path = Paths.OUTPUT_PATH
+        self.input_path = Paths.INPUT_PATH
+        self.models_path = Paths.MODELS_PATH
+        self.similarity_metrics_path = Paths.SIMILARITY_METRICS_PATH
+        self.logs_path = Paths.SUBLOGS_PATH
+        self.adaptive_path = Paths.ADAPTIVE_PATH
+        self.evaluation_path = Paths.EVALUATION_PATH
 
     def check_user_path(self, generic_path, user_id, output=True):
         if output:
