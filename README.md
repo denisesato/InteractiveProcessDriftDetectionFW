@@ -2,13 +2,13 @@
 This is a public repository for Interactive Process Drift Detection (IPDD) Framework, a tool for detecting process drifts in process models. 
 
 # Installation from source-code repository
-This installation process was tested on a Windows 10 machine.
+This installation process was tested on a Windows 10 machine with Python 3.9.1. 
 
 After you cloned the git repository, go to the project directory and install the dependencies (using pip):
 
-	pip install -U numpy
+	pip install -U numpy==1.22.3
 	pip install -r requirements.txt
-	pip install /scikit-multiflow-0.6.dev0.tar.gz
+	pip install ./scikit-multiflow-0.6.dev0.tar.gz
 
 # Docker installation
 It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt. 
