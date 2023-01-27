@@ -111,12 +111,13 @@ class Control:
 
 
 class IPDDParameters:
-    def __init__(self, logname, approach, read_log_as, metrics, save_model_svg):
+    def __init__(self, logname, approach, read_log_as, metrics, save_sublogs, save_model_svg):
         self.logname = logname
         self.approach = approach
         self.read_log_as = read_log_as
         self.metrics = metrics
         self.session_id = None
+        self.save_sublogs = save_sublogs      # for saving the generated sub-logs used by the windowing strategy
         self.save_model_svg = save_model_svg  # for saving the DFG model as vectorial figure
 
     def print(self):
@@ -128,8 +129,9 @@ class IPDDParameters:
 
 
 class IPDDParametersFixed(IPDDParameters):
-    def __init__(self, logname, approach, read_log_as, metrics, winunity, winsize, save_model_svg=False):
-        super().__init__(logname, approach, read_log_as, metrics, save_model_svg)
+    def __init__(self, logname, approach, read_log_as, metrics, winunity, winsize, save_sublogs=False,
+                 save_model_svg=False):
+        super().__init__(logname, approach, read_log_as, metrics, save_sublogs, save_model_svg)
         self.win_unity = winunity
         self.win_size = winsize
 
@@ -144,7 +146,7 @@ class IPDDParametersAdaptive(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, metrics, attribute,
                  attribute_name=None, activities=[], delta=None, save_sublogs=False, save_model_svg=False,
                  update_model=True):
-        super().__init__(logname, approach, read_log_as, metrics, save_model_svg)
+        super().__init__(logname, approach, read_log_as, metrics, save_sublogs, save_model_svg)
         self.perspective = perspective
         self.attribute = attribute
         self.attribute_name = attribute_name
