@@ -245,7 +245,7 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
     print(f'*****************************************************************')
     print(f'Calculating metrics for file {input_filename}...')
     print(f'*****************************************************************')
-    df = pd.read_(input_filename, index_col=0)
+    df = pd.read_excel(input_filename, index_col=0)
     complete_results = df.T.to_dict()
     metrics_results = {}
     for logname in complete_results.keys():
