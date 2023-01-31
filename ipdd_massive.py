@@ -195,7 +195,8 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                 print(f'Adaptive IPDD finished drift analysis')
                 detected_drifts = framework.get_initial_trace_indexes()
                 # remove the index 0
-                detected_drifts = detected_drifts[1:]
+                if detected_drifts:
+                    detected_drifts = detected_drifts[1:]
                 dict_results[log][f'{DRIFTS_KEY}w={w} d={delta}'] = detected_drifts
                 print(
                     f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
