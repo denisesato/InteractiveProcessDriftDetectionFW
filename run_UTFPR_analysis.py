@@ -47,11 +47,22 @@ class UTFPRConfigurationData:
     ###############################################################
     input_path = 'C:/Users/denis/Documents/ProjetoUTFPR'
     lognames = [
-        'log_formados.gz.xes.gz',
-        # 'log_desistentes.gz.xes.gz',
+        # 'CP_numericos.xes.gz',
+        # 'CP_Original.xes.gz'
+        'CP_Original_Obrigatorias_SemDesistentes.xes.gz'
     ]
     deltas = [0.002]
-    attribute_name = 'Média'
+    attribute_names = [
+        # 'Cursando',
+        # 'Desistente',
+        # 'Formado',
+        # 'Aprovado',
+        # 'Cancelado',
+        # 'Crédito Consignado',
+        # 'Reprovado',
+        # 'Sem conclusão'
+        'Média'
+    ]
 
 
 def one_experiment_for_testing():
@@ -74,10 +85,10 @@ def one_experiment_for_testing():
 
 
 if __name__ == '__main__':
-    datasetconfig_controlflow = UTFPRConfigurationControlflow()
-    run_massive_adaptive_controlflow_trace_by_trace(datasetconfig_controlflow,
-                                                    metrics=[Metric.NODES],
-                                                    save_sublogs=True,
-                                                    save_model_svg=True)
-    # datasetconfig_data = UTFPRConfigurationData()
-    # run_massive_adaptive_data(datasetconfig_data)
+    #datasetconfig_controlflow = UTFPRConfigurationControlflow()
+    # run_massive_adaptive_controlflow_trace_by_trace(datasetconfig_controlflow,
+    #                                                 metrics=[Metric.NODES],
+    #                                                 save_sublogs=True,
+    #                                                 save_model_svg=True)
+    datasetconfig_data = UTFPRConfigurationData()
+    run_massive_adaptive_data(datasetconfig_data)

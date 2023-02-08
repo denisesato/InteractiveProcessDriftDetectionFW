@@ -80,44 +80,46 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
     for log in dataset_config.lognames:
         dict_results[log] = {}
         for d in dataset_config.deltas:
-            print('----------------------------------------------')
-            print(f'Running new scenario')
-            print(f'Approach: {Approach.ADAPTIVE.value}')
-            print(f'Metrics: {[m.value for m in metrics]}')
-            print(f'Event log: {log}')
-            print('----------------------------------------------')
-            log_filename = os.path.join(dataset_config.input_path, log)
-            parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
-                                                perspective=AdaptivePerspective.TIME_DATA.name,
-                                                read_log_as=ReadLogAs.TRACE.name, metrics=metrics,
-                                                attribute=AttributeAdaptive.OTHER.name,
-                                                attribute_name=dataset_config.attribute_name, delta=d)
-            framework.run_script(parameters)
+            for at in dataset_config.attribute_names:
+                print('----------------------------------------------')
+                print(f'Running new scenario')
+                print(f'Approach: {Approach.ADAPTIVE.value}')
+                print(f'Metrics: {[m.value for m in metrics]}')
+                print(f'Event log: {log}')
+                print('----------------------------------------------')
+                log_filename = os.path.join(dataset_config.input_path, log)
+                parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
+                                                    perspective=AdaptivePerspective.TIME_DATA.name,
+                                                    read_log_as=ReadLogAs.TRACE.name, metrics=metrics,
+                                                    attribute=AttributeAdaptive.OTHER.name,
+                                                    attribute_name=at, delta=d)
+                framework.run_script(parameters)
 
-            running = framework.get_status_running()
-            while running:
-                print(f'Waiting for IPDD finishes ... Status running: {running}')
-                time.sleep(2)  # in seconds
                 running = framework.get_status_running()
-            print(f'Adaptive IPDD finished drift analysis on the data perspective')
-            detected_drifts = {}
-            # get the activities that report a drift using the change detector
-            for activity in framework.get_activities_with_drifts():
-                indexes = framework.initial_indexes[activity]
-                detected_drifts[activity] = list(indexes.keys())[1:]
-                print(
-                    f'Adaptive IPDD detect drifts for attribute {AttributeAdaptive.OTHER.name}-{dataset_config.attribute_name} in activity {activity} in indexes {detected_drifts}')
-                # get information about control-flow metrics
-                windows, traces = framework.get_windows_with_drifts(activity)
-                if len(traces) > 0:
+                while running:
+                    print(f'Waiting for IPDD finishes ... Status running: {running}')
+                    time.sleep(2)  # in seconds
+                    running = framework.get_status_running()
+                print(f'Adaptive IPDD finished drift analysis on the data perspective')
+                detected_drifts = {}
+                # get the activities that report a drift using the change detector
+                for activity in framework.get_activities_with_drifts():
+                    indexes = framework.initial_indexes[activity]
+                    detected_drifts[activity] = list(indexes.keys())[1:]
                     print(
-                        f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
-    out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.ADAPTIVE.name}_'
-                                                                         f'{AdaptivePerspective.TIME_DATA.name}_'
-                                                                         f'{AttributeAdaptive.OTHER.name}-'
-                                                                         f'{dataset_config.attribute_name}.xlsx')
-    df = pd.DataFrame.from_dict(dict_results, orient='index')
-    df.to_excel(out_filename)
+                        f'Adaptive IPDD detect drifts for attribute {AttributeAdaptive.OTHER.name}-{at} in activity {activity} in indexes {detected_drifts}')
+                    # get information about control-flow metrics
+                    windows, traces = framework.get_windows_with_drifts(activity)
+                    if len(traces) > 0:
+                        print(
+                            f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+
+                out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.ADAPTIVE.name}_'
+                                                                                     f'{AdaptivePerspective.TIME_DATA.name}_'
+                                                                                     f'{AttributeAdaptive.OTHER.name}-'
+                                                                                     f'{at}.xlsx')
+                df = pd.DataFrame.from_dict(dict_results, orient='index')
+                df.to_excel(out_filename)
 
 
 def run_massive_fixed_controlflow(dataset_config, metrics=None):
