@@ -40,6 +40,7 @@ class DiscoveryDfg(Discovery):
 
         dfg, sa, ea = pm4py.discover_directly_follows_graph(sub_log)
         # filter only 6% of paths - FOR UTFPR analysis
+        # percentual_paths = 0.006
         # TODO - define a parameter
         percentual_paths = 1
         dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea,
