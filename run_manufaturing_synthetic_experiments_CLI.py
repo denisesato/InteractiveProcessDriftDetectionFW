@@ -32,8 +32,8 @@ def selected_experiments():
         'ST.xes',
         'DR.xes',
         'DR_MS.xes',
-        'Log_Paper_Lathe1.xes',
-        'Log_Paper_Lathe2.xes',
+        'Log_Paper_Lathe1.xes',  # DR_MS_ST
+        'Log_Paper_Lathe2.xes',  # TD
         # 'Log_Paper_Lathe3.xes',
     ]
     change_points = [
@@ -55,7 +55,7 @@ def selected_experiments():
             else:
                 for change_point in cps:
                     str_changepoints = f'{str_changepoints} {change_point}'
-            subprocess.run(f"ipdd_cli.py -a a -l {file} -d {delta} -rd {str_changepoints}", shell=True)
+            subprocess.run(f"ipdd_cli.py -a a -p td -l {file} -d {delta} -rd {str_changepoints}", shell=True)
 
     # temperature experiment
     log = 'Log_Paper_Lathe4.xes'

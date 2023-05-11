@@ -116,7 +116,6 @@ def main():
     real_drifts = args.real_drifts
     if real_drifts and len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
         real_drifts = []
-        error_tolerance = args.error_tolerance
 
     # get enum from metrics
     metrics = []
@@ -151,7 +150,6 @@ def main():
 
     if real_drifts is not None:
         print(f'Real drifts: {real_drifts}')
-        print(f'Error tolerance: {error_tolerance}')
     print('----------------------------------------------')
 
     print(f'Starting analyzing process drifts ...')
@@ -220,7 +218,7 @@ def main():
             # if len(detected_drifts) > 0:
             print(f'********* IPDD evaluation metrics results *********')
             for activity in framework.get_all_activities():
-                if activity in detected_drifts.keys():
+                if activity in detected_drifts:
                     framework.evaluate(real_drifts, detected_drifts[activity], total_of_itens,
                                        activity)
                 else:
