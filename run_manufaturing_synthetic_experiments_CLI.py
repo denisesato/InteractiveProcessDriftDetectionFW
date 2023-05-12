@@ -32,16 +32,16 @@ def selected_experiments():
         'ST.xes',
         'DR.xes',
         'DR_MS.xes',
-        'Log_Paper_Lathe1.xes',  # DR_MS_ST
-        'Log_Paper_Lathe2.xes',  # TD
-        # 'Log_Paper_Lathe3.xes',
+        'DR_MS_ST.xes',
+        # 'Log_Paper_Lathe2.xes', Não foi utilizado no artigo
+        # 'Log_Paper_Lathe3.xes', Não foi utilizado no artigo
     ]
     change_points = [
         [],
         [349],  # trace marcado no nome do log
         [0, 26, 100, 148, 215],  # trace inicial e traces após a parada para manutenção
         [205, 858, 1246, 1555, 2006],  # traces marcados como QuedaDesempenho - TRUE
-        [426, 706, 1043, 1731, 2279],  # traces marcados como QuedaDesempenho - TRUE
+        # [426, 706, 1043, 1731, 2279],  # traces marcados como QuedaDesempenho - TRUE
         # [499, 1250, 2000]  # traces marcados como QuedaDesempenho - TRUE
     ]
     for log, cps in zip(log_name, change_points):
@@ -58,7 +58,7 @@ def selected_experiments():
             subprocess.run(f"ipdd_cli.py -a a -p td -l {file} -d {delta} -rd {str_changepoints}", shell=True)
 
     # temperature experiment
-    log = 'Log_Paper_Lathe4.xes'
+    log = 'TD.xes'
     # classificado pelo Edson
     # 1076    up
     # 1629    down
@@ -80,7 +80,7 @@ def selected_experiments():
         str_changepoints = ""
         for change_point in cps:
             str_changepoints = f'{str_changepoints} {change_point}'
-        subprocess.run(f"ipdd_cli.py -a a -l {file} -at OTHER -atname Temperatura -d {delta} -rd {str_changepoints}",
+        subprocess.run(f"ipdd_cli.py -a a -p td -l {file} -at OTHER -atname Temperatura -d {delta} -rd {str_changepoints}",
                        shell=True)
 
 
