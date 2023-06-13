@@ -76,6 +76,10 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
     if not metrics:
         metrics = framework.get_default_metrics()
 
+    series_by_time = False
+    if hasattr(dataset_config, "series_by_time"):
+        series_by_time = True
+
     dict_results = {}
     for log in dataset_config.lognames:
         dict_results[log] = {}
@@ -90,7 +94,7 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                 log_filename = os.path.join(dataset_config.input_path, log)
                 parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                     perspective=AdaptivePerspective.TIME_DATA.name,
-                                                    read_log_as=ReadLogAs.TRACE.name, metrics=metrics,
+                                                    read_log_as=ReadLogAs.EVENT.name, metrics=metrics,
                                                     attribute=AttributeAdaptive.OTHER.name,
                                                     attribute_name=at, delta=d)
                 framework.run_script(parameters)

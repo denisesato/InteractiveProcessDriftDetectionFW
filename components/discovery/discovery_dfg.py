@@ -36,24 +36,23 @@ class DiscoveryDfg(Discovery):
             os.makedirs(models_path)
 
         # mine the DFG (using Pm4Py)
-        activities_count = pm4py.get_attribute_values(sub_log, "concept:name")
-
-        dfg, sa, ea = pm4py.discover_directly_follows_graph(sub_log)
-        # filter only 6% of paths - FOR UTFPR analysis
-        # percentual_paths = 0.006
-        # TODO - define a parameter
-        percentual_paths = 1
-        dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea,
-                                                                                     activities_count, percentual_paths)
+        # Mudança para pandas, verificar se funciona com trace
+        # activities_count = pm4py.get_attribute_values(sub_log, "concept:name")
+        activities_count = sub_log['concept:name'].nunique()
+        dfg, sa, ea = pm4py.discover_dfg(sub_log, case_id_key='case:concept:name',
+                                         activity_key='concept:name',
+                                         timestamp_key='time:timestamp')
 
         # save the process model
         if activity and activity != '':  # adaptive approach generates models per activity
             output_filename = self.model_type_definitions.get_model_filename(event_data_original_name,
                                                                              w_count[activity])
-            output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count[activity]))
+            output_filename_svg = os.path.join(models_path,
+                                               self.model_type_definitions.get_model_filename_svg(w_count[activity]))
         else:  # fixed approach generate the models based on the window size
             output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)
-            output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count))
+            output_filename_svg = os.path.join(models_path,
+                                               self.model_type_definitions.get_model_filename_svg(w_count))
 
         print(f'Saving {models_path} - {output_filename}')
         parameters = {dfg_visualization.Variants.FREQUENCY.value.Parameters.START_ACTIVITIES: sa,

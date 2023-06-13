@@ -49,7 +49,8 @@ class UTFPRConfigurationData:
     lognames = [
         # 'CP_numericos.xes.gz',
         # 'CP_Original.xes.gz'
-        'CP_Original_Obrigatorias_SemDesistentes.xes.gz'
+        # 'CP_Original_Obrigatorias_SemDesistentes.xes.gz',
+        'CP_Original_Obrigatorias_SemDesistentes_SemCursando.xes.gz'
     ]
     deltas = [0.002]
     attribute_names = [
@@ -61,8 +62,10 @@ class UTFPRConfigurationData:
         # 'Crédito Consignado',
         # 'Reprovado',
         # 'Sem conclusão'
-        'Média'
+        'Média',
+        'Freq. (4)'
     ]
+    # series_by_time = True
 
 
 def one_experiment_for_testing():
@@ -74,7 +77,7 @@ def one_experiment_for_testing():
 
     deltas = [0.002]
 
-    attribute = 'Média';
+    attribute = 'Média'
 
     for log in lognames:
         file = os.path.join(folder, log)

@@ -13,18 +13,17 @@
 """
 import os
 import shutil
+import pm4py
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
-from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter, Paths
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter, Paths, \
+    AttributeAdaptive
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from threading import Thread
-from pm4py.objects.conversion.log import converter as log_converter
-from pm4py.objects.log.importer.xes import importer as xes_importer
-from pm4py.statistics.traces.generic.log import case_statistics
-from pm4py.objects.log.obj import EventLog
+from pm4py.objects.log.util import interval_lifecycle
 from components.log_info import LogInfo
 
 
@@ -145,7 +144,7 @@ class IPDDParametersFixed(IPDDParameters):
 class IPDDParametersAdaptive(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, metrics, attribute,
                  attribute_name=None, activities=[], delta=None, save_sublogs=False, save_model_svg=False,
-                 update_model=True):
+                 update_model=True, interval_log=False):
         super().__init__(logname, approach, read_log_as, metrics, save_sublogs, save_model_svg)
         self.perspective = perspective
         self.attribute = attribute
@@ -157,6 +156,7 @@ class IPDDParametersAdaptive(IPDDParameters):
             self.delta = 0.002
         self.save_model_svg = save_model_svg
         self.update_model = update_model
+        self.interval_log = interval_log
 
 
     def print(self):
@@ -341,7 +341,13 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_adaptive_adwin_path(self, user_id):
         path = os.path.join(self.adaptive_path, self.current_parameters.logname)
         if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
-            path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+            if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+                path = os.path.join(self.adaptive_path, self.current_parameters.logname,
+                                    f'{self.current_parameters.perspective}'
+                                    f'_{self.current_parameters.attribute_name}'
+                                    f'_delta{self.current_parameters.delta}')
+            else:
+                path = os.path.join(self.adaptive_path, self.current_parameters.logname,
                                 f'{self.current_parameters.perspective}'
                                 f'_{self.current_parameters.attribute}'
                                 f'_delta{self.current_parameters.delta}')
@@ -388,26 +394,30 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         # import the chosen event log and calculate some statistics
         self.current_log = LogInfo(complete_filename, filename)
         if '.xes' in complete_filename:
-            # Assume that it is a XES file
-            variant = xes_importer.Variants.ITERPARSE
-            parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
-            self.current_log.log = xes_importer.apply(complete_filename, variant=variant, parameters=parameters)
-
-            self.current_log.first_traces = log_converter.apply(EventLog(self.current_log.log[0:self.MAX_TRACES]),
-                                                                variant=log_converter.Variants.TO_DATA_FRAME)
-
-            self.current_log.median_case_duration = case_statistics.get_median_caseduration(self.current_log.log,
-                                                                                            parameters={
-                                                                                                case_statistics.Parameters.TIMESTAMP_KEY: "time:timestamp"})
+            self.current_log.log = pm4py.read_xes(complete_filename)
+            self.current_log.first_traces = self.current_log.log[0:self.MAX_TRACES]
+            case_durations = pm4py.get_all_case_durations(self.current_log.log,
+                                                          activity_key='concept:name',
+                                                          case_id_key='case:concept:name',
+                                                          timestamp_key='time:timestamp')
+            self.current_log.total_of_cases = len(case_durations)
+            self.current_log.total_of_events = len(self.current_log.log.index)
+            self.current_log.median_case_duration = sum(case_durations) / self.current_log.total_of_cases
             self.current_log.median_case_duration_in_hours = self.current_log.median_case_duration / 60 / 60
-            self.current_log.total_of_cases = len(self.current_log.log)
-            self.current_log.total_of_events = len(self.current_log.log)
+
             print(
                 f'Log [{filename}] - total of cases [{self.current_log.total_of_cases}] - median case duration '
                 f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
 
-            # convert to interval time log if needed
-            # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
+            if self.current_parameters.interval_log:
+                # converts a log to interval format (e.g. an event has two timestamps)
+                # used only if the user informed that is using an interval log using
+                # lifecycle format (an event has only a timestamp, and a transition lifecycle)
+                # uses deprecated class Event Log
+                # I did not find a way to convert the dataframe to an interval log
+                log = pm4py.convert_to_event_log(self.current_log.log)
+                log = interval_lifecycle.to_interval(log)
+                self.current_log.log = pm4py.convert_to_dataframe(log)
 
     def get_running_percentage(self):
         if not self.analyze or not self.current_log:

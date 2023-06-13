@@ -38,11 +38,11 @@ class SojournTime:
     def __init__(self, name):
         self.name = name
 
-    def get_value(self, event):
+    def get_value(self, event, index):
         # get the duration of the event
         # the input must be an interval log
-        start_time = event['start_timestamp'].timestamp()
-        complete_time = event['time:timestamp'].timestamp()
+        start_time = event['start_timestamp'][index].timestamp()
+        complete_time = event['time:timestamp'][index].timestamp()
         duration = complete_time - start_time
         return duration
 
@@ -51,10 +51,10 @@ class WaitingTime:
     def __init__(self, name):
         self.name = name
 
-    def get_value(self, event):
+    def get_value(self, event, index):
         # the input must be an interval log
         # return the wasted time ONLY with regards to the activity described by the ‘interval’ event
-        waiting_time = event['@@approx_bh_this_wasted_time']
+        waiting_time = event['@@approx_bh_this_wasted_time'][index]
         return waiting_time
 
 
@@ -63,12 +63,12 @@ class OtherAttribute:
         self.name = name
         self.column_name = colum_name
 
-    def get_value(self, event):
+    def get_value(self, event_data, index):
         # get the value of the attributed defined by the user
         # testes only using numeric attributes
-        if self.column_name in event.keys():
-            value = event[f'{self.column_name}']
-            if type(value) == str: # if the value is defined as string in the xes, we converted it here
+        if self.column_name in event_data.columns:
+            value = event_data[f'{self.column_name}'][index]
+            if type(value) == str:  # if the value is defined as string in the xes, we converted it here
                 value = value.replace(",", ".")
                 value = float(value)
             return value

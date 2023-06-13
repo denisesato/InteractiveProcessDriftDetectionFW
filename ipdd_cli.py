@@ -14,7 +14,6 @@
 import argparse
 import os
 import time
-
 from components.parameters import ReadLogAs, WindowUnityFixed, Approach, AttributeAdaptive, AdaptivePerspective, \
     ControlflowAdaptiveApproach
 from components.dfg_definitions import Metric
@@ -59,6 +58,13 @@ def main():
                                                    'ot - other attribute; in this case specify attribute_name parameter',
                         default='st')
     parser.add_argument('--attribute_name', '-atname', help='Attribute name')
+    parser.add_argument('--ordered_by_event', '-evt', help='The event log is ordered by the event '
+                                                           'timestamp. If not set the event log is ordered by trace, '
+                                                           'using the timestamp of the first event.',
+                        type=bool, default=False)
+    parser.add_argument('--interval_log', '-ilog', help='The input is a log using the lifecycle format (an event has '
+                                                        'only a timestamp, and a transition lifecycle). ',
+                        type=bool, default=False)
     parser.add_argument('--activities', '-activities', nargs='+',
                         help='Activities considered for getting the defined attribute', default=[])
 
@@ -67,7 +73,8 @@ def main():
                                                                         'control-flow drifts '
                                                                         't - trace by trace or w - windowing',
                         default='t')
-    parser.add_argument('--save_sublogs', '-sub', help='Option for exporting the sub-logs derived between the detected change points',
+    parser.add_argument('--save_sublogs', '-sub', help='Option for exporting the sub-logs derived between the '
+                                                       'detected change points',
                         type=bool, default=False)
     parser.add_argument('--no_update_model',
                         help='Option for update process model after detecting a change point',
@@ -97,6 +104,7 @@ def main():
         if perspective == AdaptivePerspective.TIME_DATA.name:
             if args.attribute == 'st':
                 attribute = AttributeAdaptive.SOJOURN_TIME.name
+                attribute_name = AttributeAdaptive.SOJOURN_TIME
             else:
                 attribute = AttributeAdaptive.OTHER.name
                 if args.attribute_name != '':
@@ -116,7 +124,6 @@ def main():
     real_drifts = args.real_drifts
     if real_drifts and len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
         real_drifts = []
-        error_tolerance = args.error_tolerance
 
     # get enum from metrics
     metrics = []
@@ -145,13 +152,11 @@ def main():
             print(f'Export sublogs: {args.save_sublogs}')
             print(f'Update process models: {args.no_update_model}')
 
-
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
 
     if real_drifts is not None:
         print(f'Real drifts: {real_drifts}')
-        print(f'Error tolerance: {error_tolerance}')
     print('----------------------------------------------')
 
     print(f'Starting analyzing process drifts ...')
@@ -161,14 +166,23 @@ def main():
                                          WindowUnityFixed.UNITY.name, win_size)
     elif approach == Approach.ADAPTIVE.name:
         if perspective == AdaptivePerspective.TIME_DATA.name:
-            parameters = IPDDParametersAdaptive(event_log, approach, perspective, ReadLogAs.TRACE.name, metrics, attribute,
-                                                attribute_name,
-                                                activities, args.delta)
+            if args.ordered_by_event:  # only implemented for adaptive approach for time/data perspective
+                parameters = IPDDParametersAdaptive(logname=event_log, approach=approach, perspective=perspective,
+                                                    read_log_as=ReadLogAs.EVENT.name, metrics=metrics,
+                                                    attribute=attribute, attribute_name=attribute_name,
+                                                    activities=activities, delta=args.delta,
+                                                    interval_log=args.interval_log)
+            else:
+                parameters = IPDDParametersAdaptive(logname=event_log, approach=approach, perspective=perspective,
+                                                    read_log_as=ReadLogAs.TRACE.name, metrics=metrics,
+                                                    attribute=attribute, attribute_name=attribute_name,
+                                                    activities=activities, delta=args.delta,
+                                                    interval_log=args.interval_log)
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
-            parameters = IPDDParametersAdaptiveControlflow(event_log, approach, perspective, ReadLogAs.TRACE.name, win_size,
-                                                           metrics,
-                                                           adaptive_controlflow_approach, delta=args.delta,
-                                                           save_sublogs=args.save_sublogs, update_model=not args.no_update_model)
+            parameters = IPDDParametersAdaptiveControlflow(event_log, approach, perspective, ReadLogAs.TRACE.name,
+                                                           win_size, metrics, adaptive_controlflow_approach,
+                                                           delta=args.delta, save_sublogs=args.save_sublogs,
+                                                           update_model=not args.no_update_model)
     framework.run_script(parameters)
 
     running = framework.get_status_running()
@@ -195,7 +209,8 @@ def main():
                 # get information about control-flow metrics
                 windows, traces = framework.get_windows_with_drifts(activity)
                 if len(traces) > 0:
-                    print(f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+                    print(
+                        f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
             detected_drifts = framework.get_initial_trace_indexes()
             # remove the index 0

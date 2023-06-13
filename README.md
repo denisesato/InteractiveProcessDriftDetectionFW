@@ -8,7 +8,7 @@ After you cloned the git repository, go to the project directory and install the
 
 	pip install -U numpy==1.22.3
 	pip install -r requirements.txt
-	pip install ./scikit-multiflow-0.6.dev0.tar.gz
+	pip install ./scikit-multiflow-0.6.dev0.tar.gz # TODO VERIFY IF THIS IS NOT NECESSARY ANYMORE
 
 # Docker installation
 It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt. 

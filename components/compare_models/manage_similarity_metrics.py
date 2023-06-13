@@ -99,21 +99,21 @@ class ManageSimilarityMetrics:
         self.final_window = w
 
     def calculate_metrics(self, current_window, model1, model2, sublog1, sublog2, parameters,
-                          initial_trace=None, initial_timestamp=None):
+                          initial_event=None, initial_timestamp=None):
         # print(f'Starting to calculate similarity metrics between windows [{current_window-1}]-[{current_window}] ...')
         # calculate the chosen metrics and save the values on the file
-        print(f'calculate_metrics - current window {current_window} - initial_trace = {initial_trace}')
-        self.calculate_configured_similarity_metrics(current_window, initial_trace, initial_timestamp, model1, model2,
+        print(f'calculate_metrics - current window {current_window} - initial_event = {initial_event}')
+        self.calculate_configured_similarity_metrics(current_window, initial_event, initial_timestamp, model1, model2,
                                                      sublog1, sublog2,
                                                      parameters)
 
-    def calculate_configured_similarity_metrics(self, current_window, initial_trace, initial_timestamp,
+    def calculate_configured_similarity_metrics(self, current_window, initial_event, initial_timestamp,
                                                 m1, m2, l1, l2, parameters):
         self.model_type_definitions.set_current_parameters(self.current_parameters)
         for metric_name in self.metrics_list:
             print(f'Starting [{metric_name}] calculation between windows [{current_window - 1}-{current_window}]')
             metric = self.model_type_definitions.metrics_factory(metric_name, current_window,
-                                                                 initial_trace, initial_timestamp,
+                                                                 initial_event, initial_timestamp,
                                                                  metric_name, m1, m2, l1, l2, parameters)
 
             metric.set_saving_definitions(self.filenames[metric_name], self.current_parameters, self.locks[metric_name],
