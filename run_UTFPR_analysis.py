@@ -65,7 +65,7 @@ class UTFPRConfigurationData:
         'Média',
         'Freq. (4)'
     ]
-    # series_by_time = True
+    ordered_by_event = True
 
 
 def one_experiment_for_testing():

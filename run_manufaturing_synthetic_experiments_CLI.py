@@ -107,5 +107,5 @@ def one_experiment_for_testing():
 
 if __name__ == '__main__':
     # one_experiment_for_testing()
-    # selected_synthetic_experiments()
-    selected_real_log()
+    selected_synthetic_experiments()
+    # selected_real_log()

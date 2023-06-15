@@ -68,6 +68,8 @@ from components.ippd_fw import InteractiveProcessDriftDetectionFW, IPDDParameter
 
 DRIFTS_KEY = 'drifts - '
 DETECTED_AT_KEY = 'detected at - '
+ACTIVITY_KEY = 'activity'
+DELTA_KEY = 'd'
 
 
 def run_massive_adaptive_data(dataset_config, metrics=None):
@@ -76,9 +78,9 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
     if not metrics:
         metrics = framework.get_default_metrics()
 
-    series_by_time = False
-    if hasattr(dataset_config, "series_by_time"):
-        series_by_time = True
+    read_log_as = ReadLogAs.TRACE.name
+    if hasattr(dataset_config, "ordered_by_event"):
+        read_log_as = ReadLogAs.EVENT.name
 
     dict_results = {}
     for log in dataset_config.lognames:
@@ -92,9 +94,10 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                 print(f'Event log: {log}')
                 print('----------------------------------------------')
                 log_filename = os.path.join(dataset_config.input_path, log)
+
                 parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                     perspective=AdaptivePerspective.TIME_DATA.name,
-                                                    read_log_as=ReadLogAs.EVENT.name, metrics=metrics,
+                                                    read_log_as=read_log_as, metrics=metrics,
                                                     attribute=AttributeAdaptive.OTHER.name,
                                                     attribute_name=at, delta=d)
                 framework.run_script(parameters)
@@ -124,6 +127,73 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                                                                                      f'{at}.xlsx')
                 df = pd.DataFrame.from_dict(dict_results, orient='index')
                 df.to_excel(out_filename)
+
+
+def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
+    # getting instance of the IPDD
+    framework = InteractiveProcessDriftDetectionFW(script=True)
+    if not metrics:
+        metrics = framework.get_default_metrics()
+
+    read_log_as = ReadLogAs.TRACE.name
+    if hasattr(dataset_config, "ordered_by_event"):
+        read_log_as = ReadLogAs.EVENT.name
+
+    interval_log = False
+    if hasattr(dataset_config, "interval_log"):
+        interval_log = True
+
+    dict_results = {}
+    for log in dataset_config.lognames:
+        dict_results[log] = {}
+        for delta in dataset_config.deltas:
+
+            print('----------------------------------------------')
+            print(f'Running new scenario')
+            print(f'Approach: {Approach.ADAPTIVE.value}')
+            print(f'Metrics: {[m.value for m in metrics]}')
+            print(f'Attribute: {dataset_config.attribute}')
+            print(f'Attribute name: {dataset_config.attribute_name}')
+            print(f'Event log: {log}')
+            print('----------------------------------------------')
+            log_filename = os.path.join(dataset_config.input_path, log)
+
+            parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
+                                                perspective=AdaptivePerspective.TIME_DATA.name,
+                                                read_log_as=read_log_as, metrics=metrics,
+                                                attribute=dataset_config.attribute,
+                                                attribute_name=dataset_config.attribute_name, delta=delta,
+                                                interval_log=interval_log)
+            framework.run_script(parameters)
+
+            running = framework.get_status_running()
+            while running:
+                print(f'Waiting for IPDD finishes ... Status running: {running}')
+                time.sleep(2)  # in seconds
+                running = framework.get_status_running()
+            print(f'Adaptive IPDD finished drift analysis on the data perspective')
+            detected_drifts = {}
+            # get the activities that report a drift using the change detector
+            for activity in framework.get_all_activities():
+                indexes = framework.initial_indexes[activity]
+                if type(indexes) == list:
+                    detected_drifts[activity] = list(indexes.keys())[1:]
+                else:  # for activities not present in the log
+                    detected_drifts[activity] = []
+                print(
+                    f'Adaptive IPDD detect drifts for attribute {dataset_config.attribute} in activity {activity} in '
+                    f'traces {detected_drifts}')
+                dict_results[log][f'{DRIFTS_KEY}{DELTA_KEY}={delta} {ACTIVITY_KEY}={activity}'] = detected_drifts[activity]
+
+    out_filepath = framework.get_evaluation_path('script')
+    out_filename = f'results_IPDD_{Approach.ADAPTIVE.name}_'\
+                   f'{AdaptivePerspective.TIME_DATA.name}_' \
+                   f'{dataset_config.attribute}.xlsx'
+
+    df = pd.DataFrame.from_dict(dict_results, orient='index')
+    df.to_excel(os.path.join(out_filepath, out_filename))
+    if evaluate:
+        calculate_metrics_massive(out_filepath, out_filename, dataset_config, True)
 
 
 def run_massive_fixed_controlflow(dataset_config, metrics=None):
@@ -263,8 +333,8 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
         if match := re.search(regexp, logname):
             logsize = match.group(1)
         else:
-            print(f'Problem getting the logsize. File {input_filename} NOT PROCESSED!')
-            return
+            # if the name do not use the pattern for log size, use the logname
+            logsize = logname
 
         change_points = {}
         detected_at = {}
@@ -282,22 +352,51 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
                 detected_at[configuration] = trace_ids_list
 
         for configuration in change_points.keys():
-            # get the actual change points
-            real_change_points = dataset_config.actual_change_points[logsize]
-            instances = dataset_config.number_of_instances[logsize]
+            if dataset_config.activities is not None:
+                # get the activity name in the configuration
+                regexp = f"{DELTA_KEY}=(\d.*) {ACTIVITY_KEY}=(.*)"
+                if match := re.search(regexp, configuration):
+                    activity_reported = match.group(2)
+                else:
+                    print('Could not find the activity name in the results')
+                    return
 
-            # get the detected at information if available and convert to a list of integers
-            metrics_summary = framework.evaluate(real_change_points,
-                                                 change_points[configuration],
-                                                 instances)
-            # add the calculated metrics to the dictionary
-            if save_input_for_calculation:
-                metrics_results[logname][f'Detected drifts {configuration}'] = change_points[configuration]
-                if len(detected_at) > 0:
-                    metrics_results[logname][f'Detected at {configuration}'] = detected_at[configuration]
-                metrics_results[logname][f'Real drifts {configuration}'] = real_change_points
-            for m in metrics:
-                metrics_results[logname][f'{m} {configuration}'] = metrics_summary[m]
+                # in this case the drifts are reported by activity (Time/Data perspective)
+                for a in dataset_config.activities:
+                    if a == activity_reported:
+                        # get the actual change points
+                        real_change_points = dataset_config.actual_change_points[activity_reported][logsize]
+                        instances = dataset_config.number_of_instances[activity_reported][logsize]
+
+                        # get the detected at information if available and convert to a list of integers
+                        metrics_summary = framework.evaluate(real_change_points,
+                                                             change_points[configuration],
+                                                             instances)
+                        # add the calculated metrics to the dictionary
+                        if save_input_for_calculation:
+                            metrics_results[logname][f'Detected drifts {configuration}'] = change_points[configuration]
+                            if len(detected_at) > 0:
+                                metrics_results[logname][f'Detected at {configuration}'] = detected_at[configuration]
+                            metrics_results[logname][f'Real drifts {configuration}'] = real_change_points
+                        for m in metrics:
+                            metrics_results[logname][f'{m} {configuration}'] = metrics_summary[m]
+            else:
+                # get the actual change points
+                real_change_points = dataset_config.actual_change_points[logsize]
+                instances = dataset_config.number_of_instances[logsize]
+
+                # get the detected at information if available and convert to a list of integers
+                metrics_summary = framework.evaluate(real_change_points,
+                                                     change_points[configuration],
+                                                     instances)
+                # add the calculated metrics to the dictionary
+                if save_input_for_calculation:
+                    metrics_results[logname][f'Detected drifts {configuration}'] = change_points[configuration]
+                    if len(detected_at) > 0:
+                        metrics_results[logname][f'Detected at {configuration}'] = detected_at[configuration]
+                    metrics_results[logname][f'Real drifts {configuration}'] = real_change_points
+                for m in metrics:
+                    metrics_results[logname][f'{m} {configuration}'] = metrics_summary[m]
     df = pd.DataFrame(metrics_results).T
     out_filename = filename[:-(len('.xlsx'))]
     out_filename = f'metrics_{out_filename}.xlsx'
