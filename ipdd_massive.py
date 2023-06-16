@@ -11,6 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
+import math
 
 """
 For running IPDD massively, the user must define the dataset configuration:
@@ -176,10 +177,7 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
             # get the activities that report a drift using the change detector
             for activity in framework.get_all_activities():
                 indexes = framework.initial_indexes[activity]
-                if type(indexes) == list:
-                    detected_drifts[activity] = list(indexes.keys())[1:]
-                else:  # for activities not present in the log
-                    detected_drifts[activity] = []
+                detected_drifts[activity] = list(indexes.keys())[1:]
                 print(
                     f'Adaptive IPDD detect drifts for attribute {dataset_config.attribute} in activity {activity} in '
                     f'traces {detected_drifts}')
@@ -340,7 +338,10 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
         detected_at = {}
         for key in complete_results[logname].keys():
             # get list of trace ids from excel and convert to a list of integers
-            trace_ids_list = complete_results[logname][key][1:-1].split(",")
+            if type(complete_results[logname][key]) == str:
+                trace_ids_list = complete_results[logname][key][1:-1].split(",")
+            else:  # for activities not present in the log
+                trace_ids_list = []
             trace_ids_list = convert_list_to_int(trace_ids_list)
 
             # insert into change points or detected points
