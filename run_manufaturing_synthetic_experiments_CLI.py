@@ -6,7 +6,7 @@ def selected_real_log():
     folder = '"C:/Users/denis/OneDrive/Documents/Doutorado/Artigos_Desenvolvidos/Artigo_Ruschel_Manutencao/LogEstudoDeCaso"'
     log_name = [
         #'LogLatheMachine.gz.xes.gz',
-        'LogLatheMachine_Denise_Alterado_06062023.xes.gz'
+        'LogLatheMachine_IPDD_Ingles.xes.gz'
     ]
     change_points = [
         [],
@@ -107,5 +107,5 @@ def one_experiment_for_testing():
 
 if __name__ == '__main__':
     # one_experiment_for_testing()
-    selected_synthetic_experiments()
-    # selected_real_log()
+    # selected_synthetic_experiments()
+    selected_real_log()
