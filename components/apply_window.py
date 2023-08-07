@@ -13,6 +13,8 @@
 """
 import os
 from threading import Thread
+
+import pm4py
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
 from pm4py.objects.log.util import interval_lifecycle
@@ -109,22 +111,18 @@ class AnalyzeDrift:
 
         # current loaded event log information
         self.current_log = current_log
-        # convert to interval time log if needed
-        self.converted_log = interval_lifecycle.to_interval(self.current_log.log)
-        # set the event_data as requested by the user (read event by event or trace by trace)
+        # convert do dataframe in case of the user set to read the log ordered by event timestamp
         if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
-            self.event_data = self.converted_log
+            self.event_data = self.current_log.log
         elif self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
-            # convert the log into an event stream
-            self.event_data = log_converter.apply(self.converted_log, variant=log_converter.Variants.TO_EVENT_STREAM)
-        else:
-            self.event_data = self.converted_log
-            print(
-                f'The window type received is not defined for IPDD {self.current_parameters.read_log_as}, assuming STREAM OF TRACES')
+            dataframe = pm4py.convert_to_dataframe(self.current_log.log)
+            self.current_log.log = dataframe.sort_values('time:timestamp').reset_index()
+            self.current_log.log.rename(columns={'index': 'event_id'}, inplace=True)
+
         # class that implements the discovery method for the current model
         self.discovery = discovery
 
-    # save the change points in an txt file
+    # save the change points in a txt file
     # used in the adaptive approaches
     def save_change_points(self, filename, change_points, change_points_info, activities=None):
         with open(filename, 'w+') as file:
@@ -357,7 +355,7 @@ class AnalyzeDrift:
                                                self.models_path, self.metrics_path)
 
         for i, item in enumerate(event_data):
-            self.current_trace = i+1
+            self.current_trace = i + 1
             # get the current case id
             case_id = self.get_case_id(item)
 
@@ -591,7 +589,7 @@ class AnalyzeDrift:
         log_for_model = EventLog(event_data[0:window_size])
         net, im, fm = inductive_miner.apply(log_for_model)
         pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                     f'model1_0-{window_size-1}.pnml')
+                                     f'model1_0-{window_size - 1}.pnml')
         pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
         # other discovery algorithms can be applied
         # net, im, fm = heuristics_miner.apply(log_for_model)
@@ -669,7 +667,7 @@ class AnalyzeDrift:
                     log_for_model = EventLog(event_data[i:final_trace_id])
                     net, im, fm = inductive_miner.apply(log_for_model)
                     pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                                 f'model{self.window_count+1}_{i}-{final_trace_id - 1}.pnml')
+                                                 f'model{self.window_count + 1}_{i}-{final_trace_id - 1}.pnml')
                     pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                     # other discovery algorithms can be applied
                     # net, im, fm = heuristics_miner.apply(log_for_model)
@@ -829,7 +827,7 @@ class AnalyzeDrift:
                     log_for_model = EventLog(event_data[change_point:change_point + window_size])
                     net, im, fm = inductive_miner.apply(log_for_model)
                     pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                                 f'model{self.window_count+1}_{change_point}-{change_point + window_size - 1}.pnml')
+                                                 f'model{self.window_count + 1}_{change_point}-{change_point + window_size - 1}.pnml')
                     pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                     tree = inductive_miner.apply_tree(log_for_model)
                     print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')

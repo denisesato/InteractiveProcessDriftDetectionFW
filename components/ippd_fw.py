@@ -13,6 +13,9 @@
 """
 import os
 import shutil
+
+from pm4py.objects.log.util import interval_lifecycle
+
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
@@ -21,6 +24,7 @@ from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from threading import Thread
+import pm4py
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.statistics.traces.generic.log import case_statistics
@@ -117,7 +121,7 @@ class IPDDParameters:
         self.read_log_as = read_log_as
         self.metrics = metrics
         self.session_id = None
-        self.save_sublogs = save_sublogs      # for saving the generated sub-logs used by the windowing strategy
+        self.save_sublogs = save_sublogs  # for saving the generated sub-logs used by the windowing strategy
         self.save_model_svg = save_model_svg  # for saving the DFG model as vectorial figure
 
     def print(self):
@@ -157,7 +161,6 @@ class IPDDParametersAdaptive(IPDDParameters):
             self.delta = 0.002
         self.save_model_svg = save_model_svg
         self.update_model = update_model
-
 
     def print(self):
         super().print()
@@ -406,8 +409,11 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                 f'Log [{filename}] - total of cases [{self.current_log.total_of_cases}] - median case duration '
                 f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
 
-            # convert to interval time log if needed
-            # self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
+            # converts a log to interval format (e.g. an event has two timestamps)
+            # used only if the user informed that is using an interval log using
+            # lifecycle format (an event has only a timestamp, and a transition lifecycle)
+            # if the log is not an interval log, nothing is performed in the conversion
+            self.current_log.log = interval_lifecycle.to_interval(self.current_log.log)
 
     def get_running_percentage(self):
         if not self.analyze or not self.current_log:
@@ -492,10 +498,10 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         print(f'Metrics={self.current_parameters.metrics}')
         print(f'Starting windowing process...')
         self.analyze = AnalyzeDrift(self.model_type, self.current_parameters, self.control,
-                               self.get_input_path(user_id), self.get_models_path(user_id),
-                               self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
-                               self.current_log, self.discovery, user_id,
-                               outputpath_adaptive_adwin, outputpath_adaptive_adwin_models)
+                                    self.get_input_path(user_id), self.get_models_path(user_id),
+                                    self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
+                                    self.current_log, self.discovery, user_id,
+                                    outputpath_adaptive_adwin, outputpath_adaptive_adwin_models)
         self.total_of_windows, self.initial_indexes, self.all_activities = self.analyze.start_drift_analysis()
         if self.current_parameters.approach == Approach.ADAPTIVE.name and \
                 self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
@@ -651,7 +657,6 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         else:
             print(f'Metrics manager not instantiated')
             return [], []
-
 
     def clean_generated_data(self, user_id):
         # cleaning data from previous executions - only for web acess

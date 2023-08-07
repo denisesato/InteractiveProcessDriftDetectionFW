@@ -67,7 +67,8 @@ def main():
                                                                         'control-flow drifts '
                                                                         't - trace by trace or w - windowing',
                         default='t')
-    parser.add_argument('--save_sublogs', '-sub', help='Option for exporting the sub-logs derived between the detected change points',
+    parser.add_argument('--save_sublogs', '-sub',
+                        help='Option for exporting the sub-logs derived between the detected change points',
                         type=bool, default=False)
     parser.add_argument('--no_update_model',
                         help='Option for update process model after detecting a change point',
@@ -144,7 +145,6 @@ def main():
             print(f'Export sublogs: {args.save_sublogs}')
             print(f'Update process models: {args.no_update_model}')
 
-
     print(f'Metrics: {[m.value for m in metrics]}')
     print(f'Event log: {event_log}')
 
@@ -159,14 +159,17 @@ def main():
                                          WindowUnityFixed.UNITY.name, win_size)
     elif approach == Approach.ADAPTIVE.name:
         if perspective == AdaptivePerspective.TIME_DATA.name:
-            parameters = IPDDParametersAdaptive(event_log, approach, perspective, ReadLogAs.TRACE.name, metrics, attribute,
+            parameters = IPDDParametersAdaptive(event_log, approach, perspective, ReadLogAs.TRACE.name, metrics,
+                                                attribute,
                                                 attribute_name,
                                                 activities, args.delta)
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
-            parameters = IPDDParametersAdaptiveControlflow(event_log, approach, perspective, ReadLogAs.TRACE.name, win_size,
+            parameters = IPDDParametersAdaptiveControlflow(event_log, approach, perspective, ReadLogAs.TRACE.name,
+                                                           win_size,
                                                            metrics,
                                                            adaptive_controlflow_approach, delta=args.delta,
-                                                           save_sublogs=args.save_sublogs, update_model=not args.no_update_model)
+                                                           save_sublogs=args.save_sublogs,
+                                                           update_model=not args.no_update_model)
     framework.run_script(parameters)
 
     running = framework.get_status_running()
@@ -193,7 +196,8 @@ def main():
                 # get information about control-flow metrics
                 windows, traces = framework.get_windows_with_drifts(activity)
                 if len(traces) > 0:
-                    print(f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+                    print(
+                        f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
         elif perspective == AdaptivePerspective.CONTROL_FLOW.name:
             detected_drifts = framework.get_initial_trace_indexes()
             # remove the index 0
@@ -228,6 +232,162 @@ def main():
             #     print(f'********* IPDD did not detect any drift. No F-score results *********')
     else:
         print(f'Approach not identified: {approach}')
+
+
+def run_IPDD_script(parameters, real_drifts=None):
+    # getting instance of the IPDD
+    framework = InteractiveProcessDriftDetectionFW(script=True)
+
+    if parameters.approach == Approach.FIXED.name:
+        win_size = parameters.win_size
+    elif parameters.approach == Approach.ADAPTIVE.name:
+        if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            if parameters.attribute == 'st':
+                attribute = AttributeAdaptive.SOJOURN_TIME.name
+            else:
+                attribute = AttributeAdaptive.OTHER.name
+                if parameters.attribute_name != '':
+                    attribute_name = parameters.attribute_name
+                else:
+                    print(f'You must define --attribute_name when using attribute OTHER')
+                    return
+            activities = parameters.activities
+        elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            win_size = parameters.win_size
+            if parameters.adaptive_controlflow_approach == 't':
+                adaptive_controlflow_approach = ControlflowAdaptiveApproach.TRACE.name
+            elif parameters.adaptive_controlflow_approach == 'w':
+                adaptive_controlflow_approach = ControlflowAdaptiveApproach.WINDOW.name
+
+    event_log = parameters.logname
+    if real_drifts and len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
+        real_drifts = []
+
+    # get enum from metrics
+    metrics = []
+    for m in parameters.metrics:
+        for implemented_metric in Metric:
+            if m == implemented_metric.name:
+                metrics.append(implemented_metric)
+
+    print('----------------------------------------------')
+    print('Configuration:')
+    print('----------------------------------------------')
+    print(f'Approach: {parameters.approach}')
+    if parameters.approach == Approach.FIXED.name:
+        print(f'Window size: {win_size}')
+    elif parameters.approach == Approach.ADAPTIVE.name:
+        print(f'Delta - ADWIN detector: {parameters.delta}')
+        if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            print(f'Attribute: {attribute}')
+            if attribute == AttributeAdaptive.OTHER.name:
+                print(f'Attribute name: {attribute_name}')
+                if len(activities) > 0:
+                    print(f'Filtered activities: {activities}')
+        elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            print(f'Window size: {win_size}')
+            print(f'Adaptive control-flow approach: {parameters.adaptive_controlflow_approach}')
+            print(f'Export sublogs: {parameters.save_sublogs}')
+            print(f'Update process models: {parameters.update_model}')
+
+    print(f'Metrics: {[m.value for m in metrics]}')
+    print(f'Event log: {event_log}')
+
+    if real_drifts is not None:
+        print(f'Real drifts: {real_drifts}')
+    print('----------------------------------------------')
+
+    print(f'Starting analyzing process drifts ...')
+    if parameters.approach == Approach.FIXED.name:
+        parameters = IPDDParametersFixed(event_log, parameters.approach, ReadLogAs.TRACE.name, metrics,
+                                         WindowUnityFixed.UNITY.name, win_size)
+    elif parameters.approach == Approach.ADAPTIVE.name:
+        if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            parameters = IPDDParametersAdaptive(event_log, parameters.approach, parameters.perspective,
+                                                ReadLogAs.TRACE.name, metrics,
+                                                attribute,
+                                                attribute_name,
+                                                activities, parameters.delta)
+        elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            parameters = IPDDParametersAdaptiveControlflow(event_log, parameters.approach, parameters.perspective,
+                                                           ReadLogAs.TRACE.name,
+                                                           win_size,
+                                                           metrics,
+                                                           parameters.adaptive_controlflow_approach,
+                                                           delta=parameters.delta,
+                                                           save_sublogs=parameters.save_sublogs,
+                                                           update_model=parameters.update_model)
+    framework.run_script(parameters)
+
+    running = framework.get_status_running()
+    while running:
+        print(f'Waiting for IPDD finishes ... Status running: {running}')
+        time.sleep(2)  # in seconds
+        running = framework.get_status_running()
+    print(f'IPDD finished drift analysis')
+
+    detected_drifts = None
+    total_of_itens = framework.get_number_of_items()
+    if parameters.approach == Approach.FIXED.name:
+        windows, detected_drifts = framework.get_windows_with_drifts()
+        print(f'IPDD detect control-flow drift in windows {windows} - traces {detected_drifts}')
+    elif parameters.approach == Approach.ADAPTIVE.name:
+        if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            detected_drifts = {}
+            # get the activities that report a drift using the change detector
+            for activity in framework.get_activities_with_drifts():
+                indexes = framework.initial_indexes[activity]
+                detected_drifts[activity] = list(indexes.keys())[1:]
+                print(
+                    f'IPDD detect drifts for attribute {attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
+                # get information about control-flow metrics
+                windows, traces = framework.get_windows_with_drifts(activity)
+                if len(traces) > 0:
+                    print(
+                        f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
+        elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+            detected_drifts = framework.get_initial_trace_indexes()
+            # remove the index 0
+            detected_drifts = detected_drifts[1:]
+            print(
+                f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
+            # get information about control-flow metrics
+            windows, traces = framework.get_windows_with_drifts()
+            print(
+                f'Similarity metrics confirm the drifts in  {traces}')
+        else:
+            print(f'Perspective not identified: {parameters.perspective}')
+    else:
+        print(f'Approach not identified: {parameters.approach}')
+
+    metrics = None
+    if parameters.approach == Approach.FIXED.name:
+        if real_drifts is not None:
+            metrics = framework.evaluate(real_drifts, detected_drifts, total_of_itens)
+            print(f'IPDD F-score: {metrics}')
+    elif parameters.approach == Approach.ADAPTIVE.name:
+        if real_drifts is not None:
+            if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+                # if len(detected_drifts) > 0:
+                print(f'********* IPDD evaluation metrics results *********')
+                for activity in framework.get_all_activities():
+                    if activity in detected_drifts:
+                        metrics = framework.evaluate(real_drifts, detected_drifts[activity], total_of_itens,
+                                                     activity)
+                    else:
+                        # if IPDD do not detect any drift in the activity
+                        metrics = framework.evaluate(real_drifts, [], total_of_itens, activity)
+                # else:
+                #     print(f'********* IPDD did not detect any drift. No F-score results *********')
+            if parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                metrics = framework.evaluate(real_drifts, detected_drifts, total_of_itens)
+    else:
+        print(f'Approach not identified: {parameters.approach}')
+
+    if metrics:
+        return detected_drifts, metrics
+    else:
+        return detected_drifts
 
 
 if __name__ == '__main__':

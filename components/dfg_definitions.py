@@ -38,7 +38,7 @@ class DfgDefinitions:
         return Metric
 
     def get_default_metrics(self):
-        return [Metric.NODES]
+        return [Metric.NODES, Metric.EDGES]
 
     def get_model_filename(self, log_name, window):
         map_file = f'{self.models_path}_w{window}.gv'
