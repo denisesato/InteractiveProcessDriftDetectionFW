@@ -242,10 +242,8 @@ def run_IPDD_script(parameters, real_drifts=None):
         win_size = parameters.win_size
     elif parameters.approach == Approach.ADAPTIVE.name:
         if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
-            if parameters.attribute == 'st':
-                attribute = AttributeAdaptive.SOJOURN_TIME.name
-            else:
-                attribute = AttributeAdaptive.OTHER.name
+            attribute_name = ''
+            if parameters.attribute == AttributeAdaptive.OTHER.name:
                 if parameters.attribute_name != '':
                     attribute_name = parameters.attribute_name
                 else:
@@ -279,8 +277,8 @@ def run_IPDD_script(parameters, real_drifts=None):
     elif parameters.approach == Approach.ADAPTIVE.name:
         print(f'Delta - ADWIN detector: {parameters.delta}')
         if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
-            print(f'Attribute: {attribute}')
-            if attribute == AttributeAdaptive.OTHER.name:
+            print(f'Attribute: {parameters.attribute}')
+            if parameters.attribute == AttributeAdaptive.OTHER.name:
                 print(f'Attribute name: {attribute_name}')
                 if len(activities) > 0:
                     print(f'Filtered activities: {activities}')
@@ -304,8 +302,8 @@ def run_IPDD_script(parameters, real_drifts=None):
     elif parameters.approach == Approach.ADAPTIVE.name:
         if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             parameters = IPDDParametersAdaptive(event_log, parameters.approach, parameters.perspective,
-                                                ReadLogAs.TRACE.name, metrics,
-                                                attribute,
+                                                parameters.read_log_as, metrics,
+                                                parameters.attribute,
                                                 attribute_name,
                                                 activities, parameters.delta)
         elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
@@ -339,7 +337,7 @@ def run_IPDD_script(parameters, real_drifts=None):
                 indexes = framework.initial_indexes[activity]
                 detected_drifts[activity] = list(indexes.keys())[1:]
                 print(
-                    f'IPDD detect drifts for attribute {attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
+                    f'IPDD detect drifts for attribute {parameters.attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
                 # get information about control-flow metrics
                 windows, traces = framework.get_windows_with_drifts(activity)
                 if len(traces) > 0:
@@ -370,13 +368,14 @@ def run_IPDD_script(parameters, real_drifts=None):
             if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
                 # if len(detected_drifts) > 0:
                 print(f'********* IPDD evaluation metrics results *********')
+                metrics = {}
                 for activity in framework.get_all_activities():
                     if activity in detected_drifts:
-                        metrics = framework.evaluate(real_drifts, detected_drifts[activity], total_of_itens,
+                        metrics[activity] = framework.evaluate(real_drifts, detected_drifts[activity], total_of_itens,
                                                      activity)
                     else:
                         # if IPDD do not detect any drift in the activity
-                        metrics = framework.evaluate(real_drifts, [], total_of_itens, activity)
+                        metrics[activity] = framework.evaluate(real_drifts, [], total_of_itens, activity)
                 # else:
                 #     print(f'********* IPDD did not detect any drift. No F-score results *********')
             if parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:

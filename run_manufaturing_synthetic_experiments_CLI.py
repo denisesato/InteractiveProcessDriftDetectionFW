@@ -27,7 +27,7 @@ def all_experiments():
 
 
 def selected_experiments():
-    folder = '"C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/LogsProducao/Artificiais/SelecionadosArtigo"'
+    folder = '"C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/LogsProducao/SelecionadosArtigo"'
     log_name = [
         'ST.xes',
         'DR.xes',
@@ -80,12 +80,12 @@ def selected_experiments():
         str_changepoints = ""
         for change_point in cps:
             str_changepoints = f'{str_changepoints} {change_point}'
-        subprocess.run(f"ipdd_cli.py -a a -p td -l {file} -at OTHER -atname Temperatura -d {delta} -rd {str_changepoints}",
+        subprocess.run(f"python ipdd_cli.py -a a -p td -l {file} -at OTHER -atname Temperatura -d {delta} -rd {str_changepoints}",
                        shell=True)
 
 
 def one_experiment_for_testing():
-    folder = '"C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/LogsProducao/Artificiais/SelecionadosArtigo"'
+    folder = '"C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/LogsProducao/SelecionadosArtigo"'
     log_name = [
         'DR_MS.xes',
     ]
@@ -104,7 +104,7 @@ def one_experiment_for_testing():
             else:
                 for change_point in cps:
                     str_changepoints = f'{str_changepoints} {change_point}'
-            subprocess.run(f"ipdd_cli.py -a a -l {file} -d {delta} -rd {str_changepoints}", shell=True)
+            subprocess.run(f"python ipdd_cli.py -a a -p td -l {file} -d {delta} -rd {str_changepoints}", shell=True)
 
 
 if __name__ == '__main__':

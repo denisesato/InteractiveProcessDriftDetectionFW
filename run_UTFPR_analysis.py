@@ -74,7 +74,7 @@ def one_experiment_for_testing():
 
     deltas = [0.002]
 
-    attribute = 'Média';
+    attribute = 'Média'
 
     for log in lognames:
         file = os.path.join(folder, log)

@@ -13,7 +13,6 @@
 """
 import os
 from threading import Thread
-
 import pm4py
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
@@ -513,7 +512,7 @@ class AnalyzeDrift:
                         initial_index[activity] = i
             else:
                 # for each new event, collect the duration per activity
-                activity = item['concept:name']
+                activity = item['concept:name'][i]
                 value = attribute_class.get_value(item)
                 attribute_values[activity][i] = value
                 adwin[activity].add_element(value)
