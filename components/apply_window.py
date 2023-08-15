@@ -111,12 +111,12 @@ class AnalyzeDrift:
         # current loaded event log information
         self.current_log = current_log
         # convert do dataframe in case of the user set to read the log ordered by event timestamp
-        if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
-            self.event_data = self.current_log.log
-        elif self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             dataframe = pm4py.convert_to_dataframe(self.current_log.log)
             self.current_log.log = dataframe.sort_values('time:timestamp').reset_index()
             self.current_log.log.rename(columns={'index': 'event_id'}, inplace=True)
+
+        self.event_data = self.current_log.log
 
         # class that implements the discovery method for the current model
         self.discovery = discovery
@@ -138,38 +138,58 @@ class AnalyzeDrift:
 
     # generate the plot with the attribute selected for a specific activity
     # used for adaptive change detection in an activity attribute (time or data perspectives)
-    def plot_signal_adaptive_time_data(self, values_for_activity, activity_name, change_points=None):
-        # save data and plot about the data
-        df = pd.DataFrame([values_for_activity.keys(), values_for_activity.values()]).T
-        df.columns = ['trace', 'value']
-        if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            filename_attributes = f'{activity_name}.csv'
+    def plot_signal_adaptive_time_data(self, values_for_activity, activity_name, change_points=None,
+                                       change_points_time_based=None):
+        df = pd.DataFrame(values_for_activity).T.reset_index()
+
+        # save temporal series to a csv file
+        df.columns = ['index', 'value', 'timestamp', 'case_id']
+        filename_attributes = f'{activity_name}.csv'
+        if self.current_parameters.attribute_name_for_plot:
+            attribute = self.current_parameters.attribute_name_for_plot
+        elif self.current_parameters.attribute == AttributeAdaptive.SOJOURN_TIME.name:
+            attribute = f'{AttributeAdaptive.SOJOURN_TIME.value} (seconds)'
+        elif self.current_parameters.attribute == AttributeAdaptive.WAITING_TIME.name:
+            attribute = f'{AttributeAdaptive.WAITING_TIME.value}  (seconds)'
         else:
-            filename_attributes = f'{activity_name}.csv'
+            attribute = self.current_parameters.attribute_name
         output_filename = os.path.join(self.output_path_adaptive_adwin, filename_attributes)
         df.to_csv(output_filename, index=False)
-        sns.set_style("whitegrid")
-        plot = sns.lineplot(data=df, x='trace', y='value')
-        if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            plot.set_ylabel(f'Activity {activity_name}')
+
+        # generate plot
+        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+            # for plotting based on timestamp
+            x_column_name_time_based = 'timestamp'
+            x_name_time_based = 'timestamp'
+            self.plot_signal(df, x_column_name_time_based, x_name_time_based, activity_name, attribute,
+                             change_points_time_based)
+
+            # for plotting based on event index
+            df.drop(['index'], axis=1, inplace=True)
+            x_column_name_event_based = 'index'
+            x_name_event_based = 'event index'
+            df.reset_index(inplace=True)
+            self.plot_signal(df, x_column_name_event_based, x_name_event_based, activity_name, attribute,
+                             change_points)
         else:
-            plot.set_ylabel(f'Activity {activity_name}')
+            x_colum_name = 'index'
+            x_name = 'trace'
+            self.plot_signal(df, x_colum_name, x_name, activity_name, attribute, change_points)
+
+    def plot_signal(self, df_plot, x_column_name, x_axis_name, activity_name, attribute, change_points):
+        sns.set_style("whitegrid")
+        plot = sns.lineplot(data=df_plot, x=x_column_name, y='value')
+        plot.set_xlabel(x_axis_name)
+        plot.set_ylabel(f'{attribute}')
+
         if change_points:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
-        if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-            filename = os.path.join(self.output_path_adaptive_adwin,
-                                    f'{activity_name}.png')
-            attribute = self.current_parameters.attribute_name
-        else:
-            attribute = get_value_of_parameter(self.current_parameters.attribute)
-            filename = os.path.join(self.output_path_adaptive_adwin,
-                                    f'{activity_name}.png')
-
-        plt.title(f'Adaptive Time/Data {attribute}')
+        filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}.png')
+        plt.title(f'Adaptive Time/Data - {activity_name}')
         plt.savefig(filename)
-        print(f'Saving plot for activity [{activity_name}]')
+        print(f'Saving plot for activity  - {activity_name}')
         plt.close()
         plt.cla()
         plt.clf()
@@ -243,7 +263,7 @@ class AnalyzeDrift:
                 window_count, metrics_manager, initial_indexes = self.apply_tumbling_window(self.event_data)
                 # window_count, metrics_manager, initial_indexes = self.apply_sliding_window(event_data)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
-                    self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+                    self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:  # IPDD adaptive on time or data attributes
                 # the user may select the activities that contain the attribute
                 # for applying the detection (only available in the CLI interface by now)
                 selected_activities = self.current_parameters.activities
@@ -258,21 +278,21 @@ class AnalyzeDrift:
                 # if the user do not define the activities or set any activity not existent, use all activities
                 if filter_activities:
                     activities = selected_activities
-                else:  # IPDD adaptive on time or data attributes
-                    if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
-                        attribute_class = SelectAttribute.get_selected_attribute_class(
-                            self.current_parameters.attribute,
-                            self.current_parameters.attribute_name)
-                    else:
-                        attribute_class = SelectAttribute.get_selected_attribute_class(
-                            self.current_parameters.attribute)
 
-                    window_count, metrics_manager, initial_indexes = \
-                        self.apply_detector_on_attribute(self.event_data,
-                                                         attribute_class,
-                                                         self.current_parameters.delta,
-                                                         activities,
-                                                         self.user)
+                if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+                    attribute_class = SelectAttribute.get_selected_attribute_class(
+                        self.current_parameters.attribute,
+                        self.current_parameters.attribute_name)
+                else:
+                    attribute_class = SelectAttribute.get_selected_attribute_class(
+                        self.current_parameters.attribute)
+
+                window_count, metrics_manager, initial_indexes = \
+                    self.apply_detector_on_attribute(self.event_data,
+                                                     attribute_class,
+                                                     self.current_parameters.delta,
+                                                     activities,
+                                                     self.user)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
                     self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.TRACE.name:
                 # IPDD adaptive trace by trace approach
@@ -447,15 +467,19 @@ class AnalyzeDrift:
         adwin = {}
         attribute_values = {}
         change_points = {}
+        change_points_time_based = {}
         change_points_info = {}
         initial_index = {}
         initial_case_ids = {}
+        event_indexes = {}
         self.metrics = {}
         # initialize one detector for each activity
         for a in activities:
             adwin[a] = ADWIN(delta=delta)
             attribute_values[a] = {}
             change_points[a] = []
+            change_points_time_based[a] = []
+            event_indexes[a] = 0
             detector_info = ChangePointInfo('ADWIN', a)
             detector_info.add_detector_attribute('delta', delta)
             change_points_info[a] = detector_info
@@ -466,29 +490,127 @@ class AnalyzeDrift:
             self.previous_sub_log[a] = None
 
         self.current_parameters.total_of_activities = len(activities)
-        for i, item in enumerate(event_data):
-            self.current_trace = i + 1
-            # get the current case id
-            case_id = self.get_case_id(item)
-            # save the first case id as the beginning of the first window
-            if i == 0:
-                for a in activities:
-                    initial_case_ids[a][i] = case_id
-                    initial_index[a] = 0
 
-            # when reading the log trace by trace we need to iterate over the events
-            if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+        # when reading the log trace by trace we need to iterate over the events
+        if self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+            for i, item in enumerate(event_data):
+                self.current_trace = i + 1
+                # get the current case id
+                case_id = self.get_case_id(item)
+                timestamp = self.get_current_timestamp(item)
+                # save the first case id as the beginning of the first window
+                if i == 0:
+                    for a in activities:
+                        initial_case_ids[a][i] = case_id
+                        initial_index[a] = 0
+
                 for event in item:
                     activity = event['concept:name']
-                    try:
-                        value = attribute_class.get_value(event)
-                    except AttributeError as err:
-                        print(f'Error getting the value of attribute: {err}')
-                        continue
-                    except KeyError as kerr:
-                        print(f'Error getting the value of attribute: {kerr}')
-                        continue
-                    attribute_values[activity][i] = value
+                    if activity in activities:
+                        try:
+                            value = attribute_class.get_value(event)
+                        except AttributeError as err:
+                            print(f'Error getting the value of attribute: {err}')
+                            continue
+                        except KeyError as kerr:
+                            print(f'Error getting the value of attribute: {kerr}')
+                            continue
+                        attribute_values[activity][i] = {
+                            'value': value,
+                            'timestamp': timestamp,
+                            'case_id': case_id,
+                        }
+                        adwin[activity].add_element(value)
+                        if adwin[activity].detected_change():
+                            # create the manager for similarity metrics if a change is detected
+                            if activity not in self.metrics.keys():
+                                self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters,
+                                                                                 self.control,
+                                                                                 self.models_path, self.metrics_path,
+                                                                                 activity)
+
+                            change_points[activity].append(i)
+                            change_points_info[activity].add_change_point(i)
+                            change_points_info[activity].add_timestamp(self.get_current_date(event_data[i]))
+                            print(
+                                f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+
+                            # process new window
+                            self.new_window(initial_index[activity], i, activity)
+                            # save the initial of the processed window
+                            initial_case_ids[activity][i] = case_id
+                            # update the beginning of the next window
+                            initial_index[activity] = i
+            # process remaining items as the last window
+            find_any_drift = False
+            for j, a in enumerate(activities):
+                if len(change_points[a]) > 0:
+                    find_any_drift = True
+                    if initial_index[a] < len(event_data):
+                        size = len(event_data) - initial_index[a]
+                        print(
+                            f'Analyzing final window... size {size} window_count {self.window_count[a]} activity {a}')
+                        # set the final window used by metrics manager to identify all the metrics have been calculated
+                        self.metrics[a].set_final_window(self.window_count[a])
+                        # process final window for all activities where a drift has been detected
+                        self.new_window(initial_index[a], len(event_data), a)
+                    if self.current_parameters.activities_for_plot:
+                        self.plot_signal_adaptive_time_data(attribute_values[a],
+                                                            self.current_parameters.activities_for_plot[j],
+                                                            change_points[a])
+                    else:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a])
+                else:
+                    if self.current_parameters.activities_for_plot:
+                        self.plot_signal_adaptive_time_data(attribute_values[a],
+                                                            self.current_parameters.activities_for_plot[j])
+                    else:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+            if find_any_drift:
+                # save the change points for the activity
+                filename = os.path.join(self.output_path_adaptive_adwin,
+                                        f'drifts_{self.current_parameters.attribute}.txt')
+                self.save_change_points(filename, change_points, change_points_info, activities)
+            else:
+                # if no drift is detected, generate the complete model and the plot with attribute values for each activity
+                print(f'Analyzing unique window because no drift is detected...')
+                # save the plot with attribute values for each activity
+                for j, a in enumerate(activities):
+                    if self.current_parameters.activities_for_plot:
+                        self.plot_signal_adaptive_time_data(attribute_values[a],
+                                                            self.current_parameters.activities_for_plot[j])
+                    else:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+                # process the unique window
+                initial_index[Activity.ALL.value] = 0
+                initial_case_ids[Activity.ALL.value] = {}
+                initial_case_ids[Activity.ALL.value][0] = case_id
+                self.window_count[Activity.ALL.value] = 0
+                self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
+            return self.window_count, self.metrics, initial_case_ids
+        else:
+            # read the events from the dataframe
+            for i in event_data.index:
+                # get the current case id and event id
+                case_id = event_data['case:concept:name'][i]
+
+                # save the first case id as the beginning of the first window
+                if i == 0:
+                    for a in activities:
+                        initial_case_ids[a][i] = case_id
+                        initial_index[a] = 0
+
+                # for each new event, collect the duration per activity
+                activity = event_data['concept:name'][i]
+                if activity in activities:
+                    timestamp = event_data['time:timestamp'][i]
+                    value = attribute_class.get_value_df(event_data, i)
+                    attribute_values[activity][i] = {
+                        'value': value,
+                        'timestamp': timestamp,
+                        'case_id': case_id,
+                    }
+
                     adwin[activity].add_element(value)
                     if adwin[activity].detected_change():
                         # create the manager for similarity metrics if a change is detected
@@ -498,11 +620,16 @@ class AnalyzeDrift:
                                                                              self.models_path, self.metrics_path,
                                                                              activity)
 
-                        change_points[activity].append(i)
-                        change_points_info[activity].add_change_point(i)
-                        change_points_info[activity].add_timestamp(self.get_current_date(event_data[i]))
+                        # save the index of the event where the change is detected
+                        change_points[activity].append(event_indexes[activity])
+                        # save the timestamp of the event where the change is detected
+                        change_points_time_based[activity].append(self.get_current_date_df(event_data, i))
+
+                        change_points_info[activity].add_change_point(case_id)
+                        change_points_info[activity].add_timestamp(self.get_current_date_df(event_data, i))
                         print(
-                            f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
+                            f'Change detected in data: {value} - at index: {i} - '
+                            f'case: {case_id} - activity: {activity}')
 
                         # process new window
                         self.new_window(initial_index[activity], i, activity)
@@ -510,62 +637,55 @@ class AnalyzeDrift:
                         initial_case_ids[activity][i] = case_id
                         # update the beginning of the next window
                         initial_index[activity] = i
+                    # index of the event
+                    event_indexes[activity] += 1
+            # process remaining items as the last window
+            find_any_drift = False
+            for j, a in enumerate(activities):
+                if len(change_points[a]) > 0:
+                    find_any_drift = True
+                    if initial_index[a] < len(event_data):
+                        size = len(event_data) - initial_index[a]
+                        print(
+                            f'Analyzing final window... size {size} window_count {self.window_count[a]} activity {a}')
+                        # set the final window used by metrics manager to identify all the metrics have been calculated
+                        self.metrics[a].set_final_window(self.window_count[a])
+                        # process final window for all activities where a drift has been detected
+                        self.new_window(initial_index[a], len(event_data), a)
+                    if self.current_parameters.activities_for_plot:
+                        self.plot_signal_adaptive_time_data(attribute_values[a],
+                                                            self.current_parameters.activities_for_plot[j],
+                                                            change_points[a],
+                                                            change_points_time_based[a])
+                    else:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a],
+                                                            change_points_time_based[a])
+                else:
+                    if self.current_parameters.activities_for_plot:
+                        self.plot_signal_adaptive_time_data(attribute_values[a],
+                                                            self.current_parameters.activities_for_plot[j])
+                    else:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+            if find_any_drift:
+                # save the change points for the activity
+                filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{attribute_class.name}.txt')
+                self.save_change_points(filename, change_points, change_points_info, activities)
             else:
-                # for each new event, collect the duration per activity
-                activity = item['concept:name'][i]
-                value = attribute_class.get_value(item)
-                attribute_values[activity][i] = value
-                adwin[activity].add_element(value)
-                if adwin[activity].detected_change():
-                    # create the manager for similarity metrics if a change is detected
-                    if activity not in self.metrics.keys():
-                        self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters,
-                                                                         self.control,
-                                                                         self.models_path, self.metrics_path, activity)
-                    change_points[activity].append(i)
-                    change_points_info[activity].add_change_point(i)
-                    change_points_info[activity].add_timestamp(self.get_current_date(event_data[i]))
-                    print(
-                        f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
-
-                    # process new window
-                    self.new_window(initial_index[activity], i, activity)
-                    # save the initial of the processed window
-                    initial_case_ids[activity][i] = case_id
-                    # update the beginning of the next window
-                    initial_index[activity] = i
-        # process remaining items as the last window
-        find_any_drift = False
-        for a in activities:
-            if len(change_points[a]) > 0:
-                find_any_drift = True
-                if initial_index[a] < len(event_data):
-                    size = len(event_data) - initial_index[a]
-                    print(f'Analyzing final window... size {size} window_count {self.window_count[a]} activity {a}')
-                    # set the final window used by metrics manager to identify all the metrics have been calculated
-                    self.metrics[a].set_final_window(self.window_count[a])
-                    # process final window for all activities where a drift has been detected
-                    self.new_window(initial_index[a], len(event_data), a)
-                self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a])
-            else:
-                self.plot_signal_adaptive_time_data(attribute_values[a], a)
-        if find_any_drift:
-            # save the change points for the activity
-            filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{self.current_parameters.attribute}.txt')
-            self.save_change_points(filename, change_points, change_points_info, activities)
-        else:
-            # if no drift is detected, generate the complete model and the plot with attribute values for each activity
-            print(f'Analyzing unique window because no drift is detected...')
-            # save the plot with attribute values for each activity
-            for a in activities:
-                self.plot_signal_adaptive_time_data(attribute_values[a], a)
-            # process the unique window
-            initial_index[Activity.ALL.value] = 0
-            initial_case_ids[Activity.ALL.value] = {}
-            initial_case_ids[Activity.ALL.value][0] = case_id
-            self.window_count[Activity.ALL.value] = 0
-            self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
-        return self.window_count, self.metrics, initial_case_ids
+                # if no drift is detected, generate the complete model and the plot with attribute values for each activity
+                print(f'Analyzing unique window because no drift is detected...')
+                # save the plot with attribute values for each activity
+                for j, a in enumerate(activities):
+                    if self.current_parameters.activities_for_plot:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], self.current_parameters.activitie_for_plot[j])
+                    else:
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+                # process the unique window
+                initial_index[Activity.ALL.value] = 0
+                initial_case_ids[Activity.ALL.value] = {}
+                initial_case_ids[Activity.ALL.value][0] = case_id
+                self.window_count[Activity.ALL.value] = 0
+                self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
+            return self.window_count, self.metrics, initial_case_ids
 
     # IPDD adaptive trace by trace approach
     # Apply the ADWIN detector (scikit-multiflow) in two quality dimensions: fitness and precision
@@ -892,6 +1012,10 @@ class AnalyzeDrift:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
         return date_aux
 
+    def get_current_date_df(self, event_data, index):
+        date_aux = event_data['time:timestamp'][index]
+        return date_aux
+
     def save_sublog(self, sub_log, begin, end):
         output_path = self.logs_path
         if not os.path.exists(output_path):
@@ -912,18 +1036,21 @@ class AnalyzeDrift:
 
         if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
             # generate the sub-log for the window
-            window = EventStream(self.event_data[begin:end])
+            window = self.event_data[begin:end]
             sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+            initial_timestamp = self.get_current_date_df(window, begin)
         elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
             sub_log = EventLog(self.event_data[begin:end])
+            # get initial timestamp
+            initial_timestamp = self.get_current_date(sub_log[0])
         else:
             print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+            return
 
         # save the sublog
         if self.current_parameters.save_sublogs:
             self.save_sublog(sub_log, begin, end)
-        # get initial timestamp
-        initial_timestamp = self.get_current_date(sub_log[0])
+
         self.execute_processes_for_window(sub_log, begin, initial_timestamp, activity)
 
     def calculate_metrics_between_adjacent_time_slots(self, model, sub_log, initial_trace_index, initial_timestamp,

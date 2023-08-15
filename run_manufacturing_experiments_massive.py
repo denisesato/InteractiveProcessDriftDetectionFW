@@ -39,12 +39,11 @@ class SyntheticEventLogsConfiguration:
     attribute = AttributeAdaptive.SOJOURN_TIME.name
     attribute_name = AttributeAdaptive.SOJOURN_TIME
 
-    interval_log = True
-
     ###############################################################
     # Information for calculating evaluation metrics
     ###############################################################
     activities = ['Maquina Trabalhando']
+    activities_for_plot = ['Machine Working']
     actual_change_points = {
         'Maquina Trabalhando': {
             'ST.xes': [],
@@ -64,6 +63,78 @@ class SyntheticEventLogsConfiguration:
     }
 
 
+class TemperatureLogConfiguration:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_path = 'C:\\Users\\denise\\OneDrive\\Documents\\Doutorado\\Bases de ' \
+                 'Dados\\DadosConceptDrift\\LogsProducao\\SelecionadosArtigo'
+    lognames = [
+        'TD.xes',
+    ]
+
+    deltas = [
+        0.002,
+        0.05,
+        0.1,
+        0.3,
+        1
+    ]
+
+    attribute = AttributeAdaptive.OTHER.name
+    attribute_name = 'Temperatura'
+    attribute_name_for_plot = 'Temperature (ºCelsius)'
+
+    ###############################################################
+    # Information for calculating evaluation metrics
+    ###############################################################
+    activities = ['Maquina Trabalhando']
+    activities_for_plot = ['Machine Working']
+    actual_change_points = {
+        'Maquina Trabalhando': {
+            'TD.xes': [1075, 2314, 3310, 4485, 6094, 7968],
+        }
+    }
+
+    number_of_instances = {
+        'Maquina Trabalhando': {
+            'TD.xes': 2499,
+        }
+    }
+
+
+class RealEventLogConfiguration:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_path = 'C:\\Users\\denise\\OneDrive\\Documents\\Doutorado\\Bases de ' \
+                 'Dados\\DadosConceptDrift\\LogsProducao\\SelecionadosArtigo'
+    lognames = [
+        'LogLatheMachine_IPDD_Ingles.xes.gz',
+    ]
+
+    deltas = [
+        0.002,
+        0.05,
+        0.1,
+        0.3,
+        1
+    ]
+
+    attribute = AttributeAdaptive.SOJOURN_TIME.name
+    attribute_name = AttributeAdaptive.SOJOURN_TIME
+
+    ###############################################################
+    # Information for calculating evaluation metrics
+    ###############################################################
+    activities = ['Machine working']
+    activities_for_plot = ['Machine Working']
+
+
 if __name__ == '__main__':
     dataset1 = SyntheticEventLogsConfiguration()
     run_massive_adaptive_time(dataset1, evaluate=True)
+    dataset2 = TemperatureLogConfiguration()
+    run_massive_adaptive_time(dataset2, evaluate=True)
+    dataset3 = RealEventLogConfiguration()
+    run_massive_adaptive_time(dataset3)

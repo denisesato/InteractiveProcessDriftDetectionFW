@@ -149,12 +149,14 @@ class IPDDParametersFixed(IPDDParameters):
 class IPDDParametersAdaptive(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, metrics, attribute,
                  attribute_name=None, activities=[], delta=None, save_sublogs=False, save_model_svg=False,
-                 update_model=True):
+                 update_model=True, attribute_name_for_plot=None, activities_for_plot=None):
         super().__init__(logname, approach, read_log_as, metrics, save_sublogs, save_model_svg)
         self.perspective = perspective
         self.attribute = attribute
         self.attribute_name = attribute_name
+        self.attribute_name_for_plot = attribute_name_for_plot
         self.activities = activities
+        self.activities_for_plot = activities_for_plot
         if delta:
             self.delta = delta
         else:  # default value

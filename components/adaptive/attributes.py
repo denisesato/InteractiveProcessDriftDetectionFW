@@ -46,6 +46,14 @@ class SojournTime:
         duration = complete_time - start_time
         return duration
 
+    def get_value_df(self, event, index):
+        # get the duration of the event
+        # the input must be an interval log
+        start_time = event['start_timestamp'][index].timestamp()
+        complete_time = event['time:timestamp'][index].timestamp()
+        duration = complete_time - start_time
+        return duration
+
 
 class WaitingTime:
     def __init__(self, name):
@@ -55,6 +63,12 @@ class WaitingTime:
         # the input must be an interval log
         # return the wasted time ONLY with regards to the activity described by the ‘interval’ event
         waiting_time = event['@@approx_bh_this_wasted_time']
+        return waiting_time
+
+    def get_value_df(self, event, index):
+        # the input must be an interval log
+        # return the wasted time ONLY with regards to the activity described by the ‘interval’ event
+        waiting_time = event['@@approx_bh_this_wasted_time'][index]
         return waiting_time
 
 
@@ -69,6 +83,18 @@ class OtherAttribute:
         if self.column_name in event.keys():
             value = event[f'{self.column_name}']
             if type(value) == str: # if the value is defined as string in the xes, we converted it here
+                value = value.replace(",", ".")
+                value = float(value)
+            return value
+        else:
+            raise AttributeError(f'Attribute {self.column_name} not found in event {event}')
+
+    def get_value_df(self, event_data, index):
+        # get the value of the attributed defined by the user
+        # testes only using numeric attributes
+        if self.column_name in event_data.columns:
+            value = event_data[f'{self.column_name}'][index]
+            if type(value) == str:  # if the value is defined as string in the xes, we converted it here
                 value = value.replace(",", ".")
                 value = float(value)
             return value

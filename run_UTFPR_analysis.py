@@ -45,7 +45,7 @@ class UTFPRConfigurationData:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
-    input_path = 'C:/Users/denis/Documents/ProjetoUTFPR'
+    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/ProjetoUTFPR'
     lognames = [
         # 'CP_numericos.xes.gz',
         # 'CP_Original.xes.gz'
@@ -61,12 +61,15 @@ class UTFPRConfigurationData:
         # 'Crédito Consignado',
         # 'Reprovado',
         # 'Sem conclusão'
-        'Média'
+        'Média',
+        # 'Freq. (4)'
     ]
+
+    ordered_by_event = True
 
 
 def one_experiment_for_testing():
-    folder = 'C:/Users/denis/Documents/ProjetoUTFPR'
+    folder = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/ProjetoUTFPR'
     lognames = [
         'log_formados.gz.xes.gz',
         # 'log_desistentes.gz.xes.gz',

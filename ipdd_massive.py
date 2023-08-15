@@ -112,8 +112,8 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                 detected_drifts = {}
                 # get the activities that report a drift using the change detector
                 for activity in framework.get_activities_with_drifts():
-                    indexes = framework.initial_indexes[activity]
-                    detected_drifts[activity] = list(indexes.keys())[1:]
+                    indexes = framework.get_initial_trace_indexes(activity)
+                    detected_drifts[activity] = indexes[1:]
                     print(
                         f'Adaptive IPDD detect drifts for attribute {AttributeAdaptive.OTHER.name}-{at} in activity {activity} in indexes {detected_drifts}')
                     # get information about control-flow metrics
@@ -140,10 +140,6 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
     if hasattr(dataset_config, "ordered_by_event"):
         read_log_as = ReadLogAs.EVENT.name
 
-    interval_log = False
-    if hasattr(dataset_config, "interval_log"):
-        interval_log = True
-
     dict_results = {}
     for log in dataset_config.lognames:
         dict_results[log] = {}
@@ -155,6 +151,18 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
             print(f'Metrics: {[m.value for m in metrics]}')
             print(f'Attribute: {dataset_config.attribute}')
             print(f'Attribute name: {dataset_config.attribute_name}')
+            attribute_name_for_plot = None
+            if hasattr(dataset_config, "attribute_name_for_plot"):
+                attribute_name_for_plot = dataset_config.attribute_name_for_plot
+                print(f'Attribute name: {attribute_name_for_plot}')
+            activities = []
+            if hasattr(dataset_config, "activities"):
+                activities = dataset_config.activities
+                print(f'Activities: {activities}')
+            activities_for_plot = None
+            if hasattr(dataset_config, "activities_for_plot"):
+                activities_for_plot = dataset_config.activities_for_plot
+                print(f'Activities for plot: {activities_for_plot}')
             print(f'Event log: {log}')
             print('----------------------------------------------')
             log_filename = os.path.join(dataset_config.input_path, log)
@@ -163,7 +171,10 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
                                                 perspective=AdaptivePerspective.TIME_DATA.name,
                                                 read_log_as=read_log_as, metrics=metrics,
                                                 attribute=dataset_config.attribute,
-                                                attribute_name=dataset_config.attribute_name, delta=delta)
+                                                attribute_name=dataset_config.attribute_name, delta=delta,
+                                                attribute_name_for_plot=attribute_name_for_plot,
+                                                activities=activities,
+                                                activities_for_plot=activities_for_plot)
             framework.run_script(parameters)
 
             running = framework.get_status_running()
@@ -175,8 +186,8 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
             detected_drifts = {}
             # get the activities that report a drift using the change detector
             for activity in framework.get_all_activities():
-                indexes = framework.initial_indexes[activity]
-                detected_drifts[activity] = list(indexes.keys())[1:]
+                indexes = framework.get_initial_trace_indexes(activity)
+                detected_drifts[activity] = indexes[1:]
                 print(
                     f'Adaptive IPDD detect drifts for attribute {dataset_config.attribute} in activity {activity} in '
                     f'traces {detected_drifts}')
