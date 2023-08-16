@@ -166,9 +166,13 @@ parameters_panel = [
                 ], id='col-perspective', style={'display': 'None'}),
                 dbc.Col([
                     dbc.Label('Attribute', width='auto'),
+                    # dcc.Dropdown(id='attribute',
+                    #              options=[{'label': item.value, 'value': item.name}
+                    #                       for item in AttributeAdaptive]),
                     dcc.Dropdown(id='attribute',
-                                 options=[{'label': item.value, 'value': item.name}
-                                          for item in AttributeAdaptive]),
+                                 options=[{'label': AttributeAdaptive.SOJOURN_TIME.value, 'value': AttributeAdaptive.SOJOURN_TIME.name},
+                                          {'label': AttributeAdaptive.WAITING_TIME.value, 'value': AttributeAdaptive.WAITING_TIME.name}
+                                          ]),
                 ], id='col-attribute', style={'display': 'None'}),
                 dbc.Col([
                     dbc.Label('Adaptive approach', width='auto'),

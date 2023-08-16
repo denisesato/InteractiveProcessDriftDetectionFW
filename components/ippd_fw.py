@@ -20,7 +20,8 @@ from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
-from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter, Paths
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter, Paths, \
+    AttributeAdaptive
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
 from threading import Thread
@@ -346,9 +347,13 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_adaptive_adwin_path(self, user_id):
         path = os.path.join(self.adaptive_path, self.current_parameters.logname)
         if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            attribute_value = self.current_parameters.attribute
+            if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+                attribute_value = self.current_parameters.attribute_name
+
             path = os.path.join(self.adaptive_path, self.current_parameters.logname,
                                 f'{self.current_parameters.perspective}'
-                                f'_{self.current_parameters.attribute}'
+                                f'_{attribute_value}'
                                 f'_delta{self.current_parameters.delta}')
         elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
             path = os.path.join(self.adaptive_path, self.current_parameters.logname,
@@ -363,12 +368,17 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_adaptive_evaluation_path(self, user_id):
         path = os.path.join(self.get_evaluation_path(user_id),
                             self.current_parameters.logname)
+
         if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
+            attribute_value = self.current_parameters.attribute
+            if self.current_parameters.attribute == AttributeAdaptive.OTHER.name:
+                attribute_value = self.current_parameters.attribute_name
+
             path = os.path.join(self.get_evaluation_path(user_id),
                                 self.current_parameters.logname,
                                 f'{self.current_parameters.approach}'
                                 f'_{self.current_parameters.perspective}'
-                                f'_{self.current_parameters.attribute}'
+                                f'_{attribute_value}'
                                 f'_delta{self.current_parameters.delta}')
         elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
             path = os.path.join(self.get_evaluation_path(user_id),
@@ -394,22 +404,35 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.current_log = LogInfo(complete_filename, filename)
         if '.xes' in complete_filename:
             # Assume that it is a XES file
+            # DMVS TESTE - NÃO ORDENAR OS TRACES ANTERIORMENTE
             variant = xes_importer.Variants.ITERPARSE
             parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
             self.current_log.log = xes_importer.apply(complete_filename, variant=variant, parameters=parameters)
+            # self.current_log.log = xes_importer.apply(complete_filename)
 
             self.current_log.first_traces = log_converter.apply(EventLog(self.current_log.log[0:self.MAX_TRACES]),
                                                                 variant=log_converter.Variants.TO_DATA_FRAME)
 
-            self.current_log.median_case_duration = case_statistics.get_median_caseduration(self.current_log.log,
-                                                                                            parameters={
-                                                                                                case_statistics.Parameters.TIMESTAMP_KEY: "time:timestamp"})
-            self.current_log.median_case_duration_in_hours = self.current_log.median_case_duration / 60 / 60
+            total_case_durations = sum(pm4py.get_all_case_durations(self.current_log.log,
+                                                                    activity_key='concept:name',
+                                                                    case_id_key='case:concept:name',
+                                                                    timestamp_key='time:timestamp'))
             self.current_log.total_of_cases = len(self.current_log.log)
-            self.current_log.total_of_events = len(self.current_log.log)
+
+            self.current_log.total_of_events = sum(pm4py.get_event_attribute_values(self.current_log.log,
+                                                                                    'concept:name',
+                                                                                    case_id_key='case:concept:name').values())
+
+            self.current_log.median_case_duration = total_case_durations / self.current_log.total_of_cases
+            self.current_log.median_case_duration_in_hours = self.current_log.median_case_duration / 60 / 60
+
             print(
-                f'Log [{filename}] - total of cases [{self.current_log.total_of_cases}] - median case duration '
-                f'[{self.current_log.median_case_duration / 60 / 60}hrs]')
+                f'************ Statistics **************\n'
+                f'Log [{filename}] \n'
+                f'Cases [{self.current_log.total_of_cases}]\n'
+                f'Events [{self.current_log.total_of_events}]\n'
+                f'Mean case duration [{self.current_log.median_case_duration_in_hours} hrs]\n'
+                f'**************************************\n')
 
             # converts a log to interval format (e.g. an event has two timestamps)
             # used only if the user informed that is using an interval log using
@@ -587,7 +610,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
 
     def get_activity_plot_src(self, user, activity):
         filename = os.path.join(self.get_adaptive_adwin_path(user),
-                                f'{activity}.png')
+                                f'{activity}_trace.png')
         return filename
 
     def get_adaptive_plot_src(self, user):

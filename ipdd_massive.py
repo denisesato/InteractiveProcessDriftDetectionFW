@@ -96,11 +96,28 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                 print('----------------------------------------------')
                 log_filename = os.path.join(dataset_config.input_path, log)
 
+                # parameter for define activities
+                activities = []
+                if hasattr(dataset_config, "activities"):
+                    activities = dataset_config.activities
+
+                # parameters for customizing information inside the plots
+                activities_for_plot = None
+                if hasattr(dataset_config, "activities_for_plot"):
+                    activities_for_plot = dataset_config.activities_for_plot
+
+                attribute_name_for_plot = None
+                if hasattr(dataset_config, "attribute_name_for_plot"):
+                    attribute_name_for_plot = dataset_config.attribute_name_for_plot
+
                 parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                     perspective=AdaptivePerspective.TIME_DATA.name,
                                                     read_log_as=read_log_as, metrics=metrics,
                                                     attribute=AttributeAdaptive.OTHER.name,
-                                                    attribute_name=at, delta=d)
+                                                    attribute_name=at, delta=d,
+                                                    activities_for_plot=activities_for_plot,
+                                                    attribute_name_for_plot=attribute_name_for_plot,
+                                                    activities=activities)
                 framework.run_script(parameters)
 
                 running = framework.get_status_running()

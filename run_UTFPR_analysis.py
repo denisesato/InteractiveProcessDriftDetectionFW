@@ -45,11 +45,11 @@ class UTFPRConfigurationData:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/ProjetoUTFPR'
+    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/ProjetoUTFPR'
     lognames = [
         # 'CP_numericos.xes.gz',
         # 'CP_Original.xes.gz'
-        'CP_Original_Obrigatorias_SemDesistentes.xes.gz'
+        'CP_Original_Obrigatorias_SemDesistentes_SemCursando.xes.gz'
     ]
     deltas = [0.002]
     attribute_names = [
@@ -64,7 +64,7 @@ class UTFPRConfigurationData:
         'Média',
         # 'Freq. (4)'
     ]
-
+    # activities = ['Análise De Circuitos Elétricos 1']
     ordered_by_event = True
 
 

@@ -20,6 +20,7 @@ class ChangePointInfo:
         self.detector_attributes = {}
         self.activity = activity
         self.change_points = []
+        self.case_ids = []
         self.timestamps = []
 
     def add_detector_attribute(self, name, value):
@@ -27,6 +28,9 @@ class ChangePointInfo:
 
     def add_change_point(self, cp):
         self.change_points.append(cp)
+
+    def add_case_id(self, case):
+        self.case_ids.append(case)
 
     def add_timestamp(self, timestamp):
         self.timestamps.append(timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
@@ -46,4 +50,5 @@ class ChangePointInfo:
         if self.activity:
             info += f'Activity: {self.activity}\n'
         info += f'Change points: {self.change_points}'
+        info += f'Case ids: {self.case_ids}'
         return info

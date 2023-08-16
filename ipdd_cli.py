@@ -295,6 +295,16 @@ def run_IPDD_script(parameters, real_drifts=None):
         print(f'Real drifts: {real_drifts}')
     print('----------------------------------------------')
 
+    # parameters for customizing information inside the plots
+    activities_for_plot = None
+    if hasattr(parameters, "activities_for_plot"):
+        activities_for_plot = parameters.activities_for_plot
+
+    attribute_name_for_plot = None
+    if hasattr(parameters, "attribute_name_for_plot"):
+        attribute_name_for_plot = parameters.attribute_name_for_plot
+
+
     print(f'Starting analyzing process drifts ...')
     if parameters.approach == Approach.FIXED.name:
         parameters = IPDDParametersFixed(event_log, parameters.approach, ReadLogAs.TRACE.name, metrics,
@@ -305,7 +315,9 @@ def run_IPDD_script(parameters, real_drifts=None):
                                                 parameters.read_log_as, metrics,
                                                 parameters.attribute,
                                                 attribute_name,
-                                                activities, parameters.delta)
+                                                activities, parameters.delta,
+                                                activities_for_plot=activities_for_plot,
+                                                attribute_name_for_plot=attribute_name_for_plot)
         elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
             parameters = IPDDParametersAdaptiveControlflow(event_log, parameters.approach, parameters.perspective,
                                                            ReadLogAs.TRACE.name,

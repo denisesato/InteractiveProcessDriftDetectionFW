@@ -112,6 +112,7 @@ class AnalyzeDrift:
         self.current_log = current_log
         # convert do dataframe in case of the user set to read the log ordered by event timestamp
         if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+            # convert the log to a dataframe for reading ordered by event
             dataframe = pm4py.convert_to_dataframe(self.current_log.log)
             self.current_log.log = dataframe.sort_values('time:timestamp').reset_index()
             self.current_log.log.rename(columns={'index': 'event_id'}, inplace=True)
@@ -186,7 +187,7 @@ class AnalyzeDrift:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
-        filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}.png')
+        filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}_{x_axis_name}.png')
         plt.title(f'Adaptive Time/Data - {activity_name}')
         plt.savefig(filename)
         print(f'Saving plot for activity  - {activity_name}')
@@ -511,10 +512,10 @@ class AnalyzeDrift:
                             value = attribute_class.get_value(event)
                         except AttributeError as err:
                             print(f'Error getting the value of attribute: {err}')
-                            continue
+                            return
                         except KeyError as kerr:
                             print(f'Error getting the value of attribute: {kerr}')
-                            continue
+                            return
                         attribute_values[activity][i] = {
                             'value': value,
                             'timestamp': timestamp,
@@ -524,13 +525,15 @@ class AnalyzeDrift:
                         if adwin[activity].detected_change():
                             # create the manager for similarity metrics if a change is detected
                             if activity not in self.metrics.keys():
-                                self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters,
+                                self.metrics[activity] = ManageSimilarityMetrics(self.model_type,
+                                                                                 self.current_parameters,
                                                                                  self.control,
                                                                                  self.models_path, self.metrics_path,
                                                                                  activity)
 
                             change_points[activity].append(i)
                             change_points_info[activity].add_change_point(i)
+                            change_points_info[activity].add_case_id(case_id)
                             change_points_info[activity].add_timestamp(self.get_current_date(event_data[i]))
                             print(
                                 f'Change detected in data: {value} - at index: {i} - case: {case_id} - activity: {activity}')
@@ -621,11 +624,13 @@ class AnalyzeDrift:
                                                                              activity)
 
                         # save the index of the event where the change is detected
-                        change_points[activity].append(event_indexes[activity])
+                        event_id_for_activity = event_indexes[activity]  # count the events for the specified activity
+                        change_points[activity].append(event_id_for_activity)
                         # save the timestamp of the event where the change is detected
                         change_points_time_based[activity].append(self.get_current_date_df(event_data, i))
 
-                        change_points_info[activity].add_change_point(case_id)
+                        change_points_info[activity].add_change_point(event_id_for_activity)
+                        change_points_info[activity].add_case_id(case_id)
                         change_points_info[activity].add_timestamp(self.get_current_date_df(event_data, i))
                         print(
                             f'Change detected in data: {value} - at index: {i} - '
@@ -676,7 +681,8 @@ class AnalyzeDrift:
                 # save the plot with attribute values for each activity
                 for j, a in enumerate(activities):
                     if self.current_parameters.activities_for_plot:
-                        self.plot_signal_adaptive_time_data(attribute_values[a], self.current_parameters.activitie_for_plot[j])
+                        self.plot_signal_adaptive_time_data(attribute_values[a],
+                                                            self.current_parameters.activitie_for_plot[j])
                     else:
                         self.plot_signal_adaptive_time_data(attribute_values[a], a)
                 # process the unique window
@@ -706,7 +712,9 @@ class AnalyzeDrift:
         # derive the initial model using the parameter stable_period
         print(f'Initial model discovered using traces from 0 to {window_size - 1}')
         log_for_model = EventLog(event_data[0:window_size])
-        net, im, fm = inductive_miner.apply(log_for_model)
+        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
+                                                         case_id_key='case:concept:name',
+                                                         timestamp_key='time:timestamp')
         pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
                                      f'model1_0-{window_size - 1}.pnml')
         pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
@@ -784,7 +792,9 @@ class AnalyzeDrift:
                 if self.current_parameters.update_model:
                     print(f'Discover a new model using traces from {i} to {final_trace_id - 1}')
                     log_for_model = EventLog(event_data[i:final_trace_id])
-                    net, im, fm = inductive_miner.apply(log_for_model)
+                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
+                                                                     case_id_key='case:concept:name',
+                                                                     timestamp_key='time:timestamp')
                     pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
                                                  f'model{self.window_count + 1}_{i}-{final_trace_id - 1}.pnml')
                     pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
@@ -843,11 +853,15 @@ class AnalyzeDrift:
         initial_trace_id_for_stable_period = 0
         final_trace_id = initial_trace_id_for_stable_period + window_size
         log_for_model = EventLog(event_data[initial_trace_id_for_stable_period:final_trace_id])
-        net, im, fm = inductive_miner.apply(log_for_model)
+        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
+                                                         case_id_key='case:concept:name',
+                                                         timestamp_key='time:timestamp')
         pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
                                      f'model1_{initial_trace_id_for_stable_period}-{final_trace_id - 1}.pnml')
         pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
-        tree = inductive_miner.apply_tree(log_for_model)
+        tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
+                                                     case_id_key='case:concept:name',
+                                                     timestamp_key='time:timestamp')
         print(f'Initial model discovered using traces [{initial_trace_id_for_stable_period}-{final_trace_id - 1}]')
         # initialize similarity metrics manager
         self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
@@ -944,11 +958,15 @@ class AnalyzeDrift:
                 if self.current_parameters.update_model:
                     # Discover a new model using window
                     log_for_model = EventLog(event_data[change_point:change_point + window_size])
-                    net, im, fm = inductive_miner.apply(log_for_model)
+                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
+                                                                     case_id_key='case:concept:name',
+                                                                     timestamp_key='time:timestamp')
                     pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
                                                  f'model{self.window_count + 1}_{change_point}-{change_point + window_size - 1}.pnml')
                     pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
-                    tree = inductive_miner.apply_tree(log_for_model)
+                    tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
+                                                                 case_id_key='case:concept:name',
+                                                                 timestamp_key='time:timestamp')
                     print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
 
         # process remaining items as the last window
@@ -990,26 +1008,13 @@ class AnalyzeDrift:
         return self.window_count, self.metrics, self.initial_case_ids
 
     def get_current_timestamp(self, item):
-        timestamp_aux = None
-        # get the current timestamp
-        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
-            timestamp_aux = datetime.timestamp(item['time:timestamp'])
-        elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
-            # use the date of the first event within the trace
-            timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
-        else:
-            print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+        # use the date of the first event within the trace
+        timestamp_aux = datetime.timestamp(item[0]['time:timestamp'])
         return timestamp_aux
 
     def get_current_date(self, item):
-        date_aux = None
-        if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
-            date_aux = item['time:timestamp']
-        elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
-            # use the date of the first event within the trace
-            date_aux = item[0]['time:timestamp']
-        else:
-            print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+        # use the date of the first event within the trace
+        date_aux = item[0]['time:timestamp']
         return date_aux
 
     def get_current_date_df(self, event_data, index):
