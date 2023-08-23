@@ -2,3 +2,4 @@
 /venv2/
 /data/
 /.idea/
+*.pyc
