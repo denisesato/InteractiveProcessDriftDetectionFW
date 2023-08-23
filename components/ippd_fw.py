@@ -241,6 +241,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.total_of_windows = None
         self.windows_with_drifts = None
         self.initial_indexes = None
+        self.initial_event_ids = None
         self.analyze = None
         self.activities = []
         self.all_activities = []
@@ -527,7 +528,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                                     self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
                                     self.current_log, self.discovery, user_id,
                                     outputpath_adaptive_adwin, outputpath_adaptive_adwin_models)
-        self.total_of_windows, self.initial_indexes, self.all_activities = self.analyze.start_drift_analysis()
+        self.total_of_windows, self.initial_indexes, self.all_activities, self.initial_event_ids = self.analyze.start_drift_analysis()
         if self.current_parameters.approach == Approach.ADAPTIVE.name and \
                 self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             self.activities = list(i for i in self.initial_indexes.keys() if len(self.initial_indexes[i].keys()) > 1)
@@ -574,6 +575,14 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                 return list(self.initial_indexes[activity].keys())
             return list(self.initial_indexes.keys())
         return None
+
+    def get_initial_event_indexes(self, activity=''):
+        if self.initial_event_ids:
+            if activity != '':
+                return list(self.initial_event_ids[activity].keys())
+            return list(self.initial_event_ids.keys())
+        return None
+
 
     def get_initial_trace_concept_names(self):
         return list(self.initial_indexes.values())

@@ -192,9 +192,9 @@ def test_adaptive_data_ok1():
     detected_drifts = run_IPDD_script(parameters)
 
     activity = 'Algorítmos E Estruturas De Dados 1'
-    expected_drifts = [1661]
+    expected_drifts = [95]
     assert detected_drifts[activity] == expected_drifts
 
-    activity = 'Análise De Circuitos Elétricos 1'
-    expected_drifts = [95]
+    activity = 'Oficina De Integração'
+    expected_drifts = [127]
     assert detected_drifts[activity] == expected_drifts

@@ -346,8 +346,13 @@ def run_IPDD_script(parameters, real_drifts=None):
             detected_drifts = {}
             # get the activities that report a drift using the change detector
             for activity in framework.get_activities_with_drifts():
-                indexes = framework.initial_indexes[activity]
-                detected_drifts[activity] = list(indexes.keys())[1:]
+                if parameters.perspective == AdaptivePerspective.TIME_DATA.name and \
+                        parameters.read_log_as == ReadLogAs.EVENT.name:
+                    indexes = framework.initial_event_ids[activity]
+                    detected_drifts[activity] = list(indexes)[1:]
+                else:
+                    indexes = framework.initial_indexes[activity]
+                    detected_drifts[activity] = list(indexes.keys())[1:]
                 print(
                     f'IPDD detect drifts for attribute {parameters.attribute}-{attribute_name} in activity {activity} in indexes {detected_drifts}')
                 # get information about control-flow metrics

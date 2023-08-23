@@ -240,6 +240,7 @@ class AnalyzeDrift:
     # selected by the user and start the metrics calculation between
     # consecutive windows
     def start_drift_analysis(self):
+        initial_event_ids = None
         window_count = 0
         initial_indexes = {}
         if self.current_parameters.approach == Approach.FIXED.name or \
@@ -288,7 +289,7 @@ class AnalyzeDrift:
                     attribute_class = SelectAttribute.get_selected_attribute_class(
                         self.current_parameters.attribute)
 
-                window_count, metrics_manager, initial_indexes = \
+                window_count, metrics_manager, initial_indexes, initial_event_ids = \
                     self.apply_detector_on_attribute(self.event_data,
                                                      attribute_class,
                                                      self.current_parameters.delta,
@@ -318,7 +319,7 @@ class AnalyzeDrift:
             # no metrics manager instantiated when IPDD calculates one window
             if metrics_manager:
                 self.control.set_metrics_manager(metrics_manager)
-            return window_count, initial_indexes, activities
+            return window_count, initial_indexes, activities, initial_event_ids
 
     # get the current case id from the trace or event
     def get_case_id(self, item):
@@ -472,6 +473,7 @@ class AnalyzeDrift:
         change_points_info = {}
         initial_index = {}
         initial_case_ids = {}
+        initial_event_indexes = {}
         event_indexes = {}
         self.metrics = {}
         # initialize one detector for each activity
@@ -590,7 +592,7 @@ class AnalyzeDrift:
                 initial_case_ids[Activity.ALL.value][0] = case_id
                 self.window_count[Activity.ALL.value] = 0
                 self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
-            return self.window_count, self.metrics, initial_case_ids
+            return self.window_count, self.metrics, initial_case_ids, None
         else:
             # read the events from the dataframe
             for i in event_data.index:
@@ -602,6 +604,7 @@ class AnalyzeDrift:
                     for a in activities:
                         initial_case_ids[a][i] = case_id
                         initial_index[a] = 0
+                        initial_event_indexes[a] = [0]
 
                 # for each new event, collect the duration per activity
                 activity = event_data['concept:name'][i]
@@ -634,7 +637,7 @@ class AnalyzeDrift:
                         change_points_info[activity].add_timestamp(self.get_current_date_df(event_data, i))
                         print(
                             f'Change detected in data: {value} - at index: {i} - '
-                            f'case: {case_id} - activity: {activity}')
+                            f'case: {case_id} - activity: {activity} - event if for activity {event_id_for_activity}')
 
                         # process new window
                         self.new_window(initial_index[activity], i, activity)
@@ -642,6 +645,8 @@ class AnalyzeDrift:
                         initial_case_ids[activity][i] = case_id
                         # update the beginning of the next window
                         initial_index[activity] = i
+                        # save the initial index id
+                        initial_event_indexes[activity].append(event_id_for_activity)
                     # index of the event
                     event_indexes[activity] += 1
             # process remaining items as the last window
@@ -689,9 +694,10 @@ class AnalyzeDrift:
                 initial_index[Activity.ALL.value] = 0
                 initial_case_ids[Activity.ALL.value] = {}
                 initial_case_ids[Activity.ALL.value][0] = case_id
+                initial_event_indexes[Activity.ALL.value] = [0]
                 self.window_count[Activity.ALL.value] = 0
                 self.new_window(initial_index[Activity.ALL.value], len(event_data), Activity.ALL.value)
-            return self.window_count, self.metrics, initial_case_ids
+            return self.window_count, self.metrics, initial_case_ids, initial_event_indexes
 
     # IPDD adaptive trace by trace approach
     # Apply the ADWIN detector (scikit-multiflow) in two quality dimensions: fitness and precision
