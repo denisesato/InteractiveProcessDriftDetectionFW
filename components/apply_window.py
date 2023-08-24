@@ -16,9 +16,7 @@ from threading import Thread
 import pm4py
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
-from pm4py.objects.log.util import interval_lifecycle
 from pm4py.algo.filtering.log.attributes import attributes_filter
-from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
 from pm4py.algo.evaluation.replay_fitness import algorithm as replay_fitness_evaluator
 from pm4py.algo.discovery.footprints import algorithm as fp_discovery
@@ -28,10 +26,11 @@ from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from datetime import datetime, date
 from components.adaptive.attributes import SelectAttribute, Activity
 from components.adaptive.change_points_info import ChangePointInfo
+from components.adaptive.detectors import SelectDetector
 from components.parameters import Approach, AttributeAdaptive, AdaptivePerspective, ControlflowAdaptiveApproach, \
     get_value_of_parameter
 from components.compare_models.manage_similarity_metrics import ManageSimilarityMetrics
-from skmultiflow.drift_detection.adwin import ADWIN
+
 from components.parameters import ReadLogAs, WindowUnityFixed
 import pandas as pd
 import seaborn as sns
@@ -85,8 +84,9 @@ def calculate_quality_metric_footprints(metric_name, log, tree):
 class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
                  models_path, metrics_path, logs_path, current_log, discovery, user,
-                 output_path_adaptive_adwin,
-                 output_path_adaptive_models_adwin):
+                 output_path_adaptive_detector,
+                 output_path_adaptive_models_detector,
+                 detector_class):
 
         self.current_parameters = current_parameters
         self.user = user
@@ -95,16 +95,18 @@ class AnalyzeDrift:
         self.models_path = models_path
         self.metrics_path = metrics_path
         self.logs_path = logs_path
-        self.output_path_adaptive_adwin = output_path_adaptive_adwin
-        self.output_path_adaptive_models_adwin = output_path_adaptive_models_adwin
+        self.output_path_adaptive_detector = output_path_adaptive_detector
+        self.output_path_adaptive_models_detector = output_path_adaptive_models_detector
         self.model_type = model_type
         self.current_trace = 0
+        self.detector_class = detector_class
 
         # instance of the MetricsManager
         if current_parameters.approach == Approach.FIXED.name or \
                 (current_parameters.approach == Approach.ADAPTIVE.name and
                  current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name):
             self.metrics = None
+
         elif current_parameters.approach == Approach.ADAPTIVE.name:
             self.metrics = {}
 
@@ -154,7 +156,7 @@ class AnalyzeDrift:
             attribute = f'{AttributeAdaptive.WAITING_TIME.value}  (seconds)'
         else:
             attribute = self.current_parameters.attribute_name
-        output_filename = os.path.join(self.output_path_adaptive_adwin, filename_attributes)
+        output_filename = os.path.join(self.output_path_adaptive_detector, filename_attributes)
         df.to_csv(output_filename, index=False)
 
         # generate plot
@@ -187,7 +189,7 @@ class AnalyzeDrift:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
         # save the plot
-        filename = os.path.join(self.output_path_adaptive_adwin, f'{activity_name}_{x_axis_name}.png')
+        filename = os.path.join(self.output_path_adaptive_detector, f'{activity_name}_{x_axis_name}.png')
         plt.title(f'Adaptive Time/Data - {activity_name}')
         plt.savefig(filename)
         print(f'Saving plot for activity  - {activity_name}')
@@ -221,7 +223,7 @@ class AnalyzeDrift:
         plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left')
         plt.ylabel(f'Metric value')
         approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
-        output_name = os.path.join(self.output_path_adaptive_adwin,
+        output_name = os.path.join(self.output_path_adaptive_detector,
                                    f'adaptive_controlflow_metrics.png')
 
         plt.title(f'Adaptive Control-flow {approach}')
@@ -231,7 +233,7 @@ class AnalyzeDrift:
         # save the time series (fitness and precision)
         for m in metrics.keys():
             df = pd.DataFrame(values[m])
-            df.to_excel(os.path.join(self.output_path_adaptive_adwin, f'{metrics[m]}.xlsx'))
+            df.to_excel(os.path.join(self.output_path_adaptive_detector, f'{metrics[m]}.xlsx'))
         plt.close()
         plt.cla()
         plt.clf()
@@ -292,7 +294,7 @@ class AnalyzeDrift:
                 window_count, metrics_manager, initial_indexes, initial_event_ids = \
                     self.apply_detector_on_attribute(self.event_data,
                                                      attribute_class,
-                                                     self.current_parameters.delta,
+                                                     self.current_parameters.detector_class,
                                                      activities,
                                                      self.user)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
@@ -300,7 +302,7 @@ class AnalyzeDrift:
                 # IPDD adaptive trace by trace approach
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector_on_quality_metrics_trace_by_trace(self.event_data,
-                                                                          self.current_parameters.delta,
+                                                                          self.current_parameters.detector_class,
                                                                           self.current_parameters.win_size,
                                                                           self.user)
             elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
@@ -308,7 +310,7 @@ class AnalyzeDrift:
                 # IPDD adaptive windowing approach
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector_on_quality_metrics_windowing(self.event_data,
-                                                                     self.current_parameters.delta,
+                                                                     self.current_parameters.detector_class,
                                                                      self.current_parameters.win_size,
                                                                      self.user)
             else:
@@ -463,10 +465,12 @@ class AnalyzeDrift:
         return activities
 
     # IPDD adaptive approach for time or data attributes
-    def apply_detector_on_attribute(self, event_data, attribute_class, delta, activities, user):
+    def apply_detector_on_attribute(self, event_data, attribute_class, detector_class, activities, user):
         self.current_trace = 0
-        print(f'Applying ADWIN to log {self.current_log.filename} attribute {attribute_class.name} delta {delta}')
-        adwin = {}
+        print(f'Applying {detector_class.get_name()} to log {self.current_log.filename} attribute {attribute_class.name}')
+        for key in detector_class.parameters:
+            print(f'{key}: {detector_class.parameters[key]}')
+        detector_dict = {}
         attribute_values = {}
         change_points = {}
         change_points_time_based = {}
@@ -478,13 +482,16 @@ class AnalyzeDrift:
         self.metrics = {}
         # initialize one detector for each activity
         for a in activities:
-            adwin[a] = ADWIN(delta=delta)
+            detector_dict[a] = SelectDetector.get_detector_instance(detector_class.get_definition(),
+                                                                            detector_class.parameters)
+            detector_dict[a].instantiate_detector()
             attribute_values[a] = {}
             change_points[a] = []
             change_points_time_based[a] = []
             event_indexes[a] = 0
-            detector_info = ChangePointInfo('ADWIN', a)
-            detector_info.add_detector_attribute('delta', delta)
+            detector_info = ChangePointInfo(detector_class.get_name(), a)
+            for key in detector_class.parameters:
+                detector_info.add_detector_attribute(key, detector_class.parameters[key])
             change_points_info[a] = detector_info
             initial_case_ids[a] = {}
             initial_index[a] = 0
@@ -523,8 +530,8 @@ class AnalyzeDrift:
                             'timestamp': timestamp,
                             'case_id': case_id,
                         }
-                        adwin[activity].add_element(value)
-                        if adwin[activity].detected_change():
+                        detector_dict[activity].add_element(value)
+                        if detector_dict[activity].detected_change():
                             # create the manager for similarity metrics if a change is detected
                             if activity not in self.metrics.keys():
                                 self.metrics[activity] = ManageSimilarityMetrics(self.model_type,
@@ -573,7 +580,7 @@ class AnalyzeDrift:
                         self.plot_signal_adaptive_time_data(attribute_values[a], a)
             if find_any_drift:
                 # save the change points for the activity
-                filename = os.path.join(self.output_path_adaptive_adwin,
+                filename = os.path.join(self.output_path_adaptive_detector,
                                         f'drifts_{self.current_parameters.attribute}.txt')
                 self.save_change_points(filename, change_points, change_points_info, activities)
             else:
@@ -617,8 +624,8 @@ class AnalyzeDrift:
                         'case_id': case_id,
                     }
 
-                    adwin[activity].add_element(value)
-                    if adwin[activity].detected_change():
+                    detector_dict[activity].update_val(value)
+                    if detector_dict[activity].detected_change():
                         # create the manager for similarity metrics if a change is detected
                         if activity not in self.metrics.keys():
                             self.metrics[activity] = ManageSimilarityMetrics(self.model_type, self.current_parameters,
@@ -678,7 +685,7 @@ class AnalyzeDrift:
                         self.plot_signal_adaptive_time_data(attribute_values[a], a)
             if find_any_drift:
                 # save the change points for the activity
-                filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{attribute_class.name}.txt')
+                filename = os.path.join(self.output_path_adaptive_detector, f'drifts_{attribute_class.name}.txt')
                 self.save_change_points(filename, change_points, change_points_info, activities)
             else:
                 # if no drift is detected, generate the complete model and the plot with attribute values for each activity
@@ -705,10 +712,12 @@ class AnalyzeDrift:
     # The metrics are calculated using the last trace read and the model generated using the first traces (stable_period)
     # When a drift is detected a new model may be discovered using the next traces (stable_period)
     # The process model is discovered using the inductive miner
-    def apply_detector_on_quality_metrics_trace_by_trace(self, event_data, delta, window_size, user):
+    def apply_detector_on_quality_metrics_trace_by_trace(self, event_data, detector_class, window_size, user):
         factor = 100
         self.current_trace = 0
-        print(f'Trace by trace approach - ADWIN to log {self.current_log.filename} delta {delta}')
+        print(f'Trace by trace approach - {detector_class.get_name()} to log {self.current_log.filename}')
+        for key in detector_class.parameters:
+            print(f'{key}: {detector_class.parameters[key]}')
         # different metrics can be used for each dimension evaluated
         # by now we expected one metric for fitness quality dimension and other for precision quality dimension
         metrics = {
@@ -721,24 +730,29 @@ class AnalyzeDrift:
         net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
                                                          case_id_key='case:concept:name',
                                                          timestamp_key='time:timestamp')
-        pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+        pnml_filename = os.path.join(self.output_path_adaptive_models_detector,
                                      f'model1_0-{window_size - 1}.pnml')
         pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
         # other discovery algorithms can be applied
         # net, im, fm = heuristics_miner.apply(log_for_model)
         # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
         # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
-        adwin_detection = {}
+        detector_dict = {}
         drifts = {}
         values = {}
         # for saving the change points
         change_points = []
-        detector_info = ChangePointInfo('ADWIN')
-        detector_info.add_detector_attribute('delta', delta)
+        detector_info = ChangePointInfo(detector_class.get_name())
+        for key in detector_class.parameters:
+            detector_info.add_detector_attribute(key, detector_class.parameters[key])
         change_points_info = detector_info
+
+        # instantiate the detector
         for dimension in metrics.keys():
             # instantiate one detector for each evaluated dimension (fitness and precision)
-            adwin_detection[dimension] = ADWIN(delta=self.current_parameters.delta)
+            detector_dict[dimension] = SelectDetector.get_detector_instance(detector_class.get_definition(),
+                                                                            detector_class.parameters)
+            detector_dict[dimension].instantiate_detector()
             drifts[dimension] = []
             values[dimension] = []
 
@@ -764,8 +778,8 @@ class AnalyzeDrift:
                 new_value = calculate_quality_metric(metrics[dimension], last_trace, net, im, fm) * factor
                 values[dimension].append(new_value)
                 # update the new value in the detector
-                adwin_detection[dimension].add_element(new_value)
-                if adwin_detection[dimension].detected_change():
+                detector_dict[dimension].update_val(new_value)
+                if detector_dict[dimension].detected_change():
                     # drift detected, save it
                     drifts[dimension].append(i)
                     print(f'Metric [{dimension}] - Drift detected at trace {i}')
@@ -788,7 +802,7 @@ class AnalyzeDrift:
 
                 for dimension in metrics.keys():
                     # reset the detectors to avoid a new drift during the stable period
-                    adwin_detection[dimension].reset()
+                    detector_dict[dimension].reset()
 
                 # discover a new model using the next traces (window_size)
                 final_trace_id = i + window_size
@@ -801,7 +815,7 @@ class AnalyzeDrift:
                     net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
                                                                      case_id_key='case:concept:name',
                                                                      timestamp_key='time:timestamp')
-                    pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                    pnml_filename = os.path.join(self.output_path_adaptive_models_detector,
                                                  f'model{self.window_count + 1}_{i}-{final_trace_id - 1}.pnml')
                     pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                     # other discovery algorithms can be applied
@@ -841,15 +855,18 @@ class AnalyzeDrift:
         # save information about drifts
         if len(all_drifts) > 0:
             approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
-            filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{approach}.txt')
+            filename = os.path.join(self.output_path_adaptive_detector, f'drifts_{approach}.txt')
             self.save_change_points(filename, change_points, change_points_info)
         return self.window_count, self.metrics, self.initial_case_ids
 
     # IPDD adaptive windowing approach
-    def apply_detector_on_quality_metrics_windowing(self, event_data, delta, window_size, user):
+    def apply_detector_on_quality_metrics_windowing(self, event_data, detector_class, window_size, user):
         factor = 100
         self.current_trace = 0
-        print(f'Windowing approach - ADWIN to log {self.current_log.filename} delta {delta}')
+        print(f'Windowing approach - {detector_class.get_name()} to log {self.current_log.filename}')
+        for key in detector_class.parameters:
+            print(f'{key}: {detector_class.parameters[key]}')
+
         metrics = {
             QualityDimension.FITNESS.name: 'fitnessTBR',
             QualityDimension.PRECISION.name: 'precisionFP'
@@ -862,7 +879,7 @@ class AnalyzeDrift:
         net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
                                                          case_id_key='case:concept:name',
                                                          timestamp_key='time:timestamp')
-        pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+        pnml_filename = os.path.join(self.output_path_adaptive_models_detector,
                                      f'model1_{initial_trace_id_for_stable_period}-{final_trace_id - 1}.pnml')
         pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
         tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
@@ -876,20 +893,20 @@ class AnalyzeDrift:
         self.window_count = 0
         self.initial_case_ids = {}
         values = dict.fromkeys(metrics)
-        adwin = dict.fromkeys(metrics)
+        detector_dict = dict.fromkeys(metrics)
         drifts = dict.fromkeys(metrics)
         # for saving the change points
         change_points = []
-        detector_info = ChangePointInfo('ADWIN')
-        detector_info.add_detector_attribute('delta', delta)
+        detector_info = ChangePointInfo(detector_class.get_name())
+        for key in detector_class.parameters:
+            detector_info.add_detector_attribute(key, detector_class.parameters[key])
         change_points_info = detector_info
 
         for m in metrics.keys():
             values[m] = []
-            if delta:
-                adwin[m] = ADWIN(delta=delta)
-            else:
-                adwin[m] = ADWIN()
+            detector_dict[m] = SelectDetector.get_detector_instance(detector_class.get_definition(),
+                                                                            detector_class.parameters)
+            detector_dict[m].instantiate_detector()
             drifts[m] = []
 
         initial_trace_id = 0  # start of the window (change point)
@@ -921,22 +938,22 @@ class AnalyzeDrift:
                                                    fm) * factor
 
             values[QualityDimension.PRECISION.name].append(precision)
-            adwin[QualityDimension.PRECISION.name].add_element(precision)
+            detector_dict[QualityDimension.PRECISION.name].update_val(precision)
 
             values[QualityDimension.FITNESS.name].append(fitness)
-            adwin[QualityDimension.FITNESS.name].add_element(fitness)
+            detector_dict[QualityDimension.FITNESS.name].update_val(fitness)
 
             drift_detected = False
             change_point = 0
             # check for drift in precision
-            if adwin[QualityDimension.PRECISION.name].detected_change():
+            if detector_dict[QualityDimension.PRECISION.name].detected_change():
                 # define the change point as the initial of the window
                 change_point = i - window_size + 1
                 drifts[QualityDimension.PRECISION.name].append(change_point)
                 print(f'Metric [{QualityDimension.PRECISION.value}] detected a drift in trace: {change_point}')
                 drift_detected = True
             # check for drift in fitness
-            elif adwin[QualityDimension.FITNESS.name].detected_change():
+            elif detector_dict[QualityDimension.FITNESS.name].detected_change():
                 change_point = i
                 drifts[QualityDimension.FITNESS.name].append(change_point)
                 print(f'Metric [{QualityDimension.FITNESS.value}] detected a drift in trace: {change_point}')
@@ -960,14 +977,14 @@ class AnalyzeDrift:
                 initial_trace_id = change_point
                 for m in metrics:
                     # reset the detectors to avoid a new drift during the stable period
-                    adwin[m].reset()
+                    detector_dict[m].reset()
                 if self.current_parameters.update_model:
                     # Discover a new model using window
                     log_for_model = EventLog(event_data[change_point:change_point + window_size])
                     net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
                                                                      case_id_key='case:concept:name',
                                                                      timestamp_key='time:timestamp')
-                    pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                    pnml_filename = os.path.join(self.output_path_adaptive_models_detector,
                                                  f'model{self.window_count + 1}_{change_point}-{change_point + window_size - 1}.pnml')
                     pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                     tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
@@ -1009,7 +1026,7 @@ class AnalyzeDrift:
         # save information about drifts
         if len(all_drifts) > 0:
             approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
-            filename = os.path.join(self.output_path_adaptive_adwin, f'drifts_{approach}.txt')
+            filename = os.path.join(self.output_path_adaptive_detector, f'drifts_{approach}.txt')
             self.save_change_points(filename, change_points, change_points_info)
         return self.window_count, self.metrics, self.initial_case_ids
 

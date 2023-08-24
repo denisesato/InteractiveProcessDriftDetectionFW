@@ -13,14 +13,16 @@
 """
 import os
 import shutil
+from enum import Enum
 
 from pm4py.objects.log.util import interval_lifecycle
 
+from components.adaptive.detectors import ConceptDriftDetector, SelectDetector
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
 from components.evaluate.manage_evaluation_metrics import ManageEvaluationMetrics, EvaluationMetricList
-from components.parameters import Approach, ReadLogAs, AdaptivePerspective, get_value_of_parameter, Paths, \
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective, Paths, \
     AttributeAdaptive
 from components.pn_definitions import PnDefinitions
 from components.discovery.discovery_pn import DiscoveryPn
@@ -28,7 +30,6 @@ from threading import Thread
 import pm4py
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
-from pm4py.statistics.traces.generic.log import case_statistics
 from pm4py.objects.log.obj import EventLog
 from components.log_info import LogInfo
 
@@ -148,8 +149,8 @@ class IPDDParametersFixed(IPDDParameters):
 
 
 class IPDDParametersAdaptive(IPDDParameters):
-    def __init__(self, logname, approach, perspective, read_log_as, metrics, attribute,
-                 attribute_name=None, activities=[], delta=None, save_sublogs=False, save_model_svg=False,
+    def __init__(self, logname, approach, perspective, read_log_as, metrics, detector_class, attribute,
+                 attribute_name=None, activities=[], save_sublogs=False, save_model_svg=False,
                  update_model=True, attribute_name_for_plot=None, activities_for_plot=None):
         super().__init__(logname, approach, read_log_as, metrics, save_sublogs, save_model_svg)
         self.perspective = perspective
@@ -158,12 +159,9 @@ class IPDDParametersAdaptive(IPDDParameters):
         self.attribute_name_for_plot = attribute_name_for_plot
         self.activities = activities
         self.activities_for_plot = activities_for_plot
-        if delta:
-            self.delta = delta
-        else:  # default value
-            self.delta = 0.002
         self.save_model_svg = save_model_svg
         self.update_model = update_model
+        self.detector_class = detector_class
 
     def print(self):
         super().print()
@@ -172,23 +170,22 @@ class IPDDParametersAdaptive(IPDDParameters):
         print(f'Attribute name: {self.attribute_name}')
         print(f'Attribute: {self.attribute}')
         print(f'Activities: {self.activities}')
-        print(f'ADWIN delta: {self.delta}')
+        print(f'Detector: {self.detector_class.get_name()}')
+        for key in self.detector_class.parameters:
+            print(f'{key}: {self.detector_class.parameters[key]}')
 
 
 class IPDDParametersAdaptiveControlflow(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, win_size, metrics,
-                 adaptive_controlflow_approach, delta=None, save_sublogs=False, save_model_svg=False,
+                 adaptive_controlflow_approach, detector_class, save_sublogs=False, save_model_svg=False,
                  update_model=True):
         super().__init__(logname=logname, approach=approach, read_log_as=read_log_as,
                          metrics=metrics, save_sublogs=save_sublogs, save_model_svg=save_model_svg)
         self.win_size = win_size
         self.perspective = perspective
         self.adaptive_controlflow_approach = adaptive_controlflow_approach
-        if delta:
-            self.delta = delta
-        else:  # default value
-            self.delta = 0.002
         self.update_model = update_model
+        self.detector_class = detector_class
 
     def print(self):
         super().print()
@@ -196,7 +193,9 @@ class IPDDParametersAdaptiveControlflow(IPDDParameters):
         print(f'Perspective: {self.perspective}')
         print(f'Approach: {self.adaptive_controlflow_approach}')
         print(f'Window size: {self.win_size}')
-        print(f'ADWIN delta: {self.delta}')
+        print(f'Detector: {self.detector_class.get_name()}')
+        for key in self.detector_class.parameters:
+            print(f'{key}: {self.detector_class.parameters[key]}')
 
 
 class SingletonMeta(type):
@@ -332,11 +331,13 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         return self.check_user_path(self.similarity_metrics_path, user_id)
 
     def get_adaptive_logs_path(self, user_id):
-        path = os.path.join(self.adaptive_path, self.current_parameters.logname,
-                            f'{self.current_parameters.perspective}'
-                            f'_{self.current_parameters.adaptive_controlflow_approach}'
-                            f'_win{self.current_parameters.win_size}'
-                            f'_delta{self.current_parameters.delta}', self.logs_path)
+        complement_path = f'{self.current_parameters.perspective}' \
+                          f'_{self.current_parameters.adaptive_controlflow_approach}' \
+                          f'_win{self.current_parameters.win_size}' \
+                          f'_{self.current_parameters.detector_class.get_name()}' \
+                          f'{self.current_parameters.detector_class.get_parameters_string()}'
+
+        path = os.path.join(self.adaptive_path, self.current_parameters.logname, complement_path, self.logs_path)
         return self.check_user_path(path, user_id)
 
     def get_evaluation_path(self, user_id):
@@ -345,7 +346,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
     def get_adaptive_path(self, user_id):
         return self.check_user_path(self.adaptive_path, user_id)
 
-    def get_adaptive_adwin_path(self, user_id):
+    def get_adaptive_detector_path(self, user_id):
         path = os.path.join(self.adaptive_path, self.current_parameters.logname)
         if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             attribute_value = self.current_parameters.attribute
@@ -355,13 +356,15 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             path = os.path.join(self.adaptive_path, self.current_parameters.logname,
                                 f'{self.current_parameters.perspective}'
                                 f'_{attribute_value}'
-                                f'_delta{self.current_parameters.delta}')
+                                f'_{self.current_parameters.detector_class.get_name()}'
+                                f'{self.current_parameters.detector_class.get_parameters_string()}')
         elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
             path = os.path.join(self.adaptive_path, self.current_parameters.logname,
                                 f'{self.current_parameters.perspective}'
                                 f'_{self.current_parameters.adaptive_controlflow_approach}'
                                 f'_win{self.current_parameters.win_size}'
-                                f'_delta{self.current_parameters.delta}')
+                                f'_{self.current_parameters.detector_class.get_name()}'
+                                f'{self.current_parameters.detector_class.get_parameters_string()}')
         else:
             print(f'Incorrect adaptive perspective, using default path for evaluation: {path}')
         return self.check_user_path(path, user_id)
@@ -380,14 +383,16 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                                 f'{self.current_parameters.approach}'
                                 f'_{self.current_parameters.perspective}'
                                 f'_{attribute_value}'
-                                f'_delta{self.current_parameters.delta}')
+                                f'_{self.current_parameters.detector_class.get_name()}'
+                                f'{self.current_parameters.detector_class.get_parameters_string()}')
         elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
             path = os.path.join(self.get_evaluation_path(user_id),
                                 self.current_parameters.logname,
                                 f'{self.current_parameters.approach}'
                                 f'_{self.current_parameters.perspective}'
                                 f'_w{self.current_parameters.win_size}'
-                                f'_delta{self.current_parameters.delta}')
+                                f'_{self.current_parameters.detector_class.get_name()}'
+                                f'{self.current_parameters.detector_class.get_parameters_string()}')
         else:
             print(f'Incorrect adaptive perspective, using default path for evaluation: {path}')
         return path
@@ -396,8 +401,10 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         path = os.path.join(self.adaptive_path, self.current_parameters.logname,
                             f'{self.current_parameters.perspective}'
                             f'_{self.current_parameters.adaptive_controlflow_approach}'
-                            f'_win{self.current_parameters.win_size}'
-                            f'_delta{self.current_parameters.delta}', self.models_path)
+                            f'_win{self.current_parameters.win_size}',
+                            f'_{self.current_parameters.detector_class.get_name()}'
+                            f'{self.current_parameters.detector_class.get_parameters_string()}',
+                            self.models_path)
         return self.check_user_path(path, user_id)
 
     def import_log(self, complete_filename, filename):
@@ -494,10 +501,10 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         if not self.current_parameters.metrics:
             self.current_parameters.metrics = self.model_type_definitions.get_default_metrics()
 
-        # initializing attributes that depend of the approach
+        # initializing attributes that are specific for the approach
         outputpath_adaptive_sublogs = ''
-        outputpath_adaptive_adwin = ''
-        outputpath_adaptive_adwin_models = ''
+        outputpath_adaptive_detector = ''
+        outputpath_adaptive_detector_models = ''
         if self.current_parameters.approach == Approach.FIXED.name:
             self.windows_with_drifts = {}
             self.total_of_windows = {}
@@ -505,11 +512,15 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         elif self.current_parameters.approach == Approach.ADAPTIVE.name:
             self.windows_with_drifts = None
             self.total_of_windows = 0
-            # ADWIN adaptive path
+
+            # Define the detector and parameters (default values defined in the ipdd_cli interface)
+            self.current_parameters.detector_class = parameters.detector_class
+
+            # Detector adaptive path
             # output_path for saving plots, attribute values, drift, and evaluation metrics
-            outputpath_adaptive_adwin = self.get_adaptive_adwin_path(user_id)
+            outputpath_adaptive_detector = self.get_adaptive_detector_path(user_id)
             if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
-                outputpath_adaptive_adwin_models = self.get_adaptive_adwin_models_path(user_id)
+                outputpath_adaptive_detector_models = self.get_adaptive_adwin_models_path(user_id)
                 outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
@@ -527,7 +538,8 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                                     self.get_input_path(user_id), self.get_models_path(user_id),
                                     self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
                                     self.current_log, self.discovery, user_id,
-                                    outputpath_adaptive_adwin, outputpath_adaptive_adwin_models)
+                                    outputpath_adaptive_detector, outputpath_adaptive_detector_models,
+                                    detector_class=parameters.detector_class)
         self.total_of_windows, self.initial_indexes, self.all_activities, self.initial_event_ids = self.analyze.start_drift_analysis()
         if self.current_parameters.approach == Approach.ADAPTIVE.name and \
                 self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
@@ -583,7 +595,6 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             return list(self.initial_event_ids.keys())
         return None
 
-
     def get_initial_trace_concept_names(self):
         return list(self.initial_indexes.values())
 
@@ -618,12 +629,12 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         return self.discovery.get_process_model(self.get_models_path(user), original_filename, window, activity)
 
     def get_activity_plot_src(self, user, activity):
-        filename = os.path.join(self.get_adaptive_adwin_path(user),
+        filename = os.path.join(self.get_adaptive_detector_path(user),
                                 f'{activity}_trace.png')
         return filename
 
     def get_adaptive_plot_src(self, user):
-        path = self.get_adaptive_adwin_path(user)
+        path = self.get_adaptive_detector_path(user)
         filename = os.path.join(path, f'adaptive_controlflow_metrics.png')
         return filename
 
