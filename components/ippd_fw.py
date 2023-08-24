@@ -397,11 +397,11 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             print(f'Incorrect adaptive perspective, using default path for evaluation: {path}')
         return path
 
-    def get_adaptive_adwin_models_path(self, user_id):
+    def get_adaptive_detector_models_path(self, user_id):
         path = os.path.join(self.adaptive_path, self.current_parameters.logname,
                             f'{self.current_parameters.perspective}'
                             f'_{self.current_parameters.adaptive_controlflow_approach}'
-                            f'_win{self.current_parameters.win_size}',
+                            f'_win{self.current_parameters.win_size}'
                             f'_{self.current_parameters.detector_class.get_name()}'
                             f'{self.current_parameters.detector_class.get_parameters_string()}',
                             self.models_path)
@@ -520,7 +520,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             # output_path for saving plots, attribute values, drift, and evaluation metrics
             outputpath_adaptive_detector = self.get_adaptive_detector_path(user_id)
             if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
-                outputpath_adaptive_detector_models = self.get_adaptive_adwin_models_path(user_id)
+                outputpath_adaptive_detector_models = self.get_adaptive_detector_models_path(user_id)
                 outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')

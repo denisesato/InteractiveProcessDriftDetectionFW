@@ -19,16 +19,18 @@ class SelectDetector:
         return classes[detector_name]
 
     @staticmethod
-    def get_detector_instance(detector_name, parameters):
+    def get_detector_instance(detector_name, parameters=None):
         # define the class for each available detector
-        classes = {
-            ConceptDriftDetector.ADWIN.name: AdwinDetector(parameters),
-            ConceptDriftDetector.HDDM_A.name: HddmADetector(parameters),
-        }
-        return classes[detector_name]
+        detector_class = SelectDetector.get_selected_detector(detector_name)
+        detector_class.add_parameters(parameters)
+        return detector_class
 
 
 class DetectorWrapper:
+    def __init__(self):
+        self.parameters = {}
+        self.detector = None
+
     def get_name(self):
         return self.name
 
@@ -41,6 +43,13 @@ class DetectorWrapper:
             detector_parameters += f'_{key}{self.parameters[key]}'
         return detector_parameters
 
+    def add_parameters(self, parameters=None):
+        if parameters:
+            for key in parameters:
+                self.set_parameter(key, parameters[key])
+        else:
+            self.parameters = self.default_parameters
+
     def set_parameter(self, key, value):
         if key in self.default_parameters.keys():
             self.parameters[key] = value
@@ -50,12 +59,12 @@ class DetectorWrapper:
 
 class AdwinDetector(DetectorWrapper):
     def __init__(self, parameters=None):
-        self.detector = None
+        super().__init__()
         self.name = ConceptDriftDetector.ADWIN.value
         self.definition = ConceptDriftDetector.ADWIN.name
         self.default_parameters = {'delta': 0.002}
         if parameters:
-            self.parameters = parameters
+            self.add_parameters(parameters)
         else:
             self.parameters = self.default_parameters
 
@@ -74,14 +83,14 @@ class AdwinDetector(DetectorWrapper):
 
 class HddmADetector(DetectorWrapper):
     def __init__(self, parameters=None):
-        self.detector = None
+        super().__init__()
         self.name = ConceptDriftDetector.HDDM_A.value
         self.definition = ConceptDriftDetector.HDDM_A.name
         self.default_parameters = {'drift_confidence': 0.002,
                                    'warning_confidence': 0.005,
                                    'two_sided_test': False}
         if parameters:
-            self.parameters = parameters
+            self.add_parameters(parameters)
         else:
             self.parameters = self.default_parameters
 
