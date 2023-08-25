@@ -103,6 +103,33 @@ def test_adaptive_control_flow_trace_ok2():
     assert mean_delay == 26.75
 
 
+def test_adaptive_control_flow_trace_ok3():
+    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    log = 'cb2.5k.xes'
+    log_filename = os.path.join(input_path, log)
+    window = 75
+    delta = 0.002
+    parameters = IPDDParametersAdaptiveControlflow(logname=log_filename, approach=Approach.ADAPTIVE.name,
+                                                   perspective=AdaptivePerspective.CONTROL_FLOW.name,
+                                                   read_log_as=ReadLogAs.TRACE.name,
+                                                   win_size=window,
+                                                   metrics=[Metric.NODES.name, Metric.EDGES.name],
+                                                   adaptive_controlflow_approach=ControlflowAdaptiveApproach.TRACE.name,
+                                                   delta=delta,
+                                                   save_sublogs=True)
+    # Using Pm4Py 2.2.20.1 (thesis results )
+    # expected_drifts = [319, 991, 1471, 1983, 2399]
+    # Using Pm4Py 2.7.5 (refactoring of the inductive miner - email from Alessandro Berti
+    expected_drifts = [319]
+    real_drifts = [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250]
+    detected_drifts, metrics = run_IPDD_script(parameters, real_drifts)
+    assert detected_drifts == expected_drifts
+    f_score = round(metrics[EvaluationMetricList.F_SCORE.value], 2)
+    mean_delay = round(metrics[EvaluationMetricList.MEAN_DELAY.value], 2)
+    assert f_score == 0.2
+    assert mean_delay == 69
+
+
 def test_adaptive_control_flow_windowing_ok1():
     input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
     log = 'cb2.5k.xes'

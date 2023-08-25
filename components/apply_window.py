@@ -16,9 +16,7 @@ from threading import Thread
 import pm4py
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.obj import EventStream, EventLog
-from pm4py.objects.log.util import interval_lifecycle
 from pm4py.algo.filtering.log.attributes import attributes_filter
-from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.algo.evaluation.precision import algorithm as precision_evaluator
 from pm4py.algo.evaluation.replay_fitness import algorithm as replay_fitness_evaluator
 from pm4py.algo.discovery.footprints import algorithm as fp_discovery
@@ -715,19 +713,17 @@ class AnalyzeDrift:
             QualityDimension.FITNESS.name: 'fitnessTBR',
             QualityDimension.PRECISION.name: 'precisionETC',
         }
+
         # derive the initial model using the parameter stable_period
         print(f'Initial model discovered using traces from 0 to {window_size - 1}')
         log_for_model = EventLog(event_data[0:window_size])
-        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
-                                                         case_id_key='case:concept:name',
-                                                         timestamp_key='time:timestamp')
-        pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                     f'model1_0-{window_size - 1}.pnml')
-        pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
         # other discovery algorithms can be applied
-        # net, im, fm = heuristics_miner.apply(log_for_model)
-        # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
-        # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
+        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model)
+        pn_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                     f'model1_0-{window_size - 1}')
+        pnml_exporter.apply(net, im, f'{pn_filename}.pnml', final_marking=fm)
+        pm4py.save_vis_petri_net(net, im, fm, f'{pn_filename}.svg')
+
         adwin_detection = {}
         drifts = {}
         values = {}
@@ -798,16 +794,12 @@ class AnalyzeDrift:
                 if self.current_parameters.update_model:
                     print(f'Discover a new model using traces from {i} to {final_trace_id - 1}')
                     log_for_model = EventLog(event_data[i:final_trace_id])
-                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
-                                                                     case_id_key='case:concept:name',
-                                                                     timestamp_key='time:timestamp')
-                    pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                                 f'model{self.window_count + 1}_{i}-{final_trace_id - 1}.pnml')
-                    pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
                     # other discovery algorithms can be applied
-                    # net, im, fm = heuristics_miner.apply(log_for_model)
-                    # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMf)
-                    # net, im, fm = inductive_miner.apply(log_for_model, variant=inductive_miner.Variants.IMd)
+                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model)
+                    pn_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                                 f'model{self.window_count + 1}_{i}-{final_trace_id - 1}')
+                    pnml_exporter.apply(net, im, f'{pn_filename}.pnml', final_marking=fm)
+                    pm4py.save_vis_petri_net(net, im, fm, f'{pn_filename}.svg')
         # process remaining items as the last window
         if 0 < initial_trace_id < total_of_traces:
             final_trace_id = initial_trace_id + window_size
@@ -859,15 +851,13 @@ class AnalyzeDrift:
         initial_trace_id_for_stable_period = 0
         final_trace_id = initial_trace_id_for_stable_period + window_size
         log_for_model = EventLog(event_data[initial_trace_id_for_stable_period:final_trace_id])
-        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
-                                                         case_id_key='case:concept:name',
-                                                         timestamp_key='time:timestamp')
-        pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                     f'model1_{initial_trace_id_for_stable_period}-{final_trace_id - 1}.pnml')
-        pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
-        tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
-                                                     case_id_key='case:concept:name',
-                                                     timestamp_key='time:timestamp')
+        # other discovery algorithms can be applied
+        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model)
+        pn_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                     f'model1_{initial_trace_id_for_stable_period}-{final_trace_id - 1}')
+        pnml_exporter.apply(net, im, f'{pn_filename}.pnml', final_marking=fm)
+        pm4py.save_vis_petri_net(net, im, fm, f'{pn_filename}.svg')
+        tree = pm4py.discover_process_tree_inductive(log_for_model)
         print(f'Initial model discovered using traces [{initial_trace_id_for_stable_period}-{final_trace_id - 1}]')
         # initialize similarity metrics manager
         self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
@@ -964,12 +954,12 @@ class AnalyzeDrift:
                 if self.current_parameters.update_model:
                     # Discover a new model using window
                     log_for_model = EventLog(event_data[change_point:change_point + window_size])
-                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
-                                                                     case_id_key='case:concept:name',
-                                                                     timestamp_key='time:timestamp')
-                    pnml_filename = os.path.join(self.output_path_adaptive_models_adwin,
-                                                 f'model{self.window_count + 1}_{change_point}-{change_point + window_size - 1}.pnml')
-                    pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
+                    # other discovery algorithms can be applied
+                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model)
+                    pn_filename = os.path.join(self.output_path_adaptive_models_adwin,
+                                                 f'model{self.window_count + 1}_{change_point}-{change_point + window_size - 1}')
+                    pnml_exporter.apply(net, im, f'{pn_filename}.pnml', final_marking=fm)
+                    pm4py.save_vis_petri_net(net, im, fm, f'{pn_filename}.svg')
                     tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
                                                                  case_id_key='case:concept:name',
                                                                  timestamp_key='time:timestamp')

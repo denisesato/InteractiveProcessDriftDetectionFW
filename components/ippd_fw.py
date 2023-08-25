@@ -405,10 +405,12 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.current_log = LogInfo(complete_filename, filename)
         if '.xes' in complete_filename:
             # Assume that it is a XES file
-            # DMVS TESTE - NÃO ORDENAR OS TRACES ANTERIORMENTE
             variant = xes_importer.Variants.ITERPARSE
             parameters = {variant.value.Parameters.TIMESTAMP_SORT: True}
             self.current_log.log = xes_importer.apply(complete_filename, variant=variant, parameters=parameters)
+
+            # DMVS TEST - UNCOMMENT THIS LINE TO NOT SORT THE EVENT LOG BY TRACES
+            # THIS SHOW A DIFFERENCE IN THE UTFPR ANALYSIS
             # self.current_log.log = xes_importer.apply(complete_filename)
 
             self.current_log.first_traces = log_converter.apply(EventLog(self.current_log.log[0:self.MAX_TRACES]),
@@ -419,11 +421,9 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                                                                     case_id_key='case:concept:name',
                                                                     timestamp_key='time:timestamp'))
             self.current_log.total_of_cases = len(self.current_log.log)
-
             self.current_log.total_of_events = sum(pm4py.get_event_attribute_values(self.current_log.log,
                                                                                     'concept:name',
                                                                                     case_id_key='case:concept:name').values())
-
             self.current_log.median_case_duration = total_case_durations / self.current_log.total_of_cases
             self.current_log.median_case_duration_in_hours = self.current_log.median_case_duration / 60 / 60
 
