@@ -156,10 +156,11 @@ def run_adaptive_control_flow_trace_ok1():
     input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
-    window = 75
+    window = 100
 
-    detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.ADWIN.name)
-    # detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.HDDM_A.name)
+    # detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.ADWIN.name)
+    detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.HDDM_A.name)
+    # detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.EDDM.name)
     parameters = IPDDParametersAdaptiveControlflow(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                    perspective=AdaptivePerspective.CONTROL_FLOW.name,
                                                    read_log_as=ReadLogAs.TRACE.name,

@@ -6,6 +6,7 @@ from river import drift
 class ConceptDriftDetector(str, Enum):
     ADWIN = 'adwin'
     HDDM_A = 'hddm_a'
+    EDDM = 'eddm'
 
 
 class SelectDetector:
@@ -15,6 +16,7 @@ class SelectDetector:
         classes = {
             ConceptDriftDetector.ADWIN.name: AdwinDetector(),
             ConceptDriftDetector.HDDM_A.name: HddmADetector(),
+            ConceptDriftDetector.EDDM.name: EddmDetector(),
         }
         return classes[detector_name]
 
@@ -106,6 +108,29 @@ class HddmADetector(DetectorWrapper):
         return self.detector.drift_detected
 
     def reset(self):
-        self.detector = drift.binary.HDDM_A(drift_confidence=self.parameters['drift_confidence'],
-                                            warning_confidence=self.parameters['warning_confidence'],
-                                            two_sided_test=self.parameters['two_sided_test'])
+        self.instantiate_detector()
+
+class EddmDetector(DetectorWrapper):
+    def __init__(self, parameters=None):
+        super().__init__()
+        self.name = ConceptDriftDetector.EDDM.value
+        self.definition = ConceptDriftDetector.EDDM.name
+        self.default_parameters = {'alpha': 0.952,
+                                   'beta': 0.9}
+        if parameters:
+            self.add_parameters(parameters)
+        else:
+            self.parameters = self.default_parameters
+
+    def instantiate_detector(self):
+        self.detector = drift.binary.EDDM(alpha=self.parameters['alpha'],
+                                            beta=self.parameters['beta'])
+
+    def update_val(self, value):
+        self.detector.update(value)
+
+    def detected_change(self):
+        return self.detector.drift_detected
+
+    def reset(self):
+        self.instantiate_detector()
