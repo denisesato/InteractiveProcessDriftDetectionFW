@@ -123,7 +123,8 @@ class Dataset1Configuration:
     windows = [75, 100]
     detectors = [
         SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name),
-        SelectDetector.get_detector_instance(ConceptDriftDetector.HDDM_W.name),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.HDDM_W.name,
+                                             parameters={'two_sided_test': True})
     ]
 
     ###############################################################
