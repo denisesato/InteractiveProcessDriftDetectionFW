@@ -15,7 +15,6 @@ import argparse
 import os
 import time
 
-from components.adaptive.detectors import ConceptDriftDetector, SelectDetector
 from components.parameters import ReadLogAs, WindowUnityFixed, Approach, AttributeAdaptive, AdaptivePerspective, \
     ControlflowAdaptiveApproach
 from components.dfg_definitions import Metric
@@ -253,6 +252,10 @@ def run_IPDD_script(parameters, real_drifts=None):
             activities = parameters.activities
         elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
             win_size = parameters.win_size
+            if parameters.adaptive_controlflow_approach == 't':
+                adaptive_controlflow_approach = ControlflowAdaptiveApproach.TRACE.name
+            elif parameters.adaptive_controlflow_approach == 'w':
+                adaptive_controlflow_approach = ControlflowAdaptiveApproach.WINDOW.name
 
     event_log = parameters.logname
     if real_drifts and len(real_drifts) == 1 and real_drifts[0] == 0:  # no real drift present in the log
@@ -272,15 +275,7 @@ def run_IPDD_script(parameters, real_drifts=None):
     if parameters.approach == Approach.FIXED.name:
         print(f'Window size: {win_size}')
     elif parameters.approach == Approach.ADAPTIVE.name:
-        # check if the user define a detector, otherwise use the default ADWIN detector
-        if hasattr(parameters, "detector_class"):
-            detector_class = parameters.detector_class
-        else:
-            detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.ADWIN.name)
-        print(f'Detector: {detector_class.get_name()}')
-        for key in detector_class.parameters.keys():
-            print(f'{key}: {detector_class.parameters[key]}')
-
+        print(f'Delta - ADWIN detector: {parameters.delta}')
         if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             print(f'Attribute: {parameters.attribute}')
             if parameters.attribute == AttributeAdaptive.OTHER.name:
@@ -309,6 +304,7 @@ def run_IPDD_script(parameters, real_drifts=None):
     if hasattr(parameters, "attribute_name_for_plot"):
         attribute_name_for_plot = parameters.attribute_name_for_plot
 
+
     print(f'Starting analyzing process drifts ...')
     if parameters.approach == Approach.FIXED.name:
         parameters = IPDDParametersFixed(event_log, parameters.approach, ReadLogAs.TRACE.name, metrics,
@@ -316,12 +312,10 @@ def run_IPDD_script(parameters, real_drifts=None):
     elif parameters.approach == Approach.ADAPTIVE.name:
         if parameters.perspective == AdaptivePerspective.TIME_DATA.name:
             parameters = IPDDParametersAdaptive(event_log, parameters.approach, parameters.perspective,
-                                                parameters.read_log_as,
-                                                metrics,
-                                                detector_class,
+                                                parameters.read_log_as, metrics,
                                                 parameters.attribute,
                                                 attribute_name,
-                                                activities,
+                                                activities, parameters.delta,
                                                 activities_for_plot=activities_for_plot,
                                                 attribute_name_for_plot=attribute_name_for_plot)
         elif parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
@@ -330,7 +324,7 @@ def run_IPDD_script(parameters, real_drifts=None):
                                                            win_size,
                                                            metrics,
                                                            parameters.adaptive_controlflow_approach,
-                                                           detector_class,
+                                                           delta=parameters.delta,
                                                            save_sublogs=parameters.save_sublogs,
                                                            update_model=parameters.update_model)
     framework.run_script(parameters)
@@ -395,7 +389,7 @@ def run_IPDD_script(parameters, real_drifts=None):
                 for activity in framework.get_all_activities():
                     if activity in detected_drifts:
                         metrics[activity] = framework.evaluate(real_drifts, detected_drifts[activity], total_of_itens,
-                                                               activity)
+                                                     activity)
                     else:
                         # if IPDD do not detect any drift in the activity
                         metrics[activity] = framework.evaluate(real_drifts, [], total_of_itens, activity)
