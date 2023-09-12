@@ -6,7 +6,7 @@ This installation process was tested on a Windows 10 machine with Python 3.9.1.
 
 After you cloned the git repository, go to the project directory and install the dependencies (using pip):
 
-	pip install -U numpy==1.22.3
+	pip install -U numpy==1.25.2
 	pip install -r requirements.txt
 	pip install ./scikit-multiflow-0.6.dev0.tar.gz
 
