@@ -13,8 +13,11 @@
 """
 import os
 import shutil
+from enum import Enum
 
 from pm4py.objects.log.util import interval_lifecycle
+
+from components.adaptive.detectors import ConceptDriftDetector, SelectDetector
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
@@ -519,7 +522,6 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                 outputpath_adaptive_detector_models = self.get_adaptive_detector_models_path(user_id)
                 outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
-
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
 

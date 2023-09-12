@@ -19,6 +19,7 @@ import dash_interactive_graphviz
 from dash.dependencies import Input, Output, State
 from app import app, get_user_id, framework, dash
 from components.adaptive.attributes import Activity
+from components.adaptive.detectors import ConceptDriftDetector, SelectDetector
 from components.parameters import WindowUnityFixed, ReadLogAs, AttributeAdaptive, Approach, AdaptivePerspective, \
     ControlflowAdaptiveApproach
 from components.ippd_fw import IPDDProcessingStatus, IPDDParametersFixed, IPDDParametersAdaptive, \
@@ -469,13 +470,17 @@ def run_framework(n_clicks, approach, input_window_size, attribute, file, metric
                 framework.run_web(parameters, user_id=user)
             elif approach == Approach.ADAPTIVE.name:
                 if adaptive_perspective == AdaptivePerspective.TIME_DATA.name:
+                    detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name,
+                                                                          parameters={'delta': deltaAdwin})
                     parameters = IPDDParametersAdaptive(file, approach, adaptive_perspective, ReadLogAs.TRACE.name,
-                                                        metrics, attribute, delta=deltaAdwin)
+                                                        metrics, detector_class, attribute)
                     framework.run_web(parameters, user_id=user)
                 elif adaptive_perspective == AdaptivePerspective.CONTROL_FLOW.name:
+                    detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name,
+                                                                          parameters={'delta': deltaAdwin})
                     parameters = IPDDParametersAdaptiveControlflow(file, approach, adaptive_perspective,
                                                                    ReadLogAs.TRACE.name, int_input_size, metrics,
-                                                                   adaptive_controlflow_approach, deltaAdwin)
+                                                                   adaptive_controlflow_approach, detector_class)
                     framework.run_web(parameters, user_id=user)
             else:
                 print(f'Incorrect approach {approach}')
