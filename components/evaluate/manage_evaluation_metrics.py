@@ -129,6 +129,8 @@ class MeanDelay(EvaluationMetric):
 class ManageEvaluationMetrics:
     def __init__(self, evaluation_metrics, evaluation_path, parameters):
         # get the metrics selected by the user
+        self.detected_drifts = None
+        self.real_drifts = None
         self.metrics_list = evaluation_metrics
         self.parameters = parameters
         self.path = evaluation_path
@@ -146,14 +148,16 @@ class ManageEvaluationMetrics:
                                          f'{self.parameters.approach}'
                                          f'_{self.parameters.perspective}'
                                          f'_{self.parameters.attribute}'
-                                         f'_delta{self.parameters.delta}')
+                                         f'_{self.parameters.detector_class.get_name()}'
+                                         f'{self.parameters.detector_class.get_parameters_string()}')
             elif self.parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                 self.path = os.path.join(self.path, self.parameters.logname,
                                          f'{self.parameters.approach}'
                                          f'_{self.parameters.perspective}'
                                          f'_{self.parameters.adaptive_controlflow_approach}'
                                          f'_win{self.parameters.win_size}'
-                                         f'_delta{self.parameters.delta}')
+                                         f'_{self.parameters.detector_class.get_name()}'
+                                         f'{self.parameters.detector_class.get_parameters_string()}')
             else:
                 print(f'Adaptive perspective not identified: {self.parameters.perspective}, using default '
                       f'evaluation path...')

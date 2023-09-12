@@ -13,6 +13,8 @@
 """
 import math
 
+from components.adaptive.detectors import SelectDetector, ConceptDriftDetector
+
 """
 For running IPDD massively, the user must define the dataset configuration:
 
@@ -70,7 +72,7 @@ from components.ippd_fw import InteractiveProcessDriftDetectionFW, IPDDParameter
 DRIFTS_KEY = 'drifts - '
 DETECTED_AT_KEY = 'detected at - '
 ACTIVITY_KEY = 'activity'
-DELTA_KEY = 'd'
+DETECTOR_KEY = 'detector'
 
 
 def run_massive_adaptive_data(dataset_config, metrics=None):
@@ -183,12 +185,14 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
             print(f'Event log: {log}')
             print('----------------------------------------------')
             log_filename = os.path.join(dataset_config.input_path, log)
-
+            detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name,
+                                                                  {'delta': delta})
             parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                 perspective=AdaptivePerspective.TIME_DATA.name,
                                                 read_log_as=read_log_as, metrics=metrics,
                                                 attribute=dataset_config.attribute,
-                                                attribute_name=dataset_config.attribute_name, delta=delta,
+                                                attribute_name=dataset_config.attribute_name,
+                                                detector_class=detector_class,
                                                 attribute_name_for_plot=attribute_name_for_plot,
                                                 activities=activities,
                                                 activities_for_plot=activities_for_plot)
@@ -208,7 +212,7 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
                 print(
                     f'Adaptive IPDD detect drifts for attribute {dataset_config.attribute} in activity {activity} in '
                     f'traces {detected_drifts}')
-                dict_results[log][f'{DRIFTS_KEY}{DELTA_KEY}={delta} {ACTIVITY_KEY}={activity}'] = detected_drifts[activity]
+                dict_results[log][f'{DRIFTS_KEY}{DETECTOR_KEY}={delta} {ACTIVITY_KEY}={activity}'] = detected_drifts[activity]
 
     out_filepath = framework.get_evaluation_path('script')
     out_filename = f'results_IPDD_{Approach.ADAPTIVE.name}_'\
@@ -268,13 +272,15 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
     for log in dataset_config.lognames:
         dict_results[log] = {}
         for w in dataset_config.windows:
-            for delta in dataset_config.deltas:
+            for detector in dataset_config.detectors:
                 print('----------------------------------------------')
                 print(f'Running new scenario')
                 print(f'Approach: {Approach.ADAPTIVE.value}')
                 print(f'Adaptive approach: {adaptive_approach.value}')
                 print(f'Window size: {w}')
-                print(f'Delta: {delta}')
+                print(f'Detector: {detector.get_name()}')
+                for key in detector.parameters:
+                    print(f'Detector [{key}]: {detector.parameters[key]}')
                 print(f'Metrics: {[m.value for m in metrics]}')
                 print(f'Event log: {log}')
                 print('----------------------------------------------')
@@ -284,7 +290,7 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                                                                read_log_as=ReadLogAs.TRACE.name,
                                                                win_size=w, metrics=metrics,
                                                                adaptive_controlflow_approach=adaptive_approach.name,
-                                                               delta=delta, save_sublogs=save_sublogs,
+                                                               detector_class=detector, save_sublogs=save_sublogs,
                                                                save_model_svg=save_model_png)
                 framework.run_script(parameters)
 
@@ -298,7 +304,7 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                 # remove the index 0
                 if detected_drifts:
                     detected_drifts = detected_drifts[1:]
-                dict_results[log][f'{DRIFTS_KEY}w={w} d={delta}'] = detected_drifts
+                dict_results[log][f'{DRIFTS_KEY}w={w} {DETECTOR_KEY}={detector.get_name()}{detector.get_parameters_string()}'] = detected_drifts
                 print(
                     f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
 
@@ -380,9 +386,9 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
                 detected_at[configuration] = trace_ids_list
 
         for configuration in change_points.keys():
-            if dataset_config.activities is not None:
+            if hasattr(dataset_config, "activities") and dataset_config.activities is not None:
                 # get the activity name in the configuration
-                regexp = f"{DELTA_KEY}=(\d.*) {ACTIVITY_KEY}=(.*)"
+                regexp = f"{DETECTOR_KEY}=(\d.*) {ACTIVITY_KEY}=(.*)"
                 if match := re.search(regexp, configuration):
                     activity_reported = match.group(2)
                 else:

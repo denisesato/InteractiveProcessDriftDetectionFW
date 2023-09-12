@@ -51,7 +51,7 @@ class ManageSimilarityMetrics:
             print(f'Model type [{self.model_type}] does not have similarity metrics implemented.')
             self.finish()
             self.metrics_list = None
-            return None
+            return
 
         # get the metrics selected by the user
         self.metrics_list = current_parameters.metrics
@@ -181,18 +181,22 @@ class ManageSimilarityMetrics:
 
             if self.current_parameters and self.current_parameters.approach == Approach.FIXED.name:
                 filename = os.path.join(self.metrics_path,
-                                        f'{self.current_parameters.approach}_win{self.current_parameters.win_size}_drift_windows.txt')
+                                        f'{self.current_parameters.approach}'
+                                        f'_win{self.current_parameters.win_size}_drift_windows.txt')
             elif self.current_parameters and self.current_parameters.approach == Approach.ADAPTIVE.name:
                 if self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:
                     filename = os.path.join(self.metrics_path,
-                                            f'{self.current_parameters.approach}_{self.current_parameters.attribute}'
-                                            f'_delta{self.current_parameters.delta}_drift_windows.txt')
+                                            f'{self.current_parameters.approach}'
+                                            f'_{self.current_parameters.attribute}'
+                                            f'_{self.current_parameters.detector_class.get_name()}'
+                                            f'{self.current_parameters.detector_class.get_parameters_string()}_drift_windows.txt')
                 elif self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                     filename = os.path.join(self.metrics_path,
                                             f'{self.current_parameters.approach}'
                                             f'_{self.current_parameters.adaptive_controlflow_approach}'
                                             f'_win{self.current_parameters.win_size}'
-                                            f'_delta{self.current_parameters.delta}_drift_windows.txt')
+                                            f'_{self.current_parameters.detector_class.get_name()}'
+                                            f'{self.current_parameters.detector_class.get_parameters_string()}_drift_windows.txt')
                 else:
                     print(f'Adaptive approach not defined {self.current_parameters.adaptive_controlflow_approach} - using default filename...')
             else:

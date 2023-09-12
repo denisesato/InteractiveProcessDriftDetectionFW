@@ -44,9 +44,15 @@ info_ipdd = [
                     "publications:",
                     className="card-text mt-3"),
 
+            html.P(dbc.CardLink("CONCEPT DRIFT DETECTION IN PROCESS MODELS - THESIS",
+                                href="https://www.ppgia.pucpr.br/pt/arquivos/doutorado/teses/2022"
+                                     "/Tese_Denise_Maria_Vecino_Sato.pdf",
+                                target="_blank")),
+
             html.P(dbc.CardLink("Interactive Process Drift Detection Framework - ICAISC 2021",
                                 href="https://link.springer.com/chapter/10.1007/978-3-030-87897-9_18",
                                 target="_blank")),
+
             html.P(dbc.CardLink("Interactive Process Drift Detection: A Framework for Visual Analysis of Process "
                                 "Drifts (Extended Abstract) - ICPM 2021",
                                 href="https://icpmconference.org/2021/wp-content/uploads/sites/5/2021/10/L"
