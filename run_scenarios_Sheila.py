@@ -166,7 +166,8 @@ def run_adaptive_control_flow():
                                                    win_size=window,
                                                    metrics=[Metric.NODES.name, Metric.EDGES.name],
                                                    adaptive_controlflow_approach=ControlflowAdaptiveApproach.TRACE.name,
-                                                   detector_class=detector_class)
+                                                   detector_class=detector_class,
+                                                   save_sublogs=True)
     real_drifts = [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250]
     # real_drifts = [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500]
     detected_drifts, metrics = run_IPDD_script(parameters, real_drifts)
@@ -180,5 +181,5 @@ def run_adaptive_control_flow():
 if __name__ == '__main__':
     run_adaptive_control_flow()
     # dataset1 = Dataset1Configuration()
-    # run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
-    # run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
+    # run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True, save_sublogs=True)
+    # run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True, save_sublogs=True)
