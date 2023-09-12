@@ -10,6 +10,13 @@ After you cloned the git repository, go to the project directory and install the
 	pip install -r requirements.txt
 	pip install ./scikit-multiflow-0.6.dev0.tar.gz
 
+The development version of the scikit-multiflow contains a bugfix for fixing the issue described in: https://github.com/scikit-multiflow/scikit-multiflow/issues/306.
+
+# Information about new version of pm4py
+We have updated the pm4py from version 2.2.20.1 to version 2.7.5. After this update the pm4py inductive miner return more precise models, which affects the precision metric value used by IPDD for detecting the concept drifts. Because of this difference, when executing the updated version of IPDD will result on different detections for some scenarios when comparing to the reported results at my thesis: https://www.ppgia.pucpr.br/pt/arquivos/doutorado/teses/2022/Tese_Denise_Maria_Vecino_Sato.pdf. 
+
+"Since the release of pm4py 2.3.0, the inductive miner has been refactored. In particular, a change of interest is the introduction of the "strict sequence cut" in place of the traditional "sequence cut". This type of sequence cut provides generally more precise models, but results in models that are different." - information provided by Alessandro Berti from pm4py team. 
+
 # Docker installation
 It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt. 
 
@@ -73,6 +80,6 @@ You may also check the file run_manufaturing_synthetic_experiments_CLI.py, which
 
 # Running the massive interface of IPDD 
 
-If you want to perform the drift analysis using different parameters, e.g, analysing the same log with a range of window sizes, you can use the massive interface (ipdd_massive.py). 
+If you want to perform the drift analysis using different parameters, e.g., analysing the same log with a range of window sizes, you can use the massive interface (ipdd_massive.py). 
 
 You can check the file run_thesis_experiments_massive.py, which performed massive experiments on a dataset containing 68 event logs.
