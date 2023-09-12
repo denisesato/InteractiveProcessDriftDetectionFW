@@ -13,11 +13,8 @@
 """
 import os
 import shutil
-from enum import Enum
 
 from pm4py.objects.log.util import interval_lifecycle
-
-from components.adaptive.detectors import ConceptDriftDetector, SelectDetector
 from components.apply_window import AnalyzeDrift
 from components.dfg_definitions import DfgDefinitions
 from components.discovery.discovery_dfg import DiscoveryDfg
@@ -522,6 +519,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                 outputpath_adaptive_detector_models = self.get_adaptive_detector_models_path(user_id)
                 outputpath_adaptive_sublogs = self.get_adaptive_logs_path(user_id)
+
         else:
             print(f'Approach not identified in ippd_fw.run() {parameters.approach}')
 
@@ -538,8 +536,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
                                     self.get_input_path(user_id), self.get_models_path(user_id),
                                     self.get_similarity_metrics_path(user_id), outputpath_adaptive_sublogs,
                                     self.current_log, self.discovery, user_id,
-                                    outputpath_adaptive_detector, outputpath_adaptive_detector_models,
-                                    detector_class=parameters.detector_class)
+                                    outputpath_adaptive_detector, outputpath_adaptive_detector_models)
         self.total_of_windows, self.initial_indexes, self.all_activities, self.initial_event_ids = self.analyze.start_drift_analysis()
         if self.current_parameters.approach == Approach.ADAPTIVE.name and \
                 self.current_parameters.perspective == AdaptivePerspective.TIME_DATA.name:

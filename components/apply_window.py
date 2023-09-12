@@ -85,8 +85,7 @@ class AnalyzeDrift:
     def __init__(self, model_type, current_parameters, control, input_path,
                  models_path, metrics_path, logs_path, current_log, discovery, user,
                  output_path_adaptive_detector,
-                 output_path_adaptive_models_detector,
-                 detector_class):
+                 output_path_adaptive_models_detector):
 
         self.current_parameters = current_parameters
         self.user = user
@@ -99,7 +98,6 @@ class AnalyzeDrift:
         self.output_path_adaptive_models_detector = output_path_adaptive_models_detector
         self.model_type = model_type
         self.current_trace = 0
-        self.detector_class = detector_class
 
         # instance of the MetricsManager
         if current_parameters.approach == Approach.FIXED.name or \
@@ -108,6 +106,7 @@ class AnalyzeDrift:
             self.metrics = None
 
         elif current_parameters.approach == Approach.ADAPTIVE.name:
+            self.detector_class = self.current_parameters.detector_class
             self.metrics = {}
 
         # current loaded event log information
@@ -234,6 +233,8 @@ class AnalyzeDrift:
         for m in metrics.keys():
             df = pd.DataFrame(values[m])
             df.to_excel(os.path.join(self.output_path_adaptive_detector, f'{metrics[m]}.xlsx'))
+            df.index.name = 'Index'
+            df.to_csv(os.path.join(self.output_path_adaptive_detector, f'{metrics[m]}.csv'), header=['Value'])
         plt.close()
         plt.cla()
         plt.clf()
@@ -464,11 +465,11 @@ class AnalyzeDrift:
         activities = attributes_filter.get_attribute_values(self.current_log.log, "concept:name")
         return activities
 
-    # IPDD adaptive approach for time or data attributes
+    # IPDD adaptive approach for time or numeric data attributes
     def apply_detector_on_attribute(self, event_data, attribute_class, detector_class, activities, user):
         self.current_trace = 0
         print(f'Applying {detector_class.get_name()} to log {self.current_log.filename} attribute {attribute_class.name}')
-        for key in detector_class.parameters:
+        for key in detector_class.parameters.keys():
             print(f'{key}: {detector_class.parameters[key]}')
         detector_dict = {}
         attribute_values = {}
@@ -483,7 +484,7 @@ class AnalyzeDrift:
         # initialize one detector for each activity
         for a in activities:
             detector_dict[a] = SelectDetector.get_detector_instance(detector_class.get_definition(),
-                                                                            detector_class.parameters)
+                                                                    detector_class.parameters)
             detector_dict[a].instantiate_detector()
             attribute_values[a] = {}
             change_points[a] = []
@@ -530,7 +531,7 @@ class AnalyzeDrift:
                             'timestamp': timestamp,
                             'case_id': case_id,
                         }
-                        detector_dict[activity].add_element(value)
+                        detector_dict[activity].update_val(value)
                         if detector_dict[activity].detected_change():
                             # create the manager for similarity metrics if a change is detected
                             if activity not in self.metrics.keys():
@@ -713,7 +714,6 @@ class AnalyzeDrift:
     # When a drift is detected a new model may be discovered using the next traces (stable_period)
     # The process model is discovered using the inductive miner
     def apply_detector_on_quality_metrics_trace_by_trace(self, event_data, detector_class, window_size, user):
-        factor = 100
         self.current_trace = 0
         print(f'Trace by trace approach - {detector_class.get_name()} to log {self.current_log.filename}')
         for key in detector_class.parameters:
@@ -775,7 +775,7 @@ class AnalyzeDrift:
                 # calculate the metric for each dimension
                 # for each dimension decide if the metric should be calculated using only the last trace read or all
                 # the traces read since the last drift
-                new_value = calculate_quality_metric(metrics[dimension], last_trace, net, im, fm) * factor
+                new_value = calculate_quality_metric(metrics[dimension], last_trace, net, im, fm) * detector_class.factor
                 values[dimension].append(new_value)
                 # update the new value in the detector
                 detector_dict[dimension].update_val(new_value)

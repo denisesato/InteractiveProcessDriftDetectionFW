@@ -3,7 +3,7 @@ import os
 
 
 def trace_by_trace():
-    folder = 'D:\Doutorado_Experimentos\datasets\dataset1'
+    folder = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
     change_patterns = [
         'cb',
         'cd',
@@ -46,7 +46,7 @@ def trace_by_trace():
                     log = f'{cp}{s}.xes'
                     filename = os.path.join(folder, log)
                     print(f'Adaptive IPDD control-flow Trace by Trace {filename} - window {w} delta {d}')
-                    subprocess.run(f"ipdd_cli.py -l {filename} -w {w} -a a -p cf -cfa t -d {d} -sub True", shell=True)
+                    subprocess.run(f"ipdd_cli.py -l {filename} -ws {w} -a a -p cf -cfa t -d {d} -sub True", shell=True)
 
 
 if __name__ == '__main__':

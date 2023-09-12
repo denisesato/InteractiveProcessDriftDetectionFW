@@ -1,49 +1,32 @@
 import subprocess
 import os
 
+from components.adaptive.detectors import SelectDetector, ConceptDriftDetector
+from components.dfg_definitions import Metric
+from components.ippd_fw import IPDDParametersAdaptiveControlflow
+from components.parameters import Approach, ReadLogAs, AdaptivePerspective, ControlflowAdaptiveApproach
+from ipdd_cli import run_IPDD_script
+
 
 def trace_by_trace_without_update_model():
-    folder = '"C:/Users/denis/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1"'
-    change_patterns = [
-        'cb',
-        # 'cd',
-        # 'cf',
-        # 'cm',
-        # 'cp',
-        # 'IOR',
-        # 'IRO',
-        # 'lp',
-        # 'OIR',
-        # 'ORI',
-        # 'pl',
-        # 'pm',
-        # 're',
-        # 'RIO',
-        # 'ROI',
-        # 'rp',
-        # 'sw'
-    ]
-    sizes = [
-        '2.5k',
-        # '5k',
-        # '7.5k',
-        # '10k'
-    ]
-    deltas = [
-        0.002
-    ]
-    winsizes = [
-        100
-    ]
+    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    log = 'cb5k.xes'
+    log_filename = os.path.join(input_path, log)
+    window = 100
 
-    for cp in change_patterns:
-        for s in sizes:
-            for w in winsizes:
-                for d in deltas:
-                    log = f'{cp}{s}.xes'
-                    filename = os.path.join(folder, log)
-                    print(f'Adaptive IPDD control-flow Trace by Trace {filename} - window {w} delta {d}')
-                    subprocess.run(f"ipdd_cli.py -l {filename} -w {w} -a a -p cf -cfa t -d {d} --no_update_model", shell=True)
+    detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name)
+
+    parameters = IPDDParametersAdaptiveControlflow(logname=log_filename,
+                                                   approach=Approach.ADAPTIVE.name,
+                                                   perspective=AdaptivePerspective.CONTROL_FLOW.name,
+                                                   read_log_as=ReadLogAs.TRACE.name,
+                                                   win_size=window,
+                                                   metrics=[Metric.NODES.name, Metric.EDGES.name],
+                                                   adaptive_controlflow_approach=ControlflowAdaptiveApproach.TRACE.name,
+                                                   detector_class=detector_class,
+                                                   update_model=False)
+    detected_drifts = run_IPDD_script(parameters)
+    print(f'IPDD detected: {detected_drifts}')
 
 
 if __name__ == '__main__':

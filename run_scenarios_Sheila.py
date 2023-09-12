@@ -14,7 +14,6 @@
 import os
 from ipdd_massive import run_massive_fixed_controlflow, run_massive_adaptive_controlflow_trace_by_trace, \
     run_massive_adaptive_controlflow_windowing
-from components.adaptive.detectors import ConceptDriftDetector, SelectDetector
 from components.dfg_definitions import Metric
 from components.evaluate.manage_evaluation_metrics import EvaluationMetricList
 from components.ippd_fw import IPDDParametersAdaptiveControlflow
@@ -122,12 +121,7 @@ class Dataset1Configuration:
     # for testing one specific scenario
     lognames = ['cb2.5k.xes', 'cd5k.xes']
     windows = [75, 100]
-    detectors = [
-        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, {'delta': 0.002}),
-        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, {'delta': 0.05}),
-        SelectDetector.get_detector_instance(ConceptDriftDetector.HDDM_A.name)
-    ]
-
+    deltas = [0.002]
     ###############################################################
     # Information for calculating evaluation metrics
     ###############################################################
@@ -156,18 +150,16 @@ def run_adaptive_control_flow_trace_ok1():
     input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
-    window = 100
-
-    # detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.ADWIN.name)
-    detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.HDDM_A.name)
-    # detector_class = SelectDetector.get_selected_detector(ConceptDriftDetector.EDDM.name)
+    window = 75
+    deltas = [0.002]
     parameters = IPDDParametersAdaptiveControlflow(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                    perspective=AdaptivePerspective.CONTROL_FLOW.name,
                                                    read_log_as=ReadLogAs.TRACE.name,
                                                    win_size=window,
                                                    metrics=[Metric.NODES.name, Metric.EDGES.name],
                                                    adaptive_controlflow_approach=ControlflowAdaptiveApproach.TRACE.name,
-                                                   detector_class=detector_class)
+                                                   # detector_class=detector_class)
+                                                   delta=deltas)
     real_drifts = [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250]
     # Drifts detected by ADWIN
     # [319, 991, 1471, 1983, 2399]

@@ -1,7 +1,11 @@
-python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250
+python ipdd_cli.py -ws 250 -l "C:\Users\denise\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection_COM_LOGS_XES_GERADOS_PROM\logs\cb\cb2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250
 
-python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes"
+python ipdd_cli.py -ws 250 -l "C:\Users\denise\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection_COM_LOGS_XES_GERADOS_PROM\logs\cb\cb2.5k.xes"
 
-python ipdd_cli.py -wz 250 -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection\logs\cb\cb2.5k.xes" -mt SOJOURN_TIME
+python ipdd_cli.py -ws 250 -l "C:\Users\denise\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection_COM_LOGS_XES_GERADOS_PROM\logs\cb\cb2.5k.xes" -mt SOJOURN_TIME
 
-python ipdd_cli.py -a a -l "C:\Users\denis\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\LogsArtificiaisProducao\LogArtificial01P300C10A.xes"
+python ipdd_cli.py -a a -p td -l "C:\Users\Denise\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\LogsProducao\Artificiais\LogArtificial01P300C10A.xes"
+
+python ipdd_cli.py -a a -ws 100 -cfa w -l "C:\Users\denise\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection_COM_LOGS_XES_GERADOS_PROM\logs\cb\cb2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250
+
+python ipdd_cli.py -a a -ws 75 -l "C:\Users\denise\OneDrive\Documents\Doutorado\Bases de Dados\DadosConceptDrift\Fast and accurate business process drift detection_COM_LOGS_XES_GERADOS_PROM\logs\pm\pm2.5k.xes" -rd 250 500 750 1000 1250 1500 1750 2000 2250
