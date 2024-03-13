@@ -1,0 +1,290 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pnml>
+  <net id="net1" type="http://www.pnml.org/version-2009/grammar/pnmlcoremodel">
+    <page id="n0">
+      <place id="p13">
+        <name>
+          <text>p13</text>
+        </name>
+      </place>
+      <place id="p17">
+        <name>
+          <text>p17</text>
+        </name>
+      </place>
+      <place id="sink1">
+        <name>
+          <text>sink1</text>
+        </name>
+      </place>
+      <place id="p3">
+        <name>
+          <text>p3</text>
+        </name>
+      </place>
+      <place id="sink2">
+        <name>
+          <text>sink2</text>
+        </name>
+      </place>
+      <place id="p5">
+        <name>
+          <text>p5</text>
+        </name>
+      </place>
+      <place id="p12">
+        <name>
+          <text>p12</text>
+        </name>
+      </place>
+      <place id="p16">
+        <name>
+          <text>p16</text>
+        </name>
+      </place>
+      <place id="p7">
+        <name>
+          <text>p7</text>
+        </name>
+      </place>
+      <place id="source">
+        <name>
+          <text>source</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+      </place>
+      <place id="p10">
+        <name>
+          <text>p10</text>
+        </name>
+      </place>
+      <place id="p11">
+        <name>
+          <text>p11</text>
+        </name>
+      </place>
+      <place id="p15">
+        <name>
+          <text>p15</text>
+        </name>
+      </place>
+      <place id="p2">
+        <name>
+          <text>p2</text>
+        </name>
+      </place>
+      <place id="sink3">
+        <name>
+          <text>sink3</text>
+        </name>
+      </place>
+      <place id="p4">
+        <name>
+          <text>p4</text>
+        </name>
+      </place>
+      <place id="p8">
+        <name>
+          <text>p8</text>
+        </name>
+      </place>
+      <place id="p9">
+        <name>
+          <text>p9</text>
+        </name>
+      </place>
+      <place id="p14">
+        <name>
+          <text>p14</text>
+        </name>
+      </place>
+      <place id="p18">
+        <name>
+          <text>p18</text>
+        </name>
+      </place>
+      <place id="p1">
+        <name>
+          <text>p1</text>
+        </name>
+      </place>
+      <place id="p6">
+        <name>
+          <text>p6</text>
+        </name>
+      </place>
+      <transition id="t3">
+        <name>
+          <text>Return application back to applicant</text>
+        </name>
+      </transition>
+      <transition id="t7">
+        <name>
+          <text>Appraise property</text>
+        </name>
+      </transition>
+      <transition id="t15">
+        <name>
+          <text>Check if home insurance quote is requested</text>
+        </name>
+      </transition>
+      <transition id="t19">
+        <name>
+          <text>Loan application canceled</text>
+        </name>
+      </transition>
+      <transition id="t11">
+        <name>
+          <text>Prepare acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="t2">
+        <name>
+          <text>Check application form completeness</text>
+        </name>
+      </transition>
+      <transition id="t6">
+        <name>
+          <text>Assess loan risk</text>
+        </name>
+      </transition>
+      <transition id="t10">
+        <name>
+          <text>Loan application reject</text>
+        </name>
+      </transition>
+      <transition id="t14">
+        <name>
+          <text>Prepare acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="t18">
+        <name>
+          <text>Cancel application</text>
+        </name>
+      </transition>
+      <transition id="st1">
+        <name>
+          <text>st1</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="aeac43fe-9993-4450-aa66-762561035287"/>
+      </transition>
+      <transition id="t1">
+        <name>
+          <text>Loan application received</text>
+        </name>
+      </transition>
+      <transition id="t5">
+        <name>
+          <text>Check credit history</text>
+        </name>
+      </transition>
+      <transition id="t9">
+        <name>
+          <text>Reject application</text>
+        </name>
+      </transition>
+      <transition id="t17">
+        <name>
+          <text>Verify repayment agreement</text>
+        </name>
+      </transition>
+      <transition id="t13">
+        <name>
+          <text>Send home insurance quote</text>
+        </name>
+      </transition>
+      <transition id="t21">
+        <name>
+          <text>Loan application approved</text>
+        </name>
+      </transition>
+      <transition id="t4">
+        <name>
+          <text>Receive updated application</text>
+        </name>
+      </transition>
+      <transition id="t8">
+        <name>
+          <text>Assess eligibility</text>
+        </name>
+      </transition>
+      <transition id="t16">
+        <name>
+          <text>Send acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="t12">
+        <name>
+          <text>Check if home insurance quote is requested</text>
+        </name>
+      </transition>
+      <transition id="t20">
+        <name>
+          <text>Approve application</text>
+        </name>
+      </transition>
+      <arc id="2591023274880" source="source" target="t1"/>
+      <arc id="2591023275264" source="p2" target="t3"/>
+      <arc id="2591023275648" source="p2" target="st1"/>
+      <arc id="2591023300864" source="p6" target="t8"/>
+      <arc id="2591023301248" source="p8" target="t8"/>
+      <arc id="2591023301632" source="p10" target="t10"/>
+      <arc id="2591023302016" source="p11" target="t12"/>
+      <arc id="2591023302400" source="p13" target="t14"/>
+      <arc id="2591023302784" source="p12" target="t16"/>
+      <arc id="2591023303168" source="p16" target="t18"/>
+      <arc id="2591023303840" source="t21" target="sink3"/>
+      <arc id="2591023303360" source="p17" target="t19"/>
+      <arc id="2591023275168" source="t2" target="p2"/>
+      <arc id="2591023275552" source="t4" target="p1"/>
+      <arc id="2591023300768" source="t6" target="p6"/>
+      <arc id="2591023301152" source="t7" target="p8"/>
+      <arc id="2591023275936" source="t5" target="p5"/>
+      <arc id="2591023301536" source="t9" target="p10"/>
+      <arc id="2591023301920" source="t11" target="p11"/>
+      <arc id="2591023302304" source="t13" target="p13"/>
+      <arc id="2591023302688" source="t15" target="p15"/>
+      <arc id="2591023303072" source="t17" target="p16"/>
+      <arc id="2591023303744" source="p18" target="t21"/>
+      <arc id="2591023275072" source="p1" target="t2"/>
+      <arc id="2591023275456" source="p3" target="t4"/>
+      <arc id="2591023300672" source="p5" target="t6"/>
+      <arc id="2591023301056" source="p7" target="t7"/>
+      <arc id="2591023275840" source="p4" target="t5"/>
+      <arc id="2591023301440" source="p9" target="t9"/>
+      <arc id="2591023301824" source="p9" target="t11"/>
+      <arc id="2591023302208" source="p12" target="t13"/>
+      <arc id="2591023302592" source="p14" target="t15"/>
+      <arc id="2591023302976" source="p15" target="t17"/>
+      <arc id="2591023303648" source="t20" target="p18"/>
+      <arc id="2591023303552" source="p16" target="t20"/>
+      <arc id="2591023274976" source="t1" target="p1"/>
+      <arc id="2591023275360" source="t3" target="p3"/>
+      <arc id="2591023275744" source="st1" target="p4"/>
+      <arc id="2591023300960" source="st1" target="p7"/>
+      <arc id="2591023301344" source="t8" target="p9"/>
+      <arc id="2591023301728" source="t10" target="sink1"/>
+      <arc id="2591023302112" source="t12" target="p12"/>
+      <arc id="2591023302496" source="t14" target="p14"/>
+      <arc id="2591023302880" source="t16" target="p15"/>
+      <arc id="2591023303264" source="t18" target="p17"/>
+      <arc id="2591023303456" source="t19" target="sink2"/>
+    </page>
+    <finalmarkings>
+      <marking>
+        <place idref="sink1">
+          <text>1</text>
+        </place>
+        <place idref="sink2">
+          <text>1</text>
+        </place>
+        <place idref="sink3">
+          <text>1</text>
+        </place>
+      </marking>
+    </finalmarkings>
+  </net>
+</pnml>

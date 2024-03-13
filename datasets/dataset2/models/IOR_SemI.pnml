@@ -1,0 +1,290 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pnml>
+  <net id="net1" type="http://www.pnml.org/version-2009/grammar/pnmlcoremodel">
+    <page id="n0">
+      <place id="sink">
+        <name>
+          <text>sink</text>
+        </name>
+      </place>
+      <place id="p_15">
+        <name>
+          <text>p_15</text>
+        </name>
+      </place>
+      <place id="p_18">
+        <name>
+          <text>p_18</text>
+        </name>
+      </place>
+      <place id="p_17">
+        <name>
+          <text>p_17</text>
+        </name>
+      </place>
+      <place id="p_24">
+        <name>
+          <text>p_24</text>
+        </name>
+      </place>
+      <place id="p_19">
+        <name>
+          <text>p_19</text>
+        </name>
+      </place>
+      <place id="p_25">
+        <name>
+          <text>p_25</text>
+        </name>
+      </place>
+      <place id="p_12">
+        <name>
+          <text>p_12</text>
+        </name>
+      </place>
+      <place id="p_5">
+        <name>
+          <text>p_5</text>
+        </name>
+      </place>
+      <place id="p_6">
+        <name>
+          <text>p_6</text>
+        </name>
+      </place>
+      <place id="p_11">
+        <name>
+          <text>p_11</text>
+        </name>
+      </place>
+      <place id="p_26">
+        <name>
+          <text>p_26</text>
+        </name>
+      </place>
+      <place id="p_10">
+        <name>
+          <text>p_10</text>
+        </name>
+      </place>
+      <place id="p_20">
+        <name>
+          <text>p_20</text>
+        </name>
+      </place>
+      <place id="p_22">
+        <name>
+          <text>p_22</text>
+        </name>
+      </place>
+      <place id="source">
+        <name>
+          <text>source</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+      </place>
+      <place id="p_8">
+        <name>
+          <text>p_8</text>
+        </name>
+      </place>
+      <place id="p_13">
+        <name>
+          <text>p_13</text>
+        </name>
+      </place>
+      <place id="p_14">
+        <name>
+          <text>p_14</text>
+        </name>
+      </place>
+      <place id="p_21">
+        <name>
+          <text>p_21</text>
+        </name>
+      </place>
+      <place id="p_23">
+        <name>
+          <text>p_23</text>
+        </name>
+      </place>
+      <transition id="09486993-b0b7-4785-9ebd-8d21517534e3">
+        <name>
+          <text>Approve application</text>
+        </name>
+      </transition>
+      <transition id="skip_3">
+        <name>
+          <text>skip_3</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="ec39a2d9-5ace-4c48-9e1c-da0016bbc0fc"/>
+      </transition>
+      <transition id="f8eea4c2-606e-4ba1-a257-220a1f90527a">
+        <name>
+          <text>Loan application rejected</text>
+        </name>
+      </transition>
+      <transition id="da1fc36f-ce78-48c1-b927-bf8d97fefa6b">
+        <name>
+          <text>Prepare acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="b575f126-46e5-4e43-a26e-6c4773d03698">
+        <name>
+          <text>Send acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="6848263c-8a77-4db3-9a71-8493a3bff9b3">
+        <name>
+          <text>Loan  application canceled</text>
+        </name>
+      </transition>
+      <transition id="29210376-5a7e-4c37-add4-0d987e156902">
+        <name>
+          <text>Added Activity</text>
+        </name>
+      </transition>
+      <transition id="8358e05c-9647-4487-a69f-bc539ef66afc">
+        <name>
+          <text>Check if home insurance quote is requested</text>
+        </name>
+      </transition>
+      <transition id="9fcb52a8-687e-401b-b513-45ede4f6b853">
+        <name>
+          <text>Verify repayment agreement</text>
+        </name>
+      </transition>
+      <transition id="05e7e77d-5b7f-4604-8f78-966b2a383cd9">
+        <name>
+          <text>Loan  application approved</text>
+        </name>
+      </transition>
+      <transition id="6b95d25c-09c1-4ba5-9b2a-abcecf87d282">
+        <name>
+          <text>Loan  application received</text>
+        </name>
+      </transition>
+      <transition id="8d8eaf6e-3197-4aa3-a96b-d3bb87d034c4">
+        <name>
+          <text>Assess eligibility</text>
+        </name>
+      </transition>
+      <transition id="c3e72b75-c07d-4d4e-b923-7065d0aa4a83">
+        <name>
+          <text>Send home insurance quote</text>
+        </name>
+      </transition>
+      <transition id="50a0376e-6c2d-4fa6-bf65-5140cc26f883">
+        <name>
+          <text>Return application back to applicant</text>
+        </name>
+      </transition>
+      <transition id="7e28d616-3ac5-4633-8312-e43340a97eb8">
+        <name>
+          <text>Check credit history</text>
+        </name>
+      </transition>
+      <transition id="skip_8">
+        <name>
+          <text>skip_8</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="a948a01d-252e-4c82-bb3c-63b649e250ee"/>
+      </transition>
+      <transition id="0fb436ed-e695-4348-a5cb-a4a8c1001b79">
+        <name>
+          <text>Receive updated application</text>
+        </name>
+      </transition>
+      <transition id="0404d124-b823-4c54-85ca-76d6db7e0015">
+        <name>
+          <text>Check  application  form completeness</text>
+        </name>
+      </transition>
+      <transition id="6ea8e537-4c37-4a89-926a-24c696ab08ff">
+        <name>
+          <text>Appraise property</text>
+        </name>
+      </transition>
+      <transition id="cf3985bf-4918-414e-8863-baedaf02a60d">
+        <name>
+          <text>Assess loan risk</text>
+        </name>
+      </transition>
+      <transition id="tauSplit_6">
+        <name>
+          <text>tauSplit_6</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="cd3d4c9b-58e9-49de-b88d-f83cbe32ad79"/>
+      </transition>
+      <transition id="7823e00a-e695-475f-94c9-91f5e15bacc9">
+        <name>
+          <text>Reject application</text>
+        </name>
+      </transition>
+      <transition id="396faa84-9174-4f1b-a1e9-f835adef0891">
+        <name>
+          <text>Cancel application</text>
+        </name>
+      </transition>
+      <arc id="2134865565056" source="p_5" target="0404d124-b823-4c54-85ca-76d6db7e0015"/>
+      <arc id="2134865565824" source="0404d124-b823-4c54-85ca-76d6db7e0015" target="p_6"/>
+      <arc id="2134865585536" source="p_12" target="7e28d616-3ac5-4633-8312-e43340a97eb8"/>
+      <arc id="2134865587072" source="p_14" target="cf3985bf-4918-414e-8863-baedaf02a60d"/>
+      <arc id="2134865587840" source="skip_8" target="p_20"/>
+      <arc id="2134865213184" source="9fcb52a8-687e-401b-b513-45ede4f6b853" target="p_24"/>
+      <arc id="2134865214336" source="05e7e77d-5b7f-4604-8f78-966b2a383cd9" target="sink"/>
+      <arc id="2134865488000" source="skip_3" target="p_10"/>
+      <arc id="2134865566736" source="source" target="6b95d25c-09c1-4ba5-9b2a-abcecf87d282"/>
+      <arc id="2134865584912" source="tauSplit_6" target="p_19"/>
+      <arc id="2134865513104" source="p_19" target="7823e00a-e695-475f-94c9-91f5e15bacc9"/>
+      <arc id="2134865512720" source="p_15" target="da1fc36f-ce78-48c1-b927-bf8d97fefa6b"/>
+      <arc id="2134865211792" source="p_24" target="396faa84-9174-4f1b-a1e9-f835adef0891"/>
+      <arc id="2134865585440" source="p_10" target="6ea8e537-4c37-4a89-926a-24c696ab08ff"/>
+      <arc id="2134865586592" source="7e28d616-3ac5-4633-8312-e43340a97eb8" target="p_14"/>
+      <arc id="2134865585824" source="tauSplit_6" target="p_17"/>
+      <arc id="2134865587360" source="p_19" target="skip_8"/>
+      <arc id="2134865510560" source="7823e00a-e695-475f-94c9-91f5e15bacc9" target="p_20"/>
+      <arc id="2134865511712" source="8358e05c-9647-4487-a69f-bc539ef66afc" target="p_22"/>
+      <arc id="2134865485984" source="p_11" target="8d8eaf6e-3197-4aa3-a96b-d3bb87d034c4"/>
+      <arc id="2134865566640" source="p_6" target="50a0376e-6c2d-4fa6-bf65-5140cc26f883"/>
+      <arc id="2134865565104" source="p_8" target="0fb436ed-e695-4348-a5cb-a4a8c1001b79"/>
+      <arc id="2134865511472" source="f8eea4c2-606e-4ba1-a257-220a1f90527a" target="sink"/>
+      <arc id="2134865212080" source="p_22" target="b575f126-46e5-4e43-a26e-6c4773d03698"/>
+      <arc id="2134865211696" source="c3e72b75-c07d-4d4e-b923-7065d0aa4a83" target="p_23"/>
+      <arc id="2134865213232" source="p_25" target="6848263c-8a77-4db3-9a71-8493a3bff9b3"/>
+      <arc id="2134865211936" source="p_24" target="09486993-b0b7-4785-9ebd-8d21517534e3"/>
+      <arc id="2134865566400" source="p_6" target="skip_3"/>
+      <arc id="2134865586496" source="6ea8e537-4c37-4a89-926a-24c696ab08ff" target="p_11"/>
+      <arc id="2134865588032" source="cf3985bf-4918-414e-8863-baedaf02a60d" target="p_13"/>
+      <arc id="2134865587648" source="p_15" target="tauSplit_6"/>
+      <arc id="2134865587264" source="p_17" target="29210376-5a7e-4c37-add4-0d987e156902"/>
+      <arc id="2134865212224" source="p_23" target="9fcb52a8-687e-401b-b513-45ede4f6b853"/>
+      <arc id="2134865213376" source="p_26" target="05e7e77d-5b7f-4604-8f78-966b2a383cd9"/>
+      <arc id="2134865487808" source="p_20" target="f8eea4c2-606e-4ba1-a257-220a1f90527a"/>
+      <arc id="2134865563856" source="50a0376e-6c2d-4fa6-bf65-5140cc26f883" target="p_8"/>
+      <arc id="2134865512144" source="da1fc36f-ce78-48c1-b927-bf8d97fefa6b" target="p_21"/>
+      <arc id="2134865213520" source="p_22" target="c3e72b75-c07d-4d4e-b923-7065d0aa4a83"/>
+      <arc id="2134865212752" source="396faa84-9174-4f1b-a1e9-f835adef0891" target="p_25"/>
+      <arc id="2134865584480" source="29210376-5a7e-4c37-add4-0d987e156902" target="p_18"/>
+      <arc id="2134865513440" source="p_21" target="8358e05c-9647-4487-a69f-bc539ef66afc"/>
+      <arc id="2134865212896" source="09486993-b0b7-4785-9ebd-8d21517534e3" target="p_26"/>
+      <arc id="2134865213664" source="0fb436ed-e695-4348-a5cb-a4a8c1001b79" target="p_5"/>
+      <arc id="2134865488864" source="skip_3" target="p_12"/>
+      <arc id="2134865489248" source="p_18" target="f8eea4c2-606e-4ba1-a257-220a1f90527a"/>
+      <arc id="2134865586160" source="8d8eaf6e-3197-4aa3-a96b-d3bb87d034c4" target="p_15"/>
+      <arc id="2134865213040" source="b575f126-46e5-4e43-a26e-6c4773d03698" target="p_23"/>
+      <arc id="2134865214192" source="6848263c-8a77-4db3-9a71-8493a3bff9b3" target="sink"/>
+      <arc id="2134865488240" source="6b95d25c-09c1-4ba5-9b2a-abcecf87d282" target="p_5"/>
+      <arc id="2134865488624" source="p_13" target="8d8eaf6e-3197-4aa3-a96b-d3bb87d034c4"/>
+    </page>
+    <finalmarkings>
+      <marking>
+        <place idref="sink">
+          <text>1</text>
+        </place>
+      </marking>
+    </finalmarkings>
+  </net>
+</pnml>
