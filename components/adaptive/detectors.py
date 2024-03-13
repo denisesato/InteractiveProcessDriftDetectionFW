@@ -1,5 +1,6 @@
 from enum import Enum
-from skmultiflow.drift_detection.adwin import ADWIN
+
+import river.drift
 from river import drift
 
 
@@ -76,16 +77,16 @@ class AdwinDetector(DetectorWrapper):
             self.parameters = self.default_parameters
 
     def instantiate_detector(self):
-        self.detector = ADWIN(delta=self.parameters['delta'])
+        self.detector = river.drift.ADWIN(delta=self.parameters['delta'])
 
     def update_val(self, value):
-        self.detector.add_element(value)
+        self.detector.update(value)
 
     def detected_change(self):
-        return self.detector.detected_change()
+        return self.detector.drift_detected
 
     def reset(self):
-        self.detector.reset()
+        self.instantiate_detector()
 
 
 class HddmWDetector(DetectorWrapper):

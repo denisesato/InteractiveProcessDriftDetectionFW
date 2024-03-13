@@ -199,7 +199,7 @@ class AnalyzeDrift:
     # generate the plot with the fitness and precision metrics and the drifts
     # used for adaptive change detection in the control-flow perspective
     def plot_signal_adaptive_controlflow(self, values, metrics, drifts=None):
-        plt.style.use('seaborn-whitegrid')
+        # plt.style.use('seaborn-whitegrid')
         for metric in metrics.keys():
             plt.plot(values[metric], label=metrics[metric])
             no_values = len(values[metric])
