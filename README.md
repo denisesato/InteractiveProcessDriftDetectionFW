@@ -2,25 +2,23 @@
 This is a public repository for Interactive Process Drift Detection (IPDD) Framework, a tool for detecting process drifts in process models. 
 
 # Installation from source-code repository
-This installation process was tested on a Windows 10 machine with Python 3.9.1. 
+This installation process was tested on a Windows 10 machine with Python 3.12.2. 
 
 After you cloned the git repository, go to the project directory and install the dependencies (using pip):
 
-	pip install -U numpy==1.22.3
 	pip install -r requirements.txt
-	pip install ./scikit-multiflow-0.6.dev0.tar.gz
 
-The development version of the scikit-multiflow contains a bugfix for fixing the issue described in: https://github.com/scikit-multiflow/scikit-multiflow/issues/306.
+# New release
 
-# Information about new version of pm4py
-We have updated the pm4py from version 2.2.20.1 to version 2.7.5. After this update the pm4py inductive miner return more precise models, which affects the precision metric value used by IPDD for detecting the concept drifts. Because of this difference, when executing the updated version of IPDD will result on different detections for some scenarios when comparing to the reported results at my thesis: https://www.ppgia.pucpr.br/pt/arquivos/doutorado/teses/2022/Tese_Denise_Maria_Vecino_Sato.pdf. 
+We have updated IPDD to use the ADWIN detector implementation from River package (https://github.com/online-ml/river).
+
+## Information about new version of pm4py
+We have updated the pm4py from version 2.2.20.1 to version 2.7.11. After this update the pm4py inductive miner return more precise models, which affects the precision metric value used by IPDD for detecting the concept drifts. Because of this difference, when executing the updated version of IPDD will result on different detections for some scenarios when comparing to the reported results at my thesis: https://www.ppgia.pucpr.br/pt/arquivos/doutorado/teses/2022/Tese_Denise_Maria_Vecino_Sato.pdf. 
 
 "Since the release of pm4py 2.3.0, the inductive miner has been refactored. In particular, a change of interest is the introduction of the "strict sequence cut" in place of the traditional "sequence cut". This type of sequence cut provides generally more precise models, but results in models that are different." - information provided by Alessandro Berti from pm4py team. 
 
-# Docker installation
-It is possible to install IPDD via docker using the Dockerfile. If you need any help please verify the file docker_help.txt. 
-
-# Running the web interface
+# Running IPDD
+## Running the web interface
 You can start the IPDD web interface by running the file index.py.
 
 The application will be accessible by any browser using the URL http://localhost:8050/.
@@ -69,7 +67,7 @@ Optionally the user can evaluate the detected drifts. This is possible when the 
 
 IPDD shows the F-score, FPR and Mean Delay metrics calculated using the informed actual drifts. 
 
-# Running the command line interface
+## Running the command line interface
 
 It is also possible to execute IPDD by the command line. In this case, IPDD saves the outputted information about the process drifts into the “data/output” folder. You have to create a virtual environment containing the dependencies of IPDD (numpy, requirements.txt, and scikit-multiflow-0.6.dev0.tar.gz)
 
@@ -78,7 +76,7 @@ python ipdd_cli.py -h
 
 You may also check the file run_manufaturing_synthetic_experiments_CLI.py, which performed several experiments using the CLI interface.
 
-# Running the massive interface of IPDD 
+## Running the massive interface of IPDD 
 
 If you want to perform the drift analysis using different parameters, e.g., analysing the same log with a range of window sizes, you can use the massive interface (ipdd_massive.py). 
 
