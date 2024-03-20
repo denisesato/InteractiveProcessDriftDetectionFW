@@ -217,6 +217,11 @@ class Dataset2Configuration:
         SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
     ]
 
+    # sample for testing one specific scenario
+    # lognames = ['cb3k.xes']
+    # windows = [100]
+    # detectors = [SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})]
+
     ###############################################################
     # Information for calculating evaluation metrics
     ###############################################################
