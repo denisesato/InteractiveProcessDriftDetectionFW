@@ -25,10 +25,15 @@ class DatasetSampleConfiguration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
+    dataset_name = 'dataset1'
     input_folder = '/IPDD_Datasets/dataset1'
     lognames = ['cb2.5k.xes', cd5k.xes]
     windows = [25, 50]
-    deltas = [0.002, 0.05]
+    detectors = [
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.HDDM_W.name, parameters={'two_sided_test': True})
+    ]
 
     ###############################################################
     # Information for calculating evaluation metrics
@@ -141,7 +146,7 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                         print(
                             f'IPDD detect control-flow drift for activity {activity} in windows {windows} - traces {traces}')
 
-                out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.ADAPTIVE.name}_'
+                out_filename = os.path.join(framework.get_evaluation_path('script'), f'{dataset_config.dataset_name}_results_IPDD_{Approach.ADAPTIVE.name}_'
                                                                                      f'{AdaptivePerspective.TIME_DATA.name}_'
                                                                                      f'{AttributeAdaptive.OTHER.name}-'
                                                                                      f'{at}.xlsx')
@@ -215,7 +220,7 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
                 dict_results[log][f'{DRIFTS_KEY}{DETECTOR_KEY}={delta} {ACTIVITY_KEY}={activity}'] = detected_drifts[activity]
 
     out_filepath = framework.get_evaluation_path('script')
-    out_filename = f'results_IPDD_{Approach.ADAPTIVE.name}_'\
+    out_filename = f'{dataset_config.dataset_name}_results_IPDD_{Approach.ADAPTIVE.name}_'\
                    f'{AdaptivePerspective.TIME_DATA.name}_' \
                    f'{dataset_config.attribute}.xlsx'
 
@@ -256,7 +261,8 @@ def run_massive_fixed_controlflow(dataset_config, metrics=None):
             windows_with_drifts, detected_drifts = framework.get_windows_with_drifts()
             dict_results[log][f'{DRIFTS_KEY}w={w}'] = detected_drifts
             print(f'Fixed IPDD detect control-flow drift in windows {windows_with_drifts} - traces {detected_drifts}')
-    out_filename = os.path.join(framework.get_evaluation_path('script'), f'results_IPDD_{Approach.FIXED.name}.xlsx')
+    out_filename = os.path.join(framework.get_evaluation_path('script'),
+                                f'{dataset_config.dataset_name}_results_IPDD_{Approach.FIXED.name}.xlsx')
     df = pd.DataFrame.from_dict(dict_results, orient='index')
     df.to_excel(out_filename)
 
@@ -308,7 +314,7 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                 print(
                     f'Adaptive IPDD detect control-flow drifts in traces {detected_drifts}')
 
-    out_filename = f'results_IPDD_{Approach.ADAPTIVE.name}' \
+    out_filename = f'{dataset_config.dataset_name}_results_IPDD_{Approach.ADAPTIVE.name}' \
                    f'_{AdaptivePerspective.CONTROL_FLOW.name}' \
                    f'_{adaptive_approach.name}.xlsx'
     out_complete_filename = os.path.join(framework.get_evaluation_path('script'),
