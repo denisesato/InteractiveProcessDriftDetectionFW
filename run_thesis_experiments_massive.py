@@ -11,6 +11,7 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
+from components.adaptive.detectors import SelectDetector, ConceptDriftDetector
 from ipdd_massive import run_massive_fixed_controlflow, run_massive_adaptive_controlflow_trace_by_trace, \
     calculate_metrics_massive, run_massive_adaptive_controlflow_windowing
 
@@ -110,7 +111,13 @@ class Dataset1Configuration:
 
     lognames = lognames2500 + lognames5000 + lognames7500 + lognames10000
     windows = [i for i in range(25, 301, 25)]
-    deltas = [0.002, 0.05, 0.1, 0.3]
+
+    detectors = [
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.1}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
+    ]
 
     ###############################################################
     # Information for calculating evaluation metrics
@@ -201,7 +208,12 @@ class Dataset2Configuration:
 
     lognames = lognames3000 + lognames4500 + lognames8000
     windows = [i for i in range(25, 301, 25)]
-    deltas = [0.002, 0.05, 0.1, 0.3]
+    detectors = [
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.1}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
+    ]
 
     ###############################################################
     # Information for calculating evaluation metrics
