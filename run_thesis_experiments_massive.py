@@ -27,6 +27,7 @@ class Dataset1Configuration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
+    dataset_name = 'dataset1'
     input_path = 'datasets/dataset1'
     lognames2500 = [
         'cb2.5k.xes',
@@ -147,6 +148,7 @@ class Dataset2Configuration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
+    dataset_name = 'dataset2'
     input_path = 'datasets/dataset2'
     lognames3000 = [
         'cb3k.xes',
@@ -235,6 +237,7 @@ class RealDatasetConfiguration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
+    dataset_name = 'italian_help_desk_company'
     input_path = 'datasets/real'
     lognames = ['italian_help_desk_company.xes']
     windows = [100]
