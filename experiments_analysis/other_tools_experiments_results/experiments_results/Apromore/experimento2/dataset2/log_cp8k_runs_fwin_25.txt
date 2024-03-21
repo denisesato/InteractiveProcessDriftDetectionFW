@@ -1,0 +1,15 @@
+cp8k.xes
+runs
+Initial window size = 25
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 771 (Sun Apr 26 17:45:09 BRT 1970) after reading 779 traces.
+
+
+(2) Sudden drift detected at trace: 5269 (Mon Apr 27 10:28:35 BRT 1970) after reading 5277 traces.
+
+
+(3) Sudden drift detected at trace: 6659 (Mon Apr 27 15:42:58 BRT 1970) after reading 6667 traces.
+
+

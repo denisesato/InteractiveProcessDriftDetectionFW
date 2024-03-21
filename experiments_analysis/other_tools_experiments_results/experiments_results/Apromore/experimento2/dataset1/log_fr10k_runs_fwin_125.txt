@@ -1,0 +1,12 @@
+fr10k.xes
+runs
+Initial window size = 125
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 1080 (Wed Mar 16 10:52:27 BRT 2005) after reading 1121 traces.
+
+
+(2) Sudden drift detected at trace: 9095 (Sun Mar 17 09:05:49 BRT 2013) after reading 9136 traces.
+
+

@@ -1,0 +1,12 @@
+ROI8k.xes
+runs
+Initial window size = 25
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 767 (Sun Apr 26 17:47:31 BRT 1970) after reading 775 traces.
+
+
+(2) Sudden drift detected at trace: 3272 (Mon Apr 27 03:21:05 BRT 1970) after reading 3280 traces.
+
+

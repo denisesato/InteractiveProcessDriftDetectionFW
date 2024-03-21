@@ -1,0 +1,15 @@
+ROI3k.xes
+runs
+Initial window size = 275
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 777 (Sun Apr 26 17:51:40 BRT 1970) after reading 868 traces.
+
+
+(2) Sudden drift detected at trace: 1532 (Sun Apr 26 20:37:20 BRT 1970) after reading 1626 traces.
+
+
+(3) Sudden drift detected at trace: 2534 (Mon Apr 27 00:46:56 BRT 1970) after reading 2627 traces.
+
+

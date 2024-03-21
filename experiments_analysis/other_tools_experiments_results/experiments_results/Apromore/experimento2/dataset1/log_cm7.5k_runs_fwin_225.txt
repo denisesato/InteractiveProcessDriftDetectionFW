@@ -1,0 +1,33 @@
+cm7.5k.xes
+runs
+Initial window size = 225
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 861 (Sun Apr 26 17:51:55 BRT 1970) after reading 936 traces.
+
+
+(2) Sudden drift detected at trace: 1610 (Sun Apr 26 20:26:36 BRT 1970) after reading 1685 traces.
+
+
+(3) Sudden drift detected at trace: 2332 (Sun Apr 26 23:00:36 BRT 1970) after reading 2407 traces.
+
+
+(4) Sudden drift detected at trace: 3091 (Mon Apr 27 01:40:58 BRT 1970) after reading 3166 traces.
+
+
+(5) Sudden drift detected at trace: 3851 (Mon Apr 27 04:22:37 BRT 1970) after reading 3926 traces.
+
+
+(6) Sudden drift detected at trace: 4538 (Mon Apr 27 06:45:31 BRT 1970) after reading 4613 traces.
+
+
+(7) Sudden drift detected at trace: 5357 (Mon Apr 27 09:41:18 BRT 1970) after reading 5432 traces.
+
+
+(8) Sudden drift detected at trace: 6064 (Mon Apr 27 12:08:44 BRT 1970) after reading 6139 traces.
+
+
+(9) Sudden drift detected at trace: 6800 (Mon Apr 27 14:48:18 BRT 1970) after reading 6875 traces.
+
+

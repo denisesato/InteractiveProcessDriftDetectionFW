@@ -1,0 +1,6 @@
+cd10k.xes
+runs
+Initial window size = 200
+Window type = ADWIN
+*********************************************
+

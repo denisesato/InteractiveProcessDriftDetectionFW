@@ -1,0 +1,33 @@
+lp5k.xes
+runs
+Initial window size = 225
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 590 (Tue May 11 07:44:43 BRT 2004) after reading 665 traces.
+
+
+(2) Sudden drift detected at trace: 1105 (Wed Aug 11 06:18:34 BRT 2004) after reading 1180 traces.
+
+
+(3) Sudden drift detected at trace: 1538 (Wed Nov 03 14:58:43 BRST 2004) after reading 1613 traces.
+
+
+(4) Sudden drift detected at trace: 2088 (Wed Feb 09 08:31:38 BRST 2005) after reading 2163 traces.
+
+
+(5) Sudden drift detected at trace: 2583 (Mon May 09 12:51:15 BRT 2005) after reading 2658 traces.
+
+
+(6) Sudden drift detected at trace: 3104 (Tue Aug 09 13:32:25 BRT 2005) after reading 3179 traces.
+
+
+(7) Sudden drift detected at trace: 3589 (Wed Nov 09 07:30:44 BRST 2005) after reading 3664 traces.
+
+
+(8) Sudden drift detected at trace: 4087 (Wed Feb 08 13:58:10 BRST 2006) after reading 4162 traces.
+
+
+(9) Sudden drift detected at trace: 4579 (Mon May 08 09:35:21 BRT 2006) after reading 4654 traces.
+
+

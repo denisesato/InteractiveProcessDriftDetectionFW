@@ -1,0 +1,21 @@
+pm8k.xes
+runs
+Initial window size = 75
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 793 (Sun Apr 26 17:32:45 BRT 1970) after reading 818 traces.
+
+
+(2) Sudden drift detected at trace: 1558 (Sun Apr 26 20:20:39 BRT 1970) after reading 1583 traces.
+
+
+(3) Sudden drift detected at trace: 2553 (Sun Apr 26 23:50:33 BRT 1970) after reading 2578 traces.
+
+
+(4) Sudden drift detected at trace: 3310 (Mon Apr 27 02:37:29 BRT 1970) after reading 3335 traces.
+
+
+(5) Sudden drift detected at trace: 7799 (Mon Apr 27 18:46:20 BRT 1970) after reading 7824 traces.
+
+

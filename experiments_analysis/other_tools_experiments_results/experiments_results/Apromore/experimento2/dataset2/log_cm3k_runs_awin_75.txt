@@ -1,0 +1,18 @@
+cm3k.xes
+runs
+Initial window size = 75
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 327 (Sun Apr 26 15:55:07 BRT 1970) after reading 387 traces.
+
+
+(2) Sudden drift detected at trace: 832 (Sun Apr 26 17:43:10 BRT 1970) after reading 887 traces.
+
+
+(3) Sudden drift detected at trace: 1574 (Sun Apr 26 20:24:28 BRT 1970) after reading 1633 traces.
+
+
+(4) Sudden drift detected at trace: 2603 (Sun Apr 26 23:59:22 BRT 1970) after reading 2663 traces.
+
+

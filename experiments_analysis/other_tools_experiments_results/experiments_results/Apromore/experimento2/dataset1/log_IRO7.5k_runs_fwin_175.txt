@@ -1,0 +1,36 @@
+IRO7.5k.xes
+runs
+Initial window size = 175
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 831 (Mon Mar 12 10:48:19 BRT 2638) after reading 889 traces.
+
+
+(2) Sudden drift detected at trace: 1567 (Sun Feb 19 06:30:51 BRT 2693) after reading 1625 traces.
+
+
+(3) Sudden drift detected at trace: 2260 (Sun Mar 06 07:58:26 BRT 3272) after reading 2318 traces.
+
+
+(4) Sudden drift detected at trace: 3068 (Mon Apr 05 12:20:56 BRT 3328) after reading 3126 traces.
+
+
+(5) Sudden drift detected at trace: 3845 (Tue Mar 13 09:00:37 BRT 3906) after reading 3903 traces.
+
+
+(6) Sudden drift detected at trace: 4087 (Tue Apr 03 10:12:29 BRT 3906) after reading 4145 traces.
+
+
+(7) Sudden drift detected at trace: 4561 (Thu Mar 15 12:14:36 BRT 3956) after reading 4619 traces.
+
+
+(8) Sudden drift detected at trace: 5298 (Thu Mar 10 10:47:02 BRT 4540) after reading 5356 traces.
+
+
+(9) Sudden drift detected at trace: 6040 (Mon Mar 18 06:25:32 BRT 4571) after reading 6098 traces.
+
+
+(10) Sudden drift detected at trace: 6835 (Tue Mar 12 11:46:14 BRT 5174) after reading 6893 traces.
+
+

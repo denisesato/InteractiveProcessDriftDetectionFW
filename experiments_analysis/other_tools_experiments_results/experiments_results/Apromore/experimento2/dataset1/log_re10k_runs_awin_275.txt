@@ -1,0 +1,33 @@
+re10k.xes
+runs
+Initial window size = 275
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 1023 (Tue May 04 12:31:35 BRT 2004) after reading 1214 traces.
+
+
+(2) Sudden drift detected at trace: 2025 (Wed Aug 04 06:25:08 BRT 2004) after reading 2232 traces.
+
+
+(3) Sudden drift detected at trace: 3033 (Wed Nov 03 10:25:01 BRST 2004) after reading 3228 traces.
+
+
+(4) Sudden drift detected at trace: 4023 (Wed Feb 02 14:36:25 BRST 2005) after reading 4206 traces.
+
+
+(5) Sudden drift detected at trace: 5024 (Tue May 03 12:46:08 BRT 2005) after reading 5215 traces.
+
+
+(6) Sudden drift detected at trace: 6001 (Mon Aug 01 09:17:20 BRT 2005) after reading 6200 traces.
+
+
+(7) Sudden drift detected at trace: 7028 (Thu Nov 03 07:31:03 BRST 2005) after reading 7219 traces.
+
+
+(8) Sudden drift detected at trace: 8024 (Thu Feb 02 13:34:20 BRST 2006) after reading 8215 traces.
+
+
+(9) Sudden drift detected at trace: 9026 (Fri May 05 07:18:08 BRT 2006) after reading 9221 traces.
+
+

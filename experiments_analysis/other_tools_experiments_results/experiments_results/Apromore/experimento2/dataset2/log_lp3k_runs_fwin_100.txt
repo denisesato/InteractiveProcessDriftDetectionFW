@@ -1,0 +1,12 @@
+lp3k.xes
+runs
+Initial window size = 100
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 315 (Sun Apr 26 15:56:25 BRT 1970) after reading 348 traces.
+
+
+(2) Sudden drift detected at trace: 1577 (Sun Apr 26 20:34:11 BRT 1970) after reading 1610 traces.
+
+

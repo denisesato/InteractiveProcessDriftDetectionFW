@@ -1,0 +1,6 @@
+cb10k.xes
+runs
+Initial window size = 50
+Window type = FWIN
+*********************************************
+

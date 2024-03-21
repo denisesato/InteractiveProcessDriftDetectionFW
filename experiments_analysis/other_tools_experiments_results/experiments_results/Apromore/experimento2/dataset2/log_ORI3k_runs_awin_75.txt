@@ -1,0 +1,18 @@
+ORI3k.xes
+runs
+Initial window size = 75
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 300 (Sun Apr 26 15:55:49 BRT 1970) after reading 375 traces.
+
+
+(2) Sudden drift detected at trace: 804 (Sun Apr 26 18:08:58 BRT 1970) after reading 880 traces.
+
+
+(3) Sudden drift detected at trace: 1535 (Sun Apr 26 20:45:57 BRT 1970) after reading 1607 traces.
+
+
+(4) Sudden drift detected at trace: 2559 (Mon Apr 27 01:23:17 BRT 1970) after reading 2622 traces.
+
+
