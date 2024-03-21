@@ -1,0 +1,18 @@
+ORI5k.xes
+runs
+Initial window size = 25
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 1521 (Tue Mar 06 11:54:24 BRT 2007) after reading 1529 traces.
+
+
+(2) Sudden drift detected at trace: 2022 (Sat Feb 02 14:18:54 BRST 2008) after reading 2030 traces.
+
+
+(3) Sudden drift detected at trace: 3023 (Mon Aug 02 13:23:26 BRT 2010) after reading 3031 traces.
+
+
+(4) Sudden drift detected at trace: 3522 (Sun Mar 06 12:39:09 BRT 2011) after reading 3530 traces.
+
+

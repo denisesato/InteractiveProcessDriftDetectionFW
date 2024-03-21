@@ -1,0 +1,9 @@
+cd8k.xes
+runs
+Initial window size = 100
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 3798 (Mon Apr 27 04:23:24 BRT 1970) after reading 3824 traces.
+
+

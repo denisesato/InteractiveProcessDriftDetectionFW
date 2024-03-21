@@ -1,0 +1,27 @@
+ROI4.5k.xes
+runs
+Initial window size = 300
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 599 (Sun Apr 26 17:10:16 BRT 1970) after reading 699 traces.
+
+
+(2) Sudden drift detected at trace: 830 (Sun Apr 26 18:08:02 BRT 1970) after reading 930 traces.
+
+
+(3) Sudden drift detected at trace: 1582 (Sun Apr 26 20:51:34 BRT 1970) after reading 1682 traces.
+
+
+(4) Sudden drift detected at trace: 2547 (Mon Apr 27 00:53:30 BRT 1970) after reading 2647 traces.
+
+
+(5) Sudden drift detected at trace: 3311 (Mon Apr 27 03:38:29 BRT 1970) after reading 3411 traces.
+
+
+(6) Sudden drift detected at trace: 3826 (Mon Apr 27 05:46:50 BRT 1970) after reading 3926 traces.
+
+
+(7) Sudden drift detected at trace: 4221 (Mon Apr 27 07:20:46 BRT 1970) after reading 4321 traces.
+
+

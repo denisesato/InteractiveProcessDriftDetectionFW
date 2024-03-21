@@ -1,0 +1,21 @@
+cp5k.xes
+runs
+Initial window size = 25
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 1520 (Sat Mar 10 08:09:13 BRT 2007) after reading 1528 traces.
+
+
+(2) Sudden drift detected at trace: 2022 (Sat Feb 02 14:18:54 BRST 2008) after reading 2030 traces.
+
+
+(3) Sudden drift detected at trace: 2518 (Tue Mar 10 09:56:40 BRT 2009) after reading 2526 traces.
+
+
+(4) Sudden drift detected at trace: 2675 (Mon Mar 23 13:45:01 BRT 2009) after reading 2683 traces.
+
+
+(5) Sudden drift detected at trace: 4522 (Sun Mar 10 10:17:07 BRT 2013) after reading 4530 traces.
+
+

@@ -1,0 +1,18 @@
+sw8k.xes
+runs
+Initial window size = 25
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 4057 (Mon Apr 27 05:26:15 BRT 1970) after reading 4084 traces.
+
+
+(2) Sudden drift detected at trace: 5314 (Mon Apr 27 09:56:19 BRT 1970) after reading 5342 traces.
+
+
+(3) Sudden drift detected at trace: 7060 (Mon Apr 27 16:08:17 BRT 1970) after reading 7087 traces.
+
+
+(4) Sudden drift detected at trace: 7571 (Mon Apr 27 17:59:32 BRT 1970) after reading 7601 traces.
+
+

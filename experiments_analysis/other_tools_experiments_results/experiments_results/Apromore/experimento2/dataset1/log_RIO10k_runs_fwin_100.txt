@@ -1,0 +1,33 @@
+RIO10k.xes
+runs
+Initial window size = 100
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 1027 (Wed Mar 09 08:01:57 BRT 2005) after reading 1060 traces.
+
+
+(2) Sudden drift detected at trace: 2070 (Sun Aug 06 12:21:58 BRT 2006) after reading 2103 traces.
+
+
+(3) Sudden drift detected at trace: 3046 (Sat Mar 10 09:31:37 BRT 2007) after reading 3079 traces.
+
+
+(4) Sudden drift detected at trace: 4061 (Thu Feb 07 09:11:16 BRST 2008) after reading 4094 traces.
+
+
+(5) Sudden drift detected at trace: 5050 (Tue Mar 10 10:20:50 BRT 2009) after reading 5083 traces.
+
+
+(6) Sudden drift detected at trace: 6067 (Thu Aug 05 11:20:51 BRT 2010) after reading 6100 traces.
+
+
+(7) Sudden drift detected at trace: 7058 (Fri Mar 11 07:10:41 BRT 2011) after reading 7091 traces.
+
+
+(8) Sudden drift detected at trace: 8079 (Wed Feb 08 09:51:09 BRST 2012) after reading 8112 traces.
+
+
+(9) Sudden drift detected at trace: 9045 (Sun Mar 10 07:27:59 BRT 2013) after reading 9078 traces.
+
+

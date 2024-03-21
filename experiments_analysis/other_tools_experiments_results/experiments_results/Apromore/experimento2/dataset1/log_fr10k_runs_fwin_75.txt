@@ -1,0 +1,6 @@
+fr10k.xes
+runs
+Initial window size = 75
+Window type = FWIN
+*********************************************
+

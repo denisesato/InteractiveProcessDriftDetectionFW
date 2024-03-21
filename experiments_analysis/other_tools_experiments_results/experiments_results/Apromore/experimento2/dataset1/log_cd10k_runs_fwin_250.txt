@@ -1,0 +1,9 @@
+cd10k.xes
+runs
+Initial window size = 250
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 9081 (Wed Mar 13 13:31:43 BRT 2013) after reading 9164 traces.
+
+

@@ -1,0 +1,6 @@
+OIR3k.xes
+runs
+Initial window size = 50
+Window type = FWIN
+*********************************************
+
