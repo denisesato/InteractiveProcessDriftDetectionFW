@@ -1,0 +1,6 @@
+cd3k.xes
+runs
+Initial window size = 75
+Window type = ADWIN
+*********************************************
+

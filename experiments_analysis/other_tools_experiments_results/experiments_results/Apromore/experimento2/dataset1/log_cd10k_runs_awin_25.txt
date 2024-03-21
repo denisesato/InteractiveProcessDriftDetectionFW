@@ -1,0 +1,9 @@
+cd10k.xes
+runs
+Initial window size = 25
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 6651 (Mon Sep 27 06:18:31 BRT 2010) after reading 6657 traces.
+
+

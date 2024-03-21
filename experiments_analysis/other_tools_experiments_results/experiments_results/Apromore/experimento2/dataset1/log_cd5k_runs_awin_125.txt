@@ -1,0 +1,6 @@
+cd5k.xes
+runs
+Initial window size = 125
+Window type = ADWIN
+*********************************************
+

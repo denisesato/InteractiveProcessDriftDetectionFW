@@ -517,7 +517,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
             self.current_parameters.detector_class = parameters.detector_class
 
             # Detector adaptive path
-            # output_path for saving plots, attribute values, drift, and evaluation metrics
+            # output_path for saving plots_thesis, attribute values, drift, and evaluation metrics
             outputpath_adaptive_detector = self.get_adaptive_detector_path(user_id)
             if self.current_parameters.perspective == AdaptivePerspective.CONTROL_FLOW.name:
                 outputpath_adaptive_detector_models = self.get_adaptive_detector_models_path(user_id)

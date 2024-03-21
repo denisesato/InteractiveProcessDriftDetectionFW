@@ -147,7 +147,7 @@ class Dataset1Configuration:
     ###############################################################
     # Plot specific information
     ###############################################################
-    # For defining the correct order for the legend of the plots
+    # For defining the correct order for the legend of the plots_thesis
     order_legend = [1, 2, 3, 0]
 
 

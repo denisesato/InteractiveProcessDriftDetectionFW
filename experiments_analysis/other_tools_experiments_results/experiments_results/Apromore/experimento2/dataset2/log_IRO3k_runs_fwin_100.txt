@@ -1,0 +1,18 @@
+IRO3k.xes
+runs
+Initial window size = 100
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 294 (Sun Apr 26 15:49:36 BRT 1970) after reading 327 traces.
+
+
+(2) Sudden drift detected at trace: 799 (Sun Apr 26 17:53:47 BRT 1970) after reading 832 traces.
+
+
+(3) Sudden drift detected at trace: 1545 (Sun Apr 26 20:37:47 BRT 1970) after reading 1578 traces.
+
+
+(4) Sudden drift detected at trace: 2539 (Mon Apr 27 00:39:45 BRT 1970) after reading 2572 traces.
+
+

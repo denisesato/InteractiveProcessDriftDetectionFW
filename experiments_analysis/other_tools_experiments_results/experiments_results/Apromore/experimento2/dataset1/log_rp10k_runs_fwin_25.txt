@@ -1,0 +1,12 @@
+rp10k.xes
+runs
+Initial window size = 25
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 4021 (Sat Feb 02 13:04:25 BRST 2008) after reading 4029 traces.
+
+
+(2) Sudden drift detected at trace: 9025 (Mon Mar 11 07:37:16 BRT 2013) after reading 9033 traces.
+
+

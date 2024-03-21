@@ -1,0 +1,27 @@
+cm2.5k.xes
+runs
+Initial window size = 125
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 327 (Sun Apr 26 15:55:56 BRT 1970) after reading 414 traces.
+
+
+(2) Sudden drift detected at trace: 701 (Sun Apr 26 17:15:01 BRT 1970) after reading 795 traces.
+
+
+(3) Sudden drift detected at trace: 970 (Sun Apr 26 18:11:47 BRT 1970) after reading 1067 traces.
+
+
+(4) Sudden drift detected at trace: 1215 (Sun Apr 26 19:06:40 BRT 1970) after reading 1314 traces.
+
+
+(5) Sudden drift detected at trace: 1477 (Sun Apr 26 20:00:12 BRT 1970) after reading 1576 traces.
+
+
+(6) Sudden drift detected at trace: 1717 (Sun Apr 26 20:54:03 BRT 1970) after reading 1812 traces.
+
+
+(7) Sudden drift detected at trace: 2218 (Sun Apr 26 22:37:59 BRT 1970) after reading 2310 traces.
+
+
