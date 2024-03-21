@@ -1,0 +1,6 @@
+cd10k.xes
+runs
+Initial window size = 300
+Window type = FWIN
+*********************************************
+

@@ -1,0 +1,6 @@
+cm3k.xes
+runs
+Initial window size = 25
+Window type = FWIN
+*********************************************
+

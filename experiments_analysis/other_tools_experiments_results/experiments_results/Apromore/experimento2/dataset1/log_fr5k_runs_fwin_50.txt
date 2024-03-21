@@ -1,0 +1,9 @@
+fr5k.xes
+runs
+Initial window size = 50
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 995 (Thu Apr 21 09:45:35 BRT 2005) after reading 1011 traces.
+
+

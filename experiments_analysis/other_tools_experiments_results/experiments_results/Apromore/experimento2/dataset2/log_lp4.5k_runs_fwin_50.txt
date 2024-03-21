@@ -1,0 +1,6 @@
+lp4.5k.xes
+runs
+Initial window size = 50
+Window type = FWIN
+*********************************************
+

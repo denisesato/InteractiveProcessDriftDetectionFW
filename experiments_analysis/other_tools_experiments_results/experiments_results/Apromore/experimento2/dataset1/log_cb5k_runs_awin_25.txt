@@ -1,0 +1,6 @@
+cb5k.xes
+runs
+Initial window size = 25
+Window type = ADWIN
+*********************************************
+

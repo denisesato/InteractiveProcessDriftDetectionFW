@@ -108,7 +108,7 @@ def run_massive_adaptive_data(dataset_config, metrics=None):
                 if hasattr(dataset_config, "activities"):
                     activities = dataset_config.activities
 
-                # parameters for customizing information inside the plots
+                # parameters for customizing information inside the plots_thesis
                 activities_for_plot = None
                 if hasattr(dataset_config, "activities_for_plot"):
                     activities_for_plot = dataset_config.activities_for_plot

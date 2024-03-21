@@ -1,0 +1,33 @@
+cf2.5k.xes
+runs
+Initial window size = 100
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 271 (Wed May 04 11:53:39 BRT 2196) after reading 319 traces.
+
+
+(2) Sudden drift detected at trace: 546 (Thu Feb 13 14:49:00 BRST 2234) after reading 596 traces.
+
+
+(3) Sudden drift detected at trace: 781 (Thu May 05 10:34:42 BRT 2388) after reading 829 traces.
+
+
+(4) Sudden drift detected at trace: 1045 (Tue Feb 11 13:06:30 BRST 2425) after reading 1097 traces.
+
+
+(5) Sudden drift detected at trace: 1271 (Thu May 04 12:38:02 BRT 2580) after reading 1323 traces.
+
+
+(6) Sudden drift detected at trace: 1539 (Sun Feb 20 12:54:11 BRT 2614) after reading 1589 traces.
+
+
+(7) Sudden drift detected at trace: 1796 (Sat May 06 09:51:46 BRT 2772) after reading 1846 traces.
+
+
+(8) Sudden drift detected at trace: 2028 (Sat Feb 25 08:49:30 BRT 2795) after reading 2081 traces.
+
+
+(9) Sudden drift detected at trace: 2280 (Sat May 05 09:33:00 BRT 2964) after reading 2330 traces.
+
+

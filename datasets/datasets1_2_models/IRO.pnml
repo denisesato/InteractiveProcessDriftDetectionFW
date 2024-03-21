@@ -1,0 +1,330 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pnml>
+  <net id="net1" type="http://www.pnml.org/version-2009/grammar/pnmlcoremodel">
+    <page id="n0">
+      <place id="sink1">
+        <name>
+          <text>sink1</text>
+        </name>
+      </place>
+      <place id="p2">
+        <name>
+          <text>p2</text>
+        </name>
+      </place>
+      <place id="p12">
+        <name>
+          <text>p12</text>
+        </name>
+      </place>
+      <place id="sink2">
+        <name>
+          <text>sink2</text>
+        </name>
+      </place>
+      <place id="p8">
+        <name>
+          <text>p8</text>
+        </name>
+      </place>
+      <place id="p16">
+        <name>
+          <text>p16</text>
+        </name>
+      </place>
+      <place id="p20">
+        <name>
+          <text>p20</text>
+        </name>
+      </place>
+      <place id="p1">
+        <name>
+          <text>p1</text>
+        </name>
+      </place>
+      <place id="p11">
+        <name>
+          <text>p11</text>
+        </name>
+      </place>
+      <place id="sink3">
+        <name>
+          <text>sink3</text>
+        </name>
+      </place>
+      <place id="p4">
+        <name>
+          <text>p4</text>
+        </name>
+      </place>
+      <place id="p7">
+        <name>
+          <text>p7</text>
+        </name>
+      </place>
+      <place id="p15">
+        <name>
+          <text>p15</text>
+        </name>
+      </place>
+      <place id="p19">
+        <name>
+          <text>p19</text>
+        </name>
+      </place>
+      <place id="source">
+        <name>
+          <text>source</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+      </place>
+      <place id="p14">
+        <name>
+          <text>p14</text>
+        </name>
+      </place>
+      <place id="p3">
+        <name>
+          <text>p3</text>
+        </name>
+      </place>
+      <place id="p6">
+        <name>
+          <text>p6</text>
+        </name>
+      </place>
+      <place id="p10">
+        <name>
+          <text>p10</text>
+        </name>
+      </place>
+      <place id="p18">
+        <name>
+          <text>p18</text>
+        </name>
+      </place>
+      <place id="p13">
+        <name>
+          <text>p13</text>
+        </name>
+      </place>
+      <place id="p5">
+        <name>
+          <text>p5</text>
+        </name>
+      </place>
+      <place id="p9">
+        <name>
+          <text>p9</text>
+        </name>
+      </place>
+      <place id="p17">
+        <name>
+          <text>p17</text>
+        </name>
+      </place>
+      <place id="p21">
+        <name>
+          <text>p21</text>
+        </name>
+      </place>
+      <transition id="t11">
+        <name>
+          <text>Prepare acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="t3">
+        <name>
+          <text>Return application back to applicant</text>
+        </name>
+      </transition>
+      <transition id="t7">
+        <name>
+          <text>Appraise property</text>
+        </name>
+      </transition>
+      <transition id="t15">
+        <name>
+          <text>Verify repayment agreement</text>
+        </name>
+      </transition>
+      <transition id="t19">
+        <name>
+          <text>Verify repayment agreement</text>
+        </name>
+      </transition>
+      <transition id="st1">
+        <name>
+          <text>st1</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="12edf799-eb7c-458b-a4c6-f5b65c627056"/>
+      </transition>
+      <transition id="t18">
+        <name>
+          <text>Approve application</text>
+        </name>
+      </transition>
+      <transition id="t14">
+        <name>
+          <text>Send acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="t2">
+        <name>
+          <text>Check application form completeness</text>
+        </name>
+      </transition>
+      <transition id="t6">
+        <name>
+          <text>Assess loan risk</text>
+        </name>
+      </transition>
+      <transition id="t10">
+        <name>
+          <text>Loan application reject</text>
+        </name>
+      </transition>
+      <transition id="t22">
+        <name>
+          <text>Loan application approved</text>
+        </name>
+      </transition>
+      <transition id="t17">
+        <name>
+          <text>Loan application canceled</text>
+        </name>
+      </transition>
+      <transition id="t13">
+        <name>
+          <text>Send home insurance quote</text>
+        </name>
+      </transition>
+      <transition id="t1">
+        <name>
+          <text>Loan application received</text>
+        </name>
+      </transition>
+      <transition id="t5">
+        <name>
+          <text>Check credit history</text>
+        </name>
+      </transition>
+      <transition id="t9">
+        <name>
+          <text>Reject application</text>
+        </name>
+      </transition>
+      <transition id="t21">
+        <name>
+          <text>Added activity</text>
+        </name>
+      </transition>
+      <transition id="st3">
+        <name>
+          <text>st3</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="2b4e1e82-36e8-4c2c-9a9f-84301bbc289a"/>
+      </transition>
+      <transition id="t12">
+        <name>
+          <text>Check if home insurance quote is requested</text>
+        </name>
+      </transition>
+      <transition id="t4">
+        <name>
+          <text>Receive updated application</text>
+        </name>
+      </transition>
+      <transition id="t8">
+        <name>
+          <text>Assess eligibility</text>
+        </name>
+      </transition>
+      <transition id="t16">
+        <name>
+          <text>Cancel application</text>
+        </name>
+      </transition>
+      <transition id="t20">
+        <name>
+          <text>Prepare acceptance pack</text>
+        </name>
+      </transition>
+      <transition id="st2">
+        <name>
+          <text>st2</text>
+        </name>
+        <toolspecific tool="ProM" version="6.4" activity="$invisible$" localNodeID="a365500e-e803-4363-bf4e-46890ae022d3"/>
+      </transition>
+      <arc id="2591023387312" source="p20" target="t21"/>
+      <arc id="2591023370192" source="t18" target="p17"/>
+      <arc id="2591023367696" source="st1" target="p7"/>
+      <arc id="2591023366544" source="t2" target="p2"/>
+      <arc id="2591023366928" source="t4" target="p1"/>
+      <arc id="2591023367312" source="t5" target="p5"/>
+      <arc id="2591023368080" source="t8" target="p9"/>
+      <arc id="2591023368464" source="t10" target="sink1"/>
+      <arc id="2591023368848" source="t12" target="p12"/>
+      <arc id="2591023369232" source="t14" target="p13"/>
+      <arc id="2591023369616" source="t16" target="p15"/>
+      <arc id="2591023370000" source="st2" target="p16"/>
+      <arc id="2591023386832" source="t19" target="p18"/>
+      <arc id="2591023387696" source="p21" target="t22"/>
+      <arc id="2591023387216" source="t20" target="p20"/>
+      <arc id="2591023370096" source="p16" target="t18"/>
+      <arc id="2591023387600" source="st3" target="p16"/>
+      <arc id="2591023367984" source="p8" target="t8"/>
+      <arc id="2591023366448" source="p1" target="t2"/>
+      <arc id="2591023366832" source="p3" target="t4"/>
+      <arc id="2591023367216" source="p4" target="t5"/>
+      <arc id="2591023367600" source="p6" target="t8"/>
+      <arc id="2591023368368" source="p10" target="t10"/>
+      <arc id="2591023368752" source="p11" target="t12"/>
+      <arc id="2591023369136" source="p12" target="t14"/>
+      <arc id="2591023369520" source="p14" target="t16"/>
+      <arc id="2591023369904" source="p14" target="st2"/>
+      <arc id="2591023386736" source="p17" target="t19"/>
+      <arc id="2591023387120" source="p19" target="t20"/>
+      <arc id="2591023387504" source="p21" target="st3"/>
+      <arc id="2591023367888" source="t7" target="p8"/>
+      <arc id="2591023367504" source="t6" target="p6"/>
+      <arc id="2591023366352" source="t1" target="p1"/>
+      <arc id="2591023366736" source="t3" target="p3"/>
+      <arc id="2591023367120" source="st1" target="p4"/>
+      <arc id="2591023368272" source="t9" target="p10"/>
+      <arc id="2591023368656" source="t11" target="p11"/>
+      <arc id="2591023369040" source="t13" target="p13"/>
+      <arc id="2591023369424" source="t15" target="p14"/>
+      <arc id="2591023369808" source="t17" target="sink2"/>
+      <arc id="2591023387024" source="t18" target="p19"/>
+      <arc id="2591023387408" source="t21" target="p21"/>
+      <arc id="2591023367792" source="p7" target="t7"/>
+      <arc id="2591023367408" source="p5" target="t6"/>
+      <arc id="2591023366256" source="source" target="t1"/>
+      <arc id="2591023366640" source="p2" target="t3"/>
+      <arc id="2591023367024" source="p2" target="st1"/>
+      <arc id="2591023368176" source="p9" target="t9"/>
+      <arc id="2591023368560" source="p9" target="t11"/>
+      <arc id="2591023368944" source="p12" target="t13"/>
+      <arc id="2591023369328" source="p13" target="t15"/>
+      <arc id="2591023369712" source="p15" target="t17"/>
+      <arc id="2591023386928" source="p18" target="t21"/>
+      <arc id="2591023387792" source="t22" target="sink3"/>
+    </page>
+    <finalmarkings>
+      <marking>
+        <place idref="sink1">
+          <text>1</text>
+        </place>
+        <place idref="sink2">
+          <text>1</text>
+        </place>
+        <place idref="sink3">
+          <text>1</text>
+        </place>
+      </marking>
+    </finalmarkings>
+  </net>
+</pnml>

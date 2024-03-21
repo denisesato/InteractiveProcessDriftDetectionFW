@@ -1,0 +1,33 @@
+cb5k.xes
+runs
+Initial window size = 150
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 606 (Thu Mar 17 08:36:33 BRT 2005) after reading 656 traces.
+
+
+(2) Sudden drift detected at trace: 1101 (Thu Aug 10 12:01:45 BRT 2006) after reading 1151 traces.
+
+
+(3) Sudden drift detected at trace: 1556 (Mon Mar 12 07:31:16 BRT 2007) after reading 1606 traces.
+
+
+(4) Sudden drift detected at trace: 2100 (Sat Feb 09 13:05:26 BRST 2008) after reading 2150 traces.
+
+
+(5) Sudden drift detected at trace: 2582 (Fri Mar 13 13:07:58 BRT 2009) after reading 2632 traces.
+
+
+(6) Sudden drift detected at trace: 3584 (Wed Mar 16 06:01:46 BRT 2011) after reading 3634 traces.
+
+
+(7) Sudden drift detected at trace: 4055 (Mon Feb 06 13:32:44 BRST 2012) after reading 4105 traces.
+
+
+(8) Sudden drift detected at trace: 4129 (Mon Feb 13 12:37:54 BRST 2012) after reading 4179 traces.
+
+
+(9) Sudden drift detected at trace: 4584 (Wed Mar 13 13:03:12 BRT 2013) after reading 4634 traces.
+
+

@@ -1,0 +1,18 @@
+re3k.xes
+runs
+Initial window size = 225
+Window type = FWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 449 (Sun Apr 26 16:19:51 BRT 1970) after reading 524 traces.
+
+
+(2) Sudden drift detected at trace: 799 (Sun Apr 26 17:32:00 BRT 1970) after reading 874 traces.
+
+
+(3) Sudden drift detected at trace: 1551 (Sun Apr 26 20:15:00 BRT 1970) after reading 1626 traces.
+
+
+(4) Sudden drift detected at trace: 2541 (Sun Apr 26 23:31:00 BRT 1970) after reading 2616 traces.
+
+

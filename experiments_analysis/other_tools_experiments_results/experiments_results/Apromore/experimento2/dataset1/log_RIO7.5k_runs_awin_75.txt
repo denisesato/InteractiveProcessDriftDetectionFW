@@ -1,0 +1,33 @@
+RIO7.5k.xes
+runs
+Initial window size = 75
+Window type = ADWIN
+*********************************************
+
+(1) Sudden drift detected at trace: 809 (Sun Mar 11 08:17:43 BRT 2638) after reading 840 traces.
+
+
+(2) Sudden drift detected at trace: 1557 (Wed Apr 08 08:05:27 BRT 2685) after reading 1584 traces.
+
+
+(3) Sudden drift detected at trace: 2272 (Sun Mar 06 12:07:54 BRT 3272) after reading 2305 traces.
+
+
+(4) Sudden drift detected at trace: 3072 (Thu Feb 15 08:32:29 BRST 3331) after reading 3103 traces.
+
+
+(5) Sudden drift detected at trace: 3807 (Sun Mar 11 06:43:33 BRT 3906) after reading 3840 traces.
+
+
+(6) Sudden drift detected at trace: 4544 (Wed Mar 26 08:43:07 BRT 3941) after reading 4581 traces.
+
+
+(7) Sudden drift detected at trace: 5268 (Sun Mar 06 11:12:05 BRT 4540) after reading 5299 traces.
+
+
+(8) Sudden drift detected at trace: 6034 (Fri Feb 22 10:02:24 BRT 4565) after reading 6067 traces.
+
+
+(9) Sudden drift detected at trace: 6816 (Mon Mar 11 11:10:59 BRT 5174) after reading 6847 traces.
+
+

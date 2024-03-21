@@ -313,7 +313,7 @@ def run_IPDD_script(parameters, real_drifts=None):
         print(f'Real drifts: {real_drifts}')
     print('----------------------------------------------')
 
-    # parameters for customizing information inside the plots
+    # parameters for customizing information inside the plots_thesis
     activities_for_plot = None
     if hasattr(parameters, "activities_for_plot"):
         activities_for_plot = parameters.activities_for_plot

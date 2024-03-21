@@ -1,0 +1,6 @@
+cd4.5k.xes
+runs
+Initial window size = 75
+Window type = FWIN
+*********************************************
+
