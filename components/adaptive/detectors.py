@@ -41,6 +41,9 @@ class DetectorWrapper:
     def get_definition(self):
         return self.definition
 
+    def get_complete_configuration(self):
+        return f'{self.name}{self.get_parameters_string()}'
+
     def get_parameters_string(self):
         detector_parameters = ''
         for key in self.parameters:
