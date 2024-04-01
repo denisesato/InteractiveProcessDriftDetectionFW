@@ -245,8 +245,13 @@ class RealDatasetConfiguration:
     dataset_name = 'italian_help_desk_company'
     input_path = 'datasets/real'
     lognames = ['italian_help_desk_company.xes']
-    windows = [100]
-    deltas = [0.002]
+    windows = [i for i in range(25, 301, 25)]
+    detectors = [
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.1}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
+    ]
 
 
 if __name__ == '__main__':
