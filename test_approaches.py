@@ -10,7 +10,7 @@ from ipdd_cli import run_IPDD_script
 
 
 def test_fixed_control_flow_ok1():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
     window = 250
@@ -25,7 +25,7 @@ def test_fixed_control_flow_ok1():
 
 
 def test_fixed_control_flow_detection_nok1():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
     # with a window of 500 no drift is detected
@@ -41,7 +41,7 @@ def test_fixed_control_flow_detection_nok1():
 
 
 def test_fixed_control_flow_detection_nok2():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
     # with Nodes metric no drift is detected
@@ -57,7 +57,7 @@ def test_fixed_control_flow_detection_nok2():
 
 
 def test_adaptive_control_flow_trace_ok1():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'cm2.5k.xes'
     log_filename = os.path.join(input_path, log)
     window = 125
@@ -81,7 +81,7 @@ def test_adaptive_control_flow_trace_ok1():
 
 
 def test_adaptive_control_flow_trace_ok2():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'pm2.5k.xes'
     log_filename = os.path.join(input_path, log)
     window = 125
@@ -106,7 +106,7 @@ def test_adaptive_control_flow_trace_ok2():
 
 
 def test_adaptive_control_flow_trace_ok3():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
     window = 75
@@ -133,7 +133,7 @@ def test_adaptive_control_flow_trace_ok3():
 
 
 def test_adaptive_control_flow_windowing_ok1():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'cb2.5k.xes'
     log_filename = os.path.join(input_path, log)
     window = 100
