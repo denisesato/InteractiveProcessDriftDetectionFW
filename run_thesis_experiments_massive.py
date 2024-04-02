@@ -255,15 +255,15 @@ class RealDatasetConfiguration:
 
 
 if __name__ == '__main__':
-    dataset1 = Dataset1Configuration()
-    # run_massive_fixed_controlflow(dataset1)
-    run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
-    run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
-
-    dataset2 = Dataset2Configuration()
-    # run_massive_fixed_controlflow(dataset2)
-    run_massive_adaptive_controlflow_trace_by_trace(dataset2, evaluate=True)
-    run_massive_adaptive_controlflow_windowing(dataset2, evaluate=True)
+    # dataset1 = Dataset1Configuration()
+    # # run_massive_fixed_controlflow(dataset1)
+    # run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
+    # run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
+    #
+    # dataset2 = Dataset2Configuration()
+    # # run_massive_fixed_controlflow(dataset2)
+    # run_massive_adaptive_controlflow_trace_by_trace(dataset2, evaluate=True)
+    # run_massive_adaptive_controlflow_windowing(dataset2, evaluate=True)
 
     real_dataset = RealDatasetConfiguration()
     # run_massive_fixed_controlflow(real_dataset)
