@@ -8,8 +8,11 @@ After you cloned the git repository, go to the project directory and install the
 
 	pip install -r requirements.txt
 
-In a Windows Machine install Microsoft Visual C++ Redistributable package.
+In a Windows Machine install 
+1) Microsoft Visual C++ Redistributable package.
 Latest supported Visual C++ Redistributable downloads | Microsoft Learn available at https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version.
+2) Microsoft C++ Build Tools
+https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
 # New release
 
