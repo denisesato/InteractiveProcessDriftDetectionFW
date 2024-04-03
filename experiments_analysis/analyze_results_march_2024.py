@@ -545,16 +545,22 @@ if __name__ == '__main__':
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
     generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
 
+    plot_name = 'Adaptive IPDD Trace by Trace'
+    dataset_config = Dataset2Configuration()
+    file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
+    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+
     dataset_config = Dataset1Configuration()
     plot_name = 'Adaptive IPDD Windowing'
     folder = 'experiments_march_2024/IPDD_controlflow_adaptive_windowing'
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
     generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
 
-    # plot_name = 'Adaptive IPDD Trace by Trace'
-    # dataset_config = Dataset2Configuration()
-    # file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    # generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+    dataset_config = Dataset1Configuration()
+    plot_name = 'Adaptive IPDD Windowing'
+    file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
+    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+
 
     ######################################################################
     # ANALYSIS 2 - Trace by Trace approach
@@ -565,11 +571,13 @@ if __name__ == '__main__':
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_trace'
     dataset_config = Dataset1Configuration()
     analyze_dataset_trace(experiments_path, dataset_config, scale)
-    # dataset_config = Dataset2Configuration()
-    # analyze_dataset_trace(experiments_path, dataset_config, scale)
+    dataset_config = Dataset2Configuration()
+    analyze_dataset_trace(experiments_path, dataset_config, scale)
 
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_windowing'
     dataset_config = Dataset1Configuration()
+    analyze_dataset_windowing(experiments_path, dataset_config, scale)
+    dataset_config = Dataset2Configuration()
     analyze_dataset_windowing(experiments_path, dataset_config, scale)
 
     ######################################################################
@@ -580,28 +588,31 @@ if __name__ == '__main__':
     dataset_config = Dataset1Configuration()
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_trace'
     ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    detector = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
+    # detector = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
     # ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
     #                          'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
     #                          75, detector)
     ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
                              'Adaptive IPDD Trace by Trace', dataset_config)
+    dataset_config = Dataset2Configuration()
+    ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
+    ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
+                                 'Adaptive IPDD Trace by Trace', dataset_config)
 
     dataset_config = Dataset1Configuration()
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_windowing'
     ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
-    detector = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
+    # detector = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
     # ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
     #                          'Adaptive IPDD Windowing', dataset_config.dataset_name,
     #                          75, detector)
     ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
                                  'Adaptive IPDD Windowing', dataset_config)
+    dataset_config = Dataset2Configuration()
+    ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
+    ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
+                                 'Adaptive IPDD Windowing', dataset_config)
 
-    # dataset_config = Dataset2Configuration()
-    # ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    # ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-    #                          'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
-    #                          75, detector)
 
     ######################################################################
     # ANALYSIS 4 - Trace by Trace approach
@@ -634,10 +645,10 @@ if __name__ == '__main__':
     config = ApproachesConfiguration("dataset1", mean_delay_key, 'mean_delay', detector_config)
     generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale)
 
-    # config = ApproachesConfiguration("dataset2", f_score_key, f_score_key_other_tools, detector_config)
-    # generate_plot_tools(output_folder, config.approaches, f_score_key, config.dataset_name)
-    # config = ApproachesConfiguration("dataset2", mean_delay_key, mean_delay_key_other_tools, detector_config)
-    # generate_plot_tools(output_folder, config.approaches, mean_delay_key, config.dataset_name, scale=scale)
+    config = ApproachesConfiguration("dataset2", f_score_key, f_score_key_other_tools, detector_config)
+    generate_plot_tools(output_folder, config.approaches, f_score_key, config.dataset_name)
+    config = ApproachesConfiguration("dataset2", mean_delay_key, mean_delay_key_other_tools, detector_config)
+    generate_plot_tools(output_folder, config.approaches, mean_delay_key, config.dataset_name, scale=scale)
 
     # perform friedman test
     windows = [str(i) for i in range(50, 301, 25)]
@@ -646,23 +657,23 @@ if __name__ == '__main__':
     friedman_tools(output_folder, config.approaches, config.dataset_name, f_score_key, windows)
     config = ApproachesConfiguration("dataset1", mean_delay_key, mean_delay_key_other_tools, detector_config)
     friedman_tools(output_folder, config.approaches, config.dataset_name, mean_delay_key, windows)
-    # config = ApproachesConfiguration("dataset2", f_score_key, f_score_key_other_tools, detector_config)
-    # friedman_tools(output_folder, config.approaches, config.dataset_name, f_score_key, windows)
-    # config = ApproachesConfiguration("dataset2", mean_delay_key, mean_delay_key_other_tools, detector_config)
-    # friedman_tools(output_folder, config.approaches, config.dataset_name, mean_delay_key, windows)
+    config = ApproachesConfiguration("dataset2", f_score_key, f_score_key_other_tools, detector_config)
+    friedman_tools(output_folder, config.approaches, config.dataset_name, f_score_key, windows)
+    config = ApproachesConfiguration("dataset2", mean_delay_key, mean_delay_key_other_tools, detector_config)
+    friedman_tools(output_folder, config.approaches, config.dataset_name, mean_delay_key, windows)
 
     ######################################################################
     # Plot Apromore results
     ######################################################################
     dataset_config = Dataset1Configuration()
     analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
-    # dataset_config = Dataset2Configuration()
-    # analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
+    dataset_config = Dataset2Configuration()
+    analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
 
     ######################################################################
     # Plot VDD results
     ######################################################################
     dataset_config = Dataset1Configuration()
     analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
-    # dataset_config = Dataset2Configuration()
-    # analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
+    dataset_config = Dataset2Configuration()
+    analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
