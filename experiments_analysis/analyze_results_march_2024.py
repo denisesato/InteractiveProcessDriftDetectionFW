@@ -370,7 +370,7 @@ def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, datase
     series = []
     for d in dataset_config.detectors:
         df_detectors = df_filtered.filter(like=f'{detector_key}={d.get_complete_configuration()}', axis=1)
-        # maintain only the last number in the column names (window)
+        # maintain only the number after 'w=' in the column names (window)
         df_detectors = df_detectors.rename(
             columns={element: re.sub(r'\D.*w=(\d+)\D.*', r'\1', element, count=1)
                      for element in df_detectors.columns.tolist()})
