@@ -254,6 +254,35 @@ class RealDatasetConfiguration:
     ]
 
 
+class DatasetTestConfiguration:
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    dataset_name = 'dataset_test'
+    input_path = 'datasets/dataset2'
+
+    lognames = ['cb3k.xes']
+    windows = [100]
+    detectors = [
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+    ]
+
+    ###############################################################
+    # Information for calculating evaluation metrics
+    ###############################################################
+    actual_change_points = {
+        '3k': [250, 750, 1500, 2500],
+        '4.5k': [250, 750, 1500, 2500, 3250, 3750, 4000],
+        '8k': [250, 750, 1500, 2500, 3250, 3750, 4000, 4500, 5250, 6250, 7000, 7500, 7750],
+    }
+
+    number_of_instances = {
+        '3k': 3000,
+        '4.5k': 4500,
+        '8k': 8000,
+    }
+
+
 if __name__ == '__main__':
     dataset1 = Dataset1Configuration()
     # run_massive_fixed_controlflow(dataset1)
@@ -269,3 +298,7 @@ if __name__ == '__main__':
     # run_massive_fixed_controlflow(real_dataset)
     run_massive_adaptive_controlflow_trace_by_trace(real_dataset)
     run_massive_adaptive_controlflow_windowing(real_dataset)
+
+    # for testing
+    # dataset = DatasetTestConfiguration()
+    # run_massive_adaptive_controlflow_trace_by_trace(dataset, evaluate=True)
