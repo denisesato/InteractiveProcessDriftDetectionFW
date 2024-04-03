@@ -350,7 +350,7 @@ def convert_list_to_int(string_list):
 
 
 def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for_calculation=False):
-    metrics = [item for item in EvaluationMetricList]
+    metrics = [item.value for item in EvaluationMetricList]
     # getting instance of the IPDD
     framework = InteractiveProcessDriftDetectionFW(script=True)
 
