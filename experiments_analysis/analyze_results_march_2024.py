@@ -15,6 +15,7 @@ from components.adaptive.detectors import SelectDetector, ConceptDriftDetector
 from run_thesis_experiments_massive import Dataset1Configuration, Dataset2Configuration
 from scipy import stats
 import scikit_posthocs as sp
+from autorank import autorank, plot_stats, create_report, latex_table
 
 metric_key = 'metric'
 path_key = 'path'
@@ -34,7 +35,8 @@ class ApproachesConfiguration:
         self.dataset_name = dataset_name
         self.metric_name = metric_name
         self.approaches = {
-            'Adaptive IPDD Trace by Trace':
+            # 'Adaptive IPDD Trace by Trace':
+            'Adaptive IPDD':
                 {
                     metric_key: metric_name,
                     path_key: f'experiments_march_2024'
@@ -42,21 +44,21 @@ class ApproachesConfiguration:
                     filename_key: f'metrics_{dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx',
                     detector_key: detector_configuration
                 },
-            'Adaptive IPDD Windowing':
-                {
-                    metric_key: metric_name,
-                    path_key: f'experiments_march_2024'
-                              f'/IPDD_controlflow_adaptive_windowing',
-                    filename_key: f'metrics_{dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx',
-                    detector_key: detector_configuration
-                },
-            'Apromore ProDrift AWIN':
+            # 'Adaptive IPDD Windowing':
+            #     {
+            #         metric_key: metric_name,
+            #         path_key: f'experiments_march_2024'
+            #                   f'/IPDD_controlflow_adaptive_windowing',
+            #         filename_key: f'metrics_{dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx',
+            #         detector_key: detector_configuration
+            #     },
+            'ProDrift AWIN':
                 {
                     metric_key: f'{metric_name_other_tools} awin',
                     path_key: f'other_tools_experiments_results/experiments_results/Apromore/experimento2/{dataset_name}',
                     filename_key: 'metrics_results_prodrift.xlsx'
                 },
-            'Apromore ProDrift FWIN':
+            'ProDrift FWIN':
                 {
                     metric_key: f'{metric_name_other_tools} fwin',
                     path_key: f'other_tools_experiments_results/experiments_results/Apromore/experimento2/{dataset_name}',
@@ -71,8 +73,41 @@ class ApproachesConfiguration:
         }
 
 
+class ApproachesConfiguration_CombineDatasets:
+    def __init__(self, datasets, metric_name, metric_name_other_tools, detector_configuration):
+        self.dataset_name = 'datasets_1_2'
+        self.metric_name = metric_name
+        self.approaches = {
+            'Adaptive IPDD':
+                {
+                    metric_key: metric_name,
+                    path_key: f'experiments_march_2024'
+                              f'/IPDD_controlflow_adaptive_trace',
+                    filename_key: [f'metrics_{ds_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx' for ds_name in datasets] ,
+                    detector_key: detector_configuration
+                },
+            'ProDrift AWIN':
+                {
+                    metric_key: f'{metric_name_other_tools} awin',
+                    path_key: f'other_tools_experiments_results/experiments_results/Apromore',
+                    filename_key: [f'metrics_results_prodrift_{ds_name}.xlsx' for ds_name in datasets]
+                },
+            'ProDrift FWIN':
+                {
+                    metric_key: f'{metric_name_other_tools} fwin',
+                    path_key: f'other_tools_experiments_results/experiments_results/Apromore',
+                    filename_key:  [f'metrics_results_prodrift_{ds_name}.xlsx' for ds_name in datasets]
+                },
+            'VDD':
+                {
+                    metric_key: f'{metric_name_other_tools} cluster',
+                    path_key: f'other_tools_experiments_results/experiments_results/VDD',
+                    filename_key:  [f'metrics_results_VDD_{ds_name}.xlsx' for ds_name in datasets]
+                },
+        }
+
 def plot_window_size_grouping_by_logsize(path, df, selected_column, title, dataset, order=None, detector_config=None,
-                                         scale=None):
+                                         scale=None, print_plot_name=True):
     ############################################################
     # Grouping by logsize
     ############################################################
@@ -105,11 +140,12 @@ def plot_window_size_grouping_by_logsize(path, df, selected_column, title, datas
     df_plot.plot(kind='line')
     plt.xlabel('Window size')
     plt.ylabel(selected_column)
-    if detector_config:
-        plt.title(
-            f'{title}\nImpact of the window size on the {selected_column} [{detector_config.get_complete_configuration()}]')
-    else:
-        plt.title(f'{title}\nImpact of the window size on the {selected_column}')
+    if print_plot_name:
+        if detector_config:
+            plt.title(
+                f'{title}\nImpact of the window size on the {selected_column} [{detector_config.get_complete_configuration()}]')
+        else:
+            plt.title(f'{title}\nImpact of the window size on the {selected_column}')
     if f_score_key in selected_column or f_score_key_other_tools in selected_column:
         plt.ylim(0.0, 1.0)
     elif scale:
@@ -128,15 +164,17 @@ def plot_window_size_grouping_by_logsize(path, df, selected_column, title, datas
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     if detector_config:
-        output_filename = f'{title}_{dataset}_{selected_column}_{detector_config.get_complete_configuration()}.png'
+        output_filename = f'{title}_{dataset}_{selected_column}_{detector_config.get_complete_configuration()}'
     else:
-        output_filename = f'{title}_{dataset}_{selected_column}.png'
-    plt.savefig(os.path.join(output_path, output_filename))
+        output_filename = f'{title}_{dataset}_{selected_column}'
+    plt.savefig(os.path.join(output_path, f'{output_filename}.eps'), format='eps', bbox_inches='tight')
+    plt.savefig(os.path.join(output_path, f'{output_filename}.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_path, f'{output_filename}.pdf'), bbox_inches='tight')
     plt.close()
 
 
 def plot_window_size_grouping_by_change_pattern(path, df, selected_column, title, dataset_name, window=None,
-                                                detector_config=None):
+                                                detector_config=None, print_plot_name=True):
     ############################################################
     # Grouping by logsize
     ############################################################
@@ -180,13 +218,15 @@ def plot_window_size_grouping_by_change_pattern(path, df, selected_column, title
     plt.ylabel(selected_column)
     output_filename = ''
     if detector_config:
-        plt.title(f'{title}\n{selected_column} by change pattern - {window_str} - '
-                  f'{detector_config.get_complete_configuration()}')
+        if print_plot_name:
+            plt.title(f'{title}\n{selected_column} by change pattern - {window_str} - '
+                      f'{detector_config.get_complete_configuration()}')
         output_filename = (f'change_pattern_{title}_{dataset_name}_{selected_column}_{window_str}_'
-                           f'{detector_config.get_complete_configuration()}.png')
+                           f'{detector_config.get_complete_configuration()}')
     else:
-        plt.title(f'{title}\n{selected_column} by change pattern - {window_str}')
-        output_filename = f'change_pattern_{title}_{dataset_name}{selected_column}_{window_str}.png'
+        if print_plot_name:
+            plt.title(f'{title}\n{selected_column} by change pattern - {window_str}')
+        output_filename = f'change_pattern_{title}_{dataset_name}{selected_column}_{window_str}'
     if f_score_key in selected_column or f_score_key_other_tools in selected_column:
         plt.ylim(0.0, 1.0)
     plt.tight_layout()
@@ -195,11 +235,14 @@ def plot_window_size_grouping_by_change_pattern(path, df, selected_column, title
     output_path = os.path.join(path, plots_path)
     if not os.path.join(output_path):
         os.makedirs(output_path)
-    plt.savefig(os.path.join(output_path, output_filename))
+    plt.savefig(os.path.join(output_path, f'{output_filename}.eps'), format='eps')
+    plt.savefig(os.path.join(output_path, f'{output_filename}.png'))
+    plt.savefig(os.path.join(output_path, f'{output_filename}.pdf'))
     plt.close()
 
 
-def analyze_metrics_ipdd(input_path, filename, dataset_config, selected_column, title, dataset, scale=None):
+def analyze_metrics_ipdd(input_path, filename, dataset_config, selected_column, title, dataset, scale=None,
+                         print_plot_name=True):
     complete_filename = os.path.join(input_path, filename)
     df = pd.read_excel(complete_filename, index_col=0)
     df.index.name = 'logname'
@@ -211,19 +254,20 @@ def analyze_metrics_ipdd(input_path, filename, dataset_config, selected_column, 
     if hasattr(dataset_config, 'order_legend') and dataset_config.order_legend:
         order = dataset_config.order_legend
     for d in dataset_config.detectors:
-        plot_window_size_grouping_by_logsize(input_path, df, selected_column, title, dataset, order, d, scale)
+        plot_window_size_grouping_by_logsize(input_path, df, selected_column, title, dataset, order, d, scale, print_plot_name=print_plot_name)
         # plot_window_size_grouping_by_change_pattern(df, selected_column, title, delta=d)
         # plot_window_size_grouping_by_change_pattern(df, selected_column, title)
 
 
-def ipdd_plot_change_pattern_all(input_path, filename, selected_column, title, dataset_config):
+def ipdd_plot_change_pattern_all(input_path, filename, selected_column, title, dataset_config, print_plot_name=True):
     for det in dataset_config.detectors:
         for win in dataset_config.windows:
             ipdd_plot_change_pattern(input_path, filename, selected_column, title, dataset_config.dataset_name,
-                                     win, det)
+                                     win, det, print_plot_name=print_plot_name)
 
 
-def ipdd_plot_change_pattern(input_path, filename, selected_column, title, dataset_name, winsize, detector_config):
+def ipdd_plot_change_pattern(input_path, filename, selected_column, title, dataset_name, winsize, detector_config,
+                             print_plot_name=True):
     complete_filename = os.path.join(input_path, filename)
     df = pd.read_excel(complete_filename, index_col=0)
     df.index.name = 'logname'
@@ -232,7 +276,7 @@ def ipdd_plot_change_pattern(input_path, filename, selected_column, title, datas
     # Impact of the window size on the metrics
     ############################################################
     plot_window_size_grouping_by_change_pattern(input_path, df, selected_column, title, dataset_name, window=winsize,
-                                                detector_config=detector_config)
+                                                detector_config=detector_config, print_plot_name=print_plot_name)
 
 
 def analyze_metrics(dataset_config, input_path, filename, selected_column, title, dataset):
@@ -250,25 +294,25 @@ def analyze_metrics(dataset_config, input_path, filename, selected_column, title
     plot_window_size_grouping_by_change_pattern(input_path, df, selected_column, title, dataset)
 
 
-def analyze_dataset_trace(experiment_path, dataset_config, scale=None):
+def analyze_dataset_trace(experiment_path, dataset_config, scale=None, print_plot_name=True):
     f_score_column_ipdd = f_score_key
     mean_delay_column_ipdd = mean_delay_key
 
     ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
     analyze_metrics_ipdd(experiment_path, ipdd_adaptive_trace_filename, dataset_config, f_score_column_ipdd,
-                         'Adaptive IPDD Trace by Trace', dataset_config.dataset_name)
+                         'Adaptive IPDD Trace by Trace', dataset_config.dataset_name, print_plot_name=print_plot_name)
     analyze_metrics_ipdd(experiment_path, ipdd_adaptive_trace_filename, dataset_config, mean_delay_column_ipdd,
-                         'Adaptive IPDD Trace by Trace', dataset_config.dataset_name, scale)
+                         'Adaptive IPDD Trace by Trace', dataset_config.dataset_name, scale, print_plot_name=print_plot_name)
 
 
-def analyze_dataset_windowing(experiment_path, dataset_config, scale=None):
+def analyze_dataset_windowing(experiment_path, dataset_config, scale=None, print_plot_name=True):
     ipdd_quality_windowing_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
     analyze_metrics_ipdd(experiment_path, ipdd_quality_windowing_filename, dataset_config,
                          f_score_key,
-                         'Adaptive IPDD Windowing', dataset_config.dataset_name)
+                         'Adaptive IPDD Windowing', dataset_config.dataset_name, print_plot_name=print_plot_name)
     analyze_metrics_ipdd(experiment_path, ipdd_quality_windowing_filename, dataset_config,
                          mean_delay_key,
-                         'Adaptive IPDD Windowing', dataset_config.dataset_name, scale)
+                         'Adaptive IPDD Windowing', dataset_config.dataset_name, scale, print_plot_name=print_plot_name)
 
 
 def analyze_dataset_model_simmilarity(dataset_config, dataset_name):
@@ -302,7 +346,7 @@ def analyze_dataset_vdd(dataset_config, dataset_name):
     analyze_metrics(dataset_config, vdd_path, vdd_filename, 'mean_delay cluster', 'CLUSTER', dataset_name)
 
 
-def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_name=None, scale=None):
+def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_name=None, scale=None, print_plot_name=True):
     # firstly enrich dict with dataframe from excel
     for key in approaches.keys():
         input_path = approaches[key][path_key]
@@ -340,12 +384,15 @@ def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_na
     plt.xlabel('Window size')
     plt.ylabel(metric_name)
     output_filename = ''
+
     if plot_name:
-        plt.title(plot_name)
-        output_filename = f'tools_{plot_name}_{dataset}.png'
+        if print_plot_name:
+            plt.title(plot_name)
+        output_filename = f'tools_{plot_name}_{dataset}'
     else:
-        plt.title(f'Impact of the window size on the {metric_name}')
-        output_filename = f'tools_window_size_impact_{metric_name}_{dataset}.png'
+        if print_plot_name:
+            plt.title(f'Impact of the window size on the {metric_name}')
+        output_filename = f'tools_window_size_impact_{metric_name}_{dataset}'
     if (f_score_key in metric_name) or (f_score_key_other_tools in metric_name):
         plt.ylim(0.0, 1.0)
     elif scale:
@@ -355,11 +402,85 @@ def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_na
     # plt.show()
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
-    plt.savefig(os.path.join(output_folder, output_filename))
-    plt.close
+    plt.savefig(os.path.join(output_folder, f'{output_filename}.eps'), format='eps', bbox_inches='tight')
+    plt.savefig(os.path.join(output_folder, f'{output_filename}.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_folder, f'{output_filename}.pdf'), bbox_inches='tight')
+    plt.close()
 
 
-def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, dataset_config):
+# Simular to generate_plot_tools, but handles more than one dataset
+def generate_plot_tools_combined(output_folder, approaches, metric_name, dataset, plot_name=None, scale=None,
+                                 print_plot_name=True):
+    # firstly enrich dict with dataframe from excel
+    for key in approaches.keys():
+        input_path = approaches[key][path_key]
+        filenames = approaches[key][filename_key]
+        complete_filenames = [os.path.join(input_path, f) for f in filenames]
+        series = []
+        for complete_filename in complete_filenames:
+            df = pd.read_excel(complete_filename, index_col=0)
+            df.index.name = 'logname'
+            print(f'Reading file {complete_filename}')
+            # filter the selected metric
+            df_filtered = df.filter(like=approaches[key][metric_key], axis=1)
+            df_filtered.index.name = 'log size'
+            # if IPDD filter the selected detector configuration
+            if 'IPDD' in key:
+                df_filtered = df_filtered.filter(
+                    like=f'{detector_key}={approaches[key][detector_key].get_complete_configuration()}', axis=1)
+                # maintain only the number after 'w=' in the column names (window)
+                df_filtered = df_filtered.rename(
+                    columns={element: re.sub(r'\D.*w=(\d+)\D.*', r'\1', element, count=1)
+                             for element in df_filtered.columns.tolist()})
+            else:
+                # maintain only the last number in the column names (window)
+                df_filtered = df_filtered.rename(
+                    columns={element: re.sub(r'.*(?:\D|^)(\d+)', r'\1', element, count=1)
+                             for element in df_filtered.columns.tolist()})
+            serie = df_filtered.mean()
+            serie.name = key
+            series.append(serie)
+        df_series = pd.DataFrame(series)
+        df_series = df_series.mean()
+        df_series.name = key
+        approaches[key][series_key] = df_series
+
+    # combine all approaches into one dataframe
+    df_plot = pd.concat([approaches[approach][series_key] for approach in approaches.keys()], axis=1)
+    filename = os.path.join(output_folder, f'{dataset}_{metric_name}_data.xlsx')
+    df_plot.to_excel(filename)
+    df_plot.sort_index(axis=1, inplace=True)
+    plt.cla()
+    plt.clf()
+    df_plot.plot(kind='line')
+    plt.xlabel('Window size')
+    plt.ylabel(metric_name)
+    output_filename = ''
+
+    if plot_name:
+        if print_plot_name:
+            plt.title(plot_name)
+        output_filename = f'tools_{plot_name}_{dataset}'
+    else:
+        if print_plot_name:
+            plt.title(f'Impact of the window size on the {metric_name}')
+        output_filename = f'tools_window_size_impact_{metric_name}_{dataset}'
+    if (f_score_key in metric_name) or (f_score_key_other_tools in metric_name):
+        plt.ylim(0.0, 1.0)
+    elif scale:
+        plt.ylim(scale[0], scale[1])
+    plt.grid(True)
+    plt.legend()
+    # plt.show()
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    plt.savefig(os.path.join(output_folder, f'{output_filename}.eps'), format='eps', bbox_inches='tight')
+    plt.savefig(os.path.join(output_folder, f'{output_filename}.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_folder, f'{output_filename}.pdf'), bbox_inches='tight')
+    plt.close()
+
+
+def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, dataset_config, print_plot_name=True):
     complete_filename = os.path.join(folder, filename)
     df = pd.read_excel(complete_filename, index_col=0)
     df.index.name = 'logname'
@@ -386,7 +507,8 @@ def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, datase
     df_plot.plot(kind='line')
     plt.xlabel('Window size')
     plt.ylabel(metric_name)
-    plt.title(f'{approach}\nImpact of the detector configuration on the {metric_name}')
+    if print_plot_name:
+        plt.title(f'{approach}\nImpact of the detector configuration on the {metric_name}')
     if f_score_key in metric_name or f_score_key_other_tools in metric_name:
         plt.ylim(0.0, 1.0)
     plt.grid(True)
@@ -396,8 +518,10 @@ def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, datase
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     output_filename = os.path.join(output_path,
-                                   f'detector_analysis_{metric_name}_{approach}_{dataset_config.dataset_name}.png')
-    plt.savefig(output_filename)
+                                   f'detector_analysis_{metric_name}_{approach}_{dataset_config.dataset_name}')
+    plt.savefig(f'{output_filename}.eps', format='eps', bbox_inches='tight')
+    plt.savefig(f'{output_filename}.png', bbox_inches='tight')
+    plt.savefig(f'{output_filename}.pdf', bbox_inches='tight')
     plt.close()
 
 
@@ -459,10 +583,10 @@ def friedman_tools(output_folder, approaches, dataset_name, metric_name, windows
 
     # compare samples
     stat, p = stats.friedmanchisquare(
-        approaches['Adaptive IPDD Trace by Trace'][series_key],
+        approaches['Adaptive IPDD'][series_key],
         # approaches['Adaptive IPDD Windowing'][series_key],
-        approaches['Apromore ProDrift AWIN'][series_key],
-        approaches['Apromore ProDrift FWIN'][series_key],
+        approaches['ProDrift AWIN'][series_key],
+        approaches['ProDrift FWIN'][series_key],
         approaches['VDD'][series_key]
     )
     print(f'Friedman results for {metric_name} {dataset_name}')
@@ -475,18 +599,115 @@ def friedman_tools(output_folder, approaches, dataset_name, metric_name, windows
         print('Different distributions (reject H0)')
         # combine all approaches into one dataframe
         df_tools = pd.concat([approaches[approach][series_key] for approach in approaches.keys()], axis=1)
-        result = sp.posthoc_nemenyi_friedman(df_tools)
+        result = sp.posthoc_nemenyi_friedman(df_tools, sort=True)
         filename = os.path.join(output_folder, f'{dataset_name}_{metric_name}_data.xlsx')
         df_tools.to_excel(filename)
-        # print(f'Posthoc Nemenyi Friedman: {result}')
+        print(f'Posthoc Nemenyi Friedman - dataset: {dataset_name} - metric: {metric_name}')
+        print(result)
         plt.cla()
         plt.clf()
         heatmap_args = {'linewidths': 0.25, 'linecolor': '0.5', 'clip_on': False, 'square': True,
                         'cbar_ax_bbox': [0.80, 0.35, 0.04, 0.3]}
         sp.sign_plot(result, **heatmap_args)
         # plt.title(f'Posthoc Nemenyi Friedman {metric_name} {dataset_name}', loc='left')
-        filename = os.path.join(output_folder, f'{dataset_name}_{metric_name}.png')
-        plt.savefig(filename, bbox_inches='tight')
+        filename = os.path.join(output_folder, f'{dataset_name}_{metric_name}')
+        plt.savefig(f'{filename}.eps', format='eps', bbox_inches='tight')
+        plt.savefig(f'{filename}.png', bbox_inches='tight')
+        plt.savefig(f'{filename}.pdf', bbox_inches='tight')
+
+        print('Usando autorank para calcular os testes estatísticos - exportando gráfico com CD')
+        result = autorank(df_tools, alpha=0.05, verbose=True)
+        plot_stats(result)
+        create_report(result)
+        latex_table(result)
+        filename = os.path.join(output_folder, f'{dataset_name}_{metric_name}_Nemenyi_CD')
+        plt.savefig(f'{filename}.eps', format='eps', bbox_inches='tight')
+        plt.savefig(f'{filename}.png', bbox_inches='tight')
+        plt.savefig(f'{filename}.pdf', bbox_inches='tight')
+        plt.close()
+
+
+def statistical_analysis_comparing_tools(output_folder, approaches, metric_name, windows, order='descending'):
+    # firstly enrich dict with dataframe from excel
+    for key in approaches.keys():
+        input_path = approaches[key][path_key]
+        filenames = approaches[key][filename_key]
+        complete_filenames = [os.path.join(input_path, f) for f in filenames]
+        series = []
+        for complete_filename in complete_filenames:
+            df = pd.read_excel(complete_filename, index_col=0)
+            df.index.name = 'logname'
+            # print(f'Reading file {filename}')
+            # filter the selected metric
+            df_filtered = df.filter(like=approaches[key][metric_key], axis=1)
+            df_filtered.index.name = 'log size'
+            # if IPDD filter the selected delta
+            if 'IPDD' in key:
+                df_filtered = df_filtered.filter(like=f'{detector_key}={detector_config.get_complete_configuration()}',
+                                             axis=1)
+                # maintain only the number after 'w=' in the column names (window)
+                df_filtered = df_filtered.rename(
+                    columns={element: re.sub(r'\D.*w=(\d+)\D.*', r'\1', element, count=1)
+                             for element in df_filtered.columns.tolist()})
+            else:
+                # maintain only the last number in the column names (window)
+                df_filtered = df_filtered.rename(
+                    columns={element: re.sub(r'.*(?:\D|^)(\d+)', r'\1', element, count=1)
+                             for element in df_filtered.columns.tolist()})
+
+            serie = df_filtered.mean()
+            serie = serie.filter(items=windows)
+            serie.name = key
+            series.append(serie)
+        df_series = pd.DataFrame(series)
+        mean_df = df_series.mean()
+        mean_df.name = key
+        approaches[key][series_key] = mean_df
+
+    # compare samples
+    stat, p = stats.friedmanchisquare(
+        approaches['Adaptive IPDD'][series_key],
+        # approaches['Adaptive IPDD Windowing'][series_key],
+        approaches['ProDrift AWIN'][series_key],
+        approaches['ProDrift FWIN'][series_key],
+        approaches['VDD'][series_key]
+    )
+    print(f'Friedman results for {metric_name}')
+    print('Statistics=%.3f, p=%.3f' % (stat, p))
+    # interpret
+    alpha = 0.05
+    if p > alpha:
+        print('Same distributions (fail to reject H0)')
+    else:
+        print('Different distributions (reject H0)')
+        # combine all approaches into one dataframe
+        df_tools = pd.concat([approaches[approach][series_key] for approach in approaches.keys()], axis=1)
+        result = sp.posthoc_nemenyi_friedman(df_tools, sort=True)
+        filename = os.path.join(output_folder, f'{metric_name}_data.xlsx')
+        df_tools.to_excel(filename)
+        print(f'Posthoc Nemenyi Friedman - metric: {metric_name}')
+        print(result)
+        plt.cla()
+        plt.clf()
+        heatmap_args = {'linewidths': 0.25, 'linecolor': '0.5', 'clip_on': False, 'square': True,
+                        'cbar_ax_bbox': [0.80, 0.35, 0.04, 0.3]}
+        sp.sign_plot(result, **heatmap_args)
+        # plt.title(f'Posthoc Nemenyi Friedman {metric_name} {dataset_name}', loc='left')
+        filename = os.path.join(output_folder, f'{metric_name}')
+        plt.savefig(f'{filename}.eps', format='eps', bbox_inches='tight')
+        plt.savefig(f'{filename}.png', bbox_inches='tight')
+        plt.savefig(f'{filename}.pdf', bbox_inches='tight')
+
+        print('Usando autorank para calcular os testes estatísticos - exportando gráfico com CD')
+        result = autorank(df_tools, alpha=0.05, verbose=True, order=order)
+        plot_stats(result)
+        create_report(result)
+        latex_table(result)
+        filename = os.path.join(output_folder, f'{metric_name}_Nemenyi_CD')
+        plt.savefig(f'{filename}.eps', format='eps', bbox_inches='tight')
+        plt.savefig(f'{filename}.png', bbox_inches='tight')
+        plt.savefig(f'{filename}.pdf', bbox_inches='tight')
+        plt.close()
 
 
 def extract_sample_logs():
@@ -531,6 +752,7 @@ def check_emd_between_sample_logs():
 
 
 if __name__ == '__main__':
+    plt.rcParams.update({'pdf.fonttype': 42})
     # I suggest to only uncomment one analysis per execution
     ######################################################################
     # EVALUATION OF THE IPDD ADAPTIVE ON SYNTHETIC EVENT LOGS
@@ -543,23 +765,23 @@ if __name__ == '__main__':
     plot_name = 'Adaptive IPDD Trace by Trace'
     folder = 'experiments_march_2024/IPDD_controlflow_adaptive_trace'
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config, print_plot_name=False)
 
     plot_name = 'Adaptive IPDD Trace by Trace'
     dataset_config = Dataset2Configuration()
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config, print_plot_name=False)
 
     dataset_config = Dataset1Configuration()
     plot_name = 'Adaptive IPDD Windowing'
     folder = 'experiments_march_2024/IPDD_controlflow_adaptive_windowing'
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
-    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config, print_plot_name=False)
 
     dataset_config = Dataset1Configuration()
     plot_name = 'Adaptive IPDD Windowing'
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
-    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config)
+    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config, print_plot_name=False)
 
 
     ######################################################################
@@ -570,15 +792,17 @@ if __name__ == '__main__':
     scale = [0.0, 100.0]
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_trace'
     dataset_config = Dataset1Configuration()
-    analyze_dataset_trace(experiments_path, dataset_config, scale)
+    analyze_dataset_trace(experiments_path, dataset_config, scale, print_plot_name=False)
+    scale = [0.0, 150.0]
     dataset_config = Dataset2Configuration()
-    analyze_dataset_trace(experiments_path, dataset_config, scale)
+    analyze_dataset_trace(experiments_path, dataset_config, scale, print_plot_name=False)
 
+    scale = [0.0, 100.0]
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_windowing'
     dataset_config = Dataset1Configuration()
-    analyze_dataset_windowing(experiments_path, dataset_config, scale)
+    analyze_dataset_windowing(experiments_path, dataset_config, scale, print_plot_name=False)
     dataset_config = Dataset2Configuration()
-    analyze_dataset_windowing(experiments_path, dataset_config, scale)
+    analyze_dataset_windowing(experiments_path, dataset_config, scale, print_plot_name=False)
 
     ######################################################################
     # ANALYSIS 3 - Trace by Trace approach
@@ -593,11 +817,11 @@ if __name__ == '__main__':
     #                          'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
     #                          75, detector)
     ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-                             'Adaptive IPDD Trace by Trace', dataset_config)
+                             'Adaptive IPDD Trace by Trace', dataset_config, print_plot_name=False)
     dataset_config = Dataset2Configuration()
     ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
     ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-                                 'Adaptive IPDD Trace by Trace', dataset_config)
+                                 'Adaptive IPDD Trace by Trace', dataset_config, print_plot_name=False)
 
     dataset_config = Dataset1Configuration()
     experiments_path = f'experiments_march_2024/IPDD_controlflow_adaptive_windowing'
@@ -607,11 +831,11 @@ if __name__ == '__main__':
     #                          'Adaptive IPDD Windowing', dataset_config.dataset_name,
     #                          75, detector)
     ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-                                 'Adaptive IPDD Windowing', dataset_config)
+                                 'Adaptive IPDD Windowing', dataset_config, print_plot_name=False)
     dataset_config = Dataset2Configuration()
     ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_WINDOW.xlsx'
     ipdd_plot_change_pattern_all(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-                                 'Adaptive IPDD Windowing', dataset_config)
+                                 'Adaptive IPDD Windowing', dataset_config, print_plot_name=False)
 
 
     ######################################################################
@@ -632,6 +856,7 @@ if __name__ == '__main__':
 
     ######################################################################
     # Comparing tools using the synthetic event logs
+    # Analysis used for the thesis document
     ######################################################################
     output_folder = 'experiments_march_2024/comparative_analysis_trace'
     if not os.path.exists(output_folder):
@@ -641,18 +866,18 @@ if __name__ == '__main__':
     scale = [0.0, 360.0]
     detector_config = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
     config = ApproachesConfiguration("dataset1", f_score_key, f_score_key_other_tools, detector_config)
-    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name)
+    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, print_plot_name=False)
     config = ApproachesConfiguration("dataset1", mean_delay_key, 'mean_delay', detector_config)
-    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale)
+    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale, print_plot_name=False)
 
     config = ApproachesConfiguration("dataset2", f_score_key, f_score_key_other_tools, detector_config)
-    generate_plot_tools(output_folder, config.approaches, f_score_key, config.dataset_name)
+    generate_plot_tools(output_folder, config.approaches, f_score_key, config.dataset_name, print_plot_name=False)
     config = ApproachesConfiguration("dataset2", mean_delay_key, mean_delay_key_other_tools, detector_config)
-    generate_plot_tools(output_folder, config.approaches, mean_delay_key, config.dataset_name, scale=scale)
+    generate_plot_tools(output_folder, config.approaches, mean_delay_key, config.dataset_name, scale=scale, print_plot_name=False)
 
-    # perform friedman test
+    # performing friedman test
     windows = [str(i) for i in range(50, 301, 25)]
-    detector_config = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05})
+    detector_config = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
     config = ApproachesConfiguration("dataset1", f_score_key, f_score_key_other_tools, detector_config)
     friedman_tools(output_folder, config.approaches, config.dataset_name, f_score_key, windows)
     config = ApproachesConfiguration("dataset1", mean_delay_key, mean_delay_key_other_tools, detector_config)
@@ -663,17 +888,39 @@ if __name__ == '__main__':
     friedman_tools(output_folder, config.approaches, config.dataset_name, mean_delay_key, windows)
 
     ######################################################################
-    # Plot Apromore results
+    # Comparing tools using the synthetic event logs
+    # New approach for comparing tools using the synthetic event logs
+    # Combine both datasets using the average values
     ######################################################################
-    dataset_config = Dataset1Configuration()
-    analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
-    dataset_config = Dataset2Configuration()
-    analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
+    output_folder = 'experiments_march_2024/new_comparative_analysis_trace'
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    windows = [str(i) for i in range(50, 301, 25)]
+    detector_config = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
+    scale = [0.0, 360.0]
 
-    ######################################################################
-    # Plot VDD results
-    ######################################################################
-    dataset_config = Dataset1Configuration()
-    analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
-    dataset_config = Dataset2Configuration()
-    analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
+    config = ApproachesConfiguration_CombineDatasets(["dataset1", "dataset2"],  f_score_key, f_score_key_other_tools, detector_config)
+    generate_plot_tools_combined(output_folder, config.approaches, config.metric_name, config.dataset_name,
+                        print_plot_name=False)
+    statistical_analysis_comparing_tools(output_folder, config.approaches, f_score_key, windows)
+    config = ApproachesConfiguration_CombineDatasets(["dataset1", "dataset2"], mean_delay_key, mean_delay_key_other_tools,
+                                                     detector_config)
+    generate_plot_tools_combined(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale,
+                        print_plot_name=False)
+    statistical_analysis_comparing_tools(output_folder, config.approaches, mean_delay_key, windows, order='ascending')
+
+    # ######################################################################
+    # # Plot Apromore results
+    # ######################################################################
+    # dataset_config = Dataset1Configuration()
+    # analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
+    # dataset_config = Dataset2Configuration()
+    # analyze_dataset_apromore(dataset_config, dataset_config.dataset_name)
+    #
+    # ######################################################################
+    # # Plot VDD results
+    # ######################################################################
+    # dataset_config = Dataset1Configuration()
+    # analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
+    # dataset_config = Dataset2Configuration()
+    # analyze_dataset_vdd(dataset_config, dataset_config.dataset_name)
