@@ -7,7 +7,7 @@ from pm4py.objects.conversion.log import converter as log_converter
 
 
 def analyze_italian_help_desk():
-    folder = 'data/input/logs/controlflow/real'
+    folder = '../datasets/real'
     logname = 'italian_help_desk_company.xes'
     logcsv = 'finale.csv'
 
