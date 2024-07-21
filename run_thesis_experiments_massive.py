@@ -245,13 +245,16 @@ class RealDatasetConfiguration:
     dataset_name = 'italian_help_desk_company'
     input_path = 'datasets/real'
     lognames = ['italian_help_desk_company.xes']
-    windows = [i for i in range(25, 301, 25)]
+    # windows = [i for i in range(25, 301, 25)]
+    # detectors = [
+    #     SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+    #     SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
+    #     SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.1}),
+    #     SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
+    # ]
+    windows = [100]
     detectors = [
-        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
-        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
-        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.1}),
-        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
-    ]
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})]
 
 
 class DatasetTestConfiguration:
@@ -284,20 +287,20 @@ class DatasetTestConfiguration:
 
 
 if __name__ == '__main__':
-    dataset1 = Dataset1Configuration()
-    # run_massive_fixed_controlflow(dataset1)
-    run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
-    run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
-
-    dataset2 = Dataset2Configuration()
-    # run_massive_fixed_controlflow(dataset2)
-    run_massive_adaptive_controlflow_trace_by_trace(dataset2, evaluate=True)
-    run_massive_adaptive_controlflow_windowing(dataset2, evaluate=True)
+    # dataset1 = Dataset1Configuration()
+    # # run_massive_fixed_controlflow(dataset1)
+    # run_massive_adaptive_controlflow_trace_by_trace(dataset1, evaluate=True)
+    # run_massive_adaptive_controlflow_windowing(dataset1, evaluate=True)
+    #
+    # dataset2 = Dataset2Configuration()
+    # # run_massive_fixed_controlflow(dataset2)
+    # run_massive_adaptive_controlflow_trace_by_trace(dataset2, evaluate=True)
+    # run_massive_adaptive_controlflow_windowing(dataset2, evaluate=True)
 
     real_dataset = RealDatasetConfiguration()
     # run_massive_fixed_controlflow(real_dataset)
-    run_massive_adaptive_controlflow_trace_by_trace(real_dataset)
-    run_massive_adaptive_controlflow_windowing(real_dataset)
+    run_massive_adaptive_controlflow_trace_by_trace(real_dataset, save_model_svg=True)
+    # run_massive_adaptive_controlflow_windowing(real_dataset)
 
     # for testing
     # dataset = DatasetTestConfiguration()
