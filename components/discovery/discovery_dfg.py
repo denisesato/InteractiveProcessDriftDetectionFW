@@ -37,30 +37,31 @@ class DiscoveryDfg(Discovery):
 
         # mine the DFG (using Pm4Py)
         dfg, sa, ea = pm4py.discover_directly_follows_graph(sub_log)
+
         # filter only 6% of paths - FOR UTFPR analysis
         # percentual_paths = 0.006
         # TODO - define a parameter
-        percentual_paths = 1
+        # percentual_paths = 1
         # get the number of activities
-        activities_dict = pm4py.get_event_attribute_values(sub_log, 'concept:name', case_id_key='case:concept:name')
-        dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea,
-                                                                                     activities_dict, percentual_paths) # DMVS
+        # activities_dict = pm4py.get_event_attribute_values(sub_log, 'concept:name', case_id_key='case:concept:name')
+        # dfg, sa, ea, activities_count = dfg_filtering.filter_dfg_on_paths_percentage(dfg, sa, ea,
+        #                                                                              activities_dict, percentual_paths) # DMVS
+
         # save the process model
         if activity and activity != '':  # adaptive approach generates models per activity
-            output_filename = self.model_type_definitions.get_model_filename(event_data_original_name,
-                                                                             w_count[activity])
+            output_filename = os.path.join(models_path, self.model_type_definitions.get_model_filename(event_data_original_name,
+                                                                             w_count[activity]))
             output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count[activity]))
         else:  # fixed approach generate the models based on the window size
-            output_filename = self.model_type_definitions.get_model_filename(event_data_original_name, w_count)
+            output_filename = os.path.join(models_path, self.model_type_definitions.get_model_filename(event_data_original_name, w_count))
             output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count))
 
         print(f'Saving {models_path} - {output_filename}')
-        parameters = {dfg_visualization.Variants.FREQUENCY.value.Parameters.START_ACTIVITIES: sa,
-                      dfg_visualization.Variants.FREQUENCY.value.Parameters.END_ACTIVITIES: ea}
-        gviz = dfg_visualization.apply(dfg, log=sub_log, parameters=parameters)
-        gviz.save(filename=output_filename, directory=models_path)
+        pm4py.save_vis_dfg(dfg, sa, ea, output_filename)
 
         if save_model_svg:
             print(f'Saving {models_path} - {output_filename} - SVG format')
-            pm4py.save_vis_performance_dfg(dfg, sa, ea, output_filename_svg)
+            # TODO define a parameter for choose betwee performance or frequency DFG
+            # pm4py.save_vis_performance_dfg(dfg, sa, ea, output_filename_svg)
+            pm4py.save_vis_dfg(dfg, sa, ea, output_filename_svg)
         return dfg
