@@ -15,7 +15,46 @@ from components.parameters import AttributeAdaptive
 from ipdd_massive import run_massive_adaptive_time
 
 
+class AllSyntheticEventLogsConfiguration:
+    dataset_name = 'synthetic_datasets_production'
+
+    ###############################################################
+    # Information about the data for performing the experiments
+    ###############################################################
+    input_path = 'C:\\Users\\denise\\OneDrive\\Documents\\Doutorado\\Bases de ' \
+                 'Dados\\DadosConceptDrift\\LogsProducao\\Artificiais'
+    lognames = [
+        'LogArtificial01P300C10A.xes',
+        'LogArtificial01P300C100A.xes',
+        'LogArtificial01P300C1000A.xes',
+        'LogArtificial1P350C10A.xes',
+        'LogArtificial1P350C100A.xes',
+        'LogArtificial1P350C1000A.xes',
+        'LogArtificial5P400C10A.xes',
+        'LogArtificial5P400C100A.xes',
+        'LogArtificial5P400C100A.xes',
+        'LogArtificial5P400C1000A.xes',
+        'PerdaDesempenho0-Manut0-Data.xes',
+        'PerdaDesempenho1-Manut0-Data.xes',
+        'PerdaDesempenho1-Manut1-Data.xes',
+    ]
+
+    deltas = [
+        0.002,
+        0.05,
+        0.1,
+        0.3,
+        1
+    ]
+
+    attribute = AttributeAdaptive.SOJOURN_TIME.name
+    attribute_name = AttributeAdaptive.SOJOURN_TIME
+
+
+
 class SyntheticEventLogsConfiguration:
+    dataset_name = 'synthetic_datasets_production'
+
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
@@ -67,6 +106,8 @@ class TemperatureLogConfiguration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
+    dataset_name = 'synthetic_dataset_temperature'
+
     input_path = 'C:\\Users\\denise\\OneDrive\\Documents\\Doutorado\\Bases de ' \
                  'Dados\\DadosConceptDrift\\LogsProducao\\SelecionadosArtigo'
     lognames = [
@@ -107,6 +148,8 @@ class RealEventLogConfiguration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
+    dataset_name = 'real_dataset_production'
+
     input_path = 'C:\\Users\\denise\\OneDrive\\Documents\\Doutorado\\Bases de ' \
                  'Dados\\DadosConceptDrift\\LogsProducao\\SelecionadosArtigo'
     lognames = [
@@ -132,6 +175,11 @@ class RealEventLogConfiguration:
 
 
 if __name__ == '__main__':
+    # testing
+    # dataset_complete = AllSyntheticEventLogsConfiguration()
+    # run_massive_adaptive_time(dataset_complete)
+
+    # datasets used on paper
     dataset1 = SyntheticEventLogsConfiguration()
     run_massive_adaptive_time(dataset1, evaluate=True)
     dataset2 = TemperatureLogConfiguration()
