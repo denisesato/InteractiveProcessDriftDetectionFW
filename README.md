@@ -8,6 +8,10 @@ After you cloned the git repository, go to the project directory and install the
 
 	pip install -r requirements.txt
 
+Then update the river package with the latest development version which has a bugfix on the ADWIN detector:
+
+    pip install git+https://github.com/online-ml/river --upgrade
+
 For the web interface we must install Graphviz available at: https://graphviz.org/download/
 
 In a Windows Machine install 
@@ -17,7 +21,6 @@ Latest supported Visual C++ Redistributable downloads | Microsoft Learn availabl
 https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
 # New release
-
 We have updated IPDD to use the ADWIN detector implementation from River package (https://github.com/online-ml/river).
 
 ## Information about new version of pm4py
