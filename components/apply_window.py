@@ -146,7 +146,7 @@ class AnalyzeDrift:
 
         # save temporal series to a csv file
         df.columns = ['index', 'value', 'timestamp', 'case_id']
-        filename_attributes = f'{activity_name}.csv'
+        filename_attributes = f'{activity_name}'
         if self.current_parameters.attribute_name_for_plot:
             attribute = self.current_parameters.attribute_name_for_plot
         elif self.current_parameters.attribute == AttributeAdaptive.SOJOURN_TIME.name:
@@ -155,8 +155,11 @@ class AnalyzeDrift:
             attribute = f'{AttributeAdaptive.WAITING_TIME.value}  (seconds)'
         else:
             attribute = self.current_parameters.attribute_name
-        output_filename = os.path.join(self.output_path_adaptive_detector, filename_attributes)
+        # save temporal serie into csv and excel for analysis
+        output_filename = os.path.join(self.output_path_adaptive_detector, f'{filename_attributes}.csv')
         df.to_csv(output_filename, index=False)
+        output_filename = os.path.join(self.output_path_adaptive_detector, f'{filename_attributes}.xlsx')
+        df.to_excel(output_filename, index=False)
 
         # generate plot
         if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
