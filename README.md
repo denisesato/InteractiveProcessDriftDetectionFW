@@ -8,7 +8,8 @@ After you cloned the git repository, go to the project directory and install the
 
 	pip install -r requirements.txt
 
-Then update the river package with the latest development version which has a bugfix on the ADWIN detector:
+Then install the river package with the latest development version which has a bugfix on the ADWIN detector.
+This method requires having Cython and Rust installed on your machine.
 
     pip install git+https://github.com/online-ml/river --upgrade
 
