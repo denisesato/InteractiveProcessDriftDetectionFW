@@ -50,6 +50,7 @@ def threaded(fn):
 class QualityDimension(str, Enum):
     FITNESS = 'fitness'
     PRECISION = 'precision'
+    PRECISION_WINDOW = 'precision window'
 
 
 def calculate_quality_metric(metric_name, log, net, im, fm):
@@ -204,7 +205,7 @@ class AnalyzeDrift:
     def plot_signal_adaptive_controlflow(self, values, metrics, drifts=None):
         # plt.style.use('seaborn-whitegrid')
         for metric in metrics.keys():
-            plt.plot(values[metric], label=metrics[metric])
+            plt.plot(values[metric], label=metric)
             no_values = len(values[metric])
         gap = int(no_values * 0.1)
         if gap == 0:  # less than 10 values
@@ -235,9 +236,9 @@ class AnalyzeDrift:
         # save the time series (fitness and precision)
         for m in metrics.keys():
             df = pd.DataFrame(values[m])
-            df.to_excel(os.path.join(self.output_path_adaptive_detector, f'{metrics[m]}.xlsx'))
+            df.to_excel(os.path.join(self.output_path_adaptive_detector, f'{m}_{metrics[m]}.xlsx'))
             df.index.name = 'Index'
-            df.to_csv(os.path.join(self.output_path_adaptive_detector, f'{metrics[m]}.csv'), header=['Value'])
+            df.to_csv(os.path.join(self.output_path_adaptive_detector, f'{m}_{metrics[m]}.csv'), header=['Value'])
         plt.close()
         plt.cla()
         plt.clf()
@@ -314,6 +315,15 @@ class AnalyzeDrift:
                 # IPDD adaptive windowing approach
                 window_count, metrics_manager, initial_indexes = \
                     self.apply_detector_on_quality_metrics_windowing(self.event_data,
+                                                                     self.current_parameters.detector_class,
+                                                                     self.current_parameters.win_size,
+                                                                     self.user)
+
+            elif self.current_parameters.approach == Approach.ADAPTIVE.name and \
+                    self.current_parameters.adaptive_controlflow_approach == ControlflowAdaptiveApproach.MIXED.name:
+                # IPDD adaptive windowing approach
+                window_count, metrics_manager, initial_indexes = \
+                    self.apply_detector_on_quality_metrics_mixed(self.event_data,
                                                                      self.current_parameters.detector_class,
                                                                      self.current_parameters.win_size,
                                                                      self.user)
@@ -1032,6 +1042,200 @@ class AnalyzeDrift:
             filename = os.path.join(self.output_path_adaptive_detector, f'drifts_{approach}.txt')
             self.save_change_points(filename, change_points, change_points_info)
         return self.window_count, self.metrics, self.initial_case_ids
+
+    # Adaptive IPDD mixed approach - calculate precision using last trace and last n traces (window)
+    def apply_detector_on_quality_metrics_mixed(self, event_data, detector_class, window_size, user):
+        factor = 100
+        self.current_trace = 0
+        print(f'Mixed approach - {detector_class.get_name()} to log {self.current_log.filename}')
+        for key in detector_class.parameters:
+            print(f'{key}: {detector_class.parameters[key]}')
+
+        metrics = {
+            QualityDimension.FITNESS.name: 'fitnessTBR',
+            QualityDimension.PRECISION.name: 'precisionFP',
+            QualityDimension.PRECISION_WINDOW.name: 'precisionFP'
+        }
+        total_of_traces = len(event_data)
+        # derive the model for evaluating the quality metrics
+        initial_trace_id_for_stable_period = 0
+        final_trace_id = initial_trace_id_for_stable_period + window_size
+        log_for_model = EventLog(event_data[initial_trace_id_for_stable_period:final_trace_id])
+        net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
+                                                         case_id_key='case:concept:name',
+                                                         timestamp_key='time:timestamp')
+        pnml_filename = os.path.join(self.output_path_adaptive_models_detector,
+                                     f'model1_{initial_trace_id_for_stable_period}-{final_trace_id - 1}.pnml')
+        pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
+        tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
+                                                     case_id_key='case:concept:name',
+                                                     timestamp_key='time:timestamp')
+        print(f'Initial model discovered using traces [{initial_trace_id_for_stable_period}-{final_trace_id - 1}]')
+        # initialize similarity metrics manager
+        self.metrics = ManageSimilarityMetrics(self.model_type, self.current_parameters, self.control,
+                                               self.models_path, self.metrics_path)
+        # initialize window count and case ids
+        self.window_count = 0
+        self.initial_case_ids = {}
+        values = dict.fromkeys(metrics)
+        detector_dict = dict.fromkeys(metrics)
+        drifts = dict.fromkeys(metrics)
+        # for saving the change points
+        change_points = []
+        detector_info = ChangePointInfo(detector_class.get_name())
+        for key in detector_class.parameters:
+            detector_info.add_detector_attribute(key, detector_class.parameters[key])
+        change_points_info = detector_info
+
+        for m in metrics.keys():
+            values[m] = []
+            detector_dict[m] = SelectDetector.get_detector_instance(detector_class.get_definition(),
+                                                                    detector_class.parameters)
+            detector_dict[m].instantiate_detector()
+            drifts[m] = []
+
+        initial_trace_id = 0  # start of the window (change point)
+        for i in range(0, total_of_traces):
+            self.current_trace = i + 1
+            # print(f'Reading trace {i}')
+            current_trace = EventLog(event_data[i:i + 1])
+            if i < initial_trace_id_for_stable_period + window_size:
+                print(
+                    f'Setup phase - traces [{initial_trace_id_for_stable_period}-{initial_trace_id_for_stable_period + window_size - 1}]')
+                # initial of the stable period
+                # during the stable period we apply the same value for the metrics
+                # fitness - calculated using the initial trace of the stable period
+                # precision_trace - calculated using the initial trace of the stable period
+                # precision_window - calculated using all the traces inside the stable period
+                traces_stable_period = EventLog(
+                    event_data[initial_trace_id_for_stable_period:initial_trace_id_for_stable_period + window_size])
+                precision_trace = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name],
+                                                                current_trace,
+                                                                tree) * factor
+                precision_window = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION_WINDOW.name],
+                                                                      traces_stable_period,
+                                                                      tree) * factor
+                fitness = calculate_quality_metric(metrics[QualityDimension.FITNESS.name], current_trace, net, im,
+                                                   fm) * factor
+            elif i >= initial_trace_id_for_stable_period + window_size:
+                print(f'Detection phase - reading trace {i}')
+                window = EventLog(event_data[i - window_size + 1:i + 1])
+                # after the stable period calculate the metrics after reading a new trace
+                precision_trace = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION.name], current_trace,
+                                                                tree) * factor
+                precision_window = calculate_quality_metric_footprints(metrics[QualityDimension.PRECISION_WINDOW.name], window,
+                                                                tree) * factor
+                fitness = calculate_quality_metric(metrics[QualityDimension.FITNESS.name], current_trace, net, im,
+                                                   fm) * factor
+
+            values[QualityDimension.PRECISION.name].append(precision_trace)
+            detector_dict[QualityDimension.PRECISION.name].update_val(precision_trace)
+
+            values[QualityDimension.PRECISION_WINDOW.name].append(precision_window)
+            detector_dict[QualityDimension.PRECISION_WINDOW.name].update_val(precision_window)
+
+            values[QualityDimension.FITNESS.name].append(fitness)
+            detector_dict[QualityDimension.FITNESS.name].update_val(fitness)
+
+            drift_detected = False
+            change_point = 0
+
+
+            # check for drift in fitness
+            if detector_dict[QualityDimension.FITNESS.name].detected_change():
+                change_point = i
+                drifts[QualityDimension.FITNESS.name].append(change_point)
+                print(f'Metric [{QualityDimension.FITNESS.value}] detected a drift in trace: {change_point}')
+                drift_detected = True
+
+            # if no drift is detected by the fitness, check the precision metric
+            if not drift_detected:
+                # check for drift in precision calculated using the last trace
+                if detector_dict[QualityDimension.PRECISION.name].detected_change():
+                    # define the change point as the initial of the window
+                    change_point = i
+                    drifts[QualityDimension.PRECISION.name].append(change_point)
+                    print(f'Metric [{QualityDimension.PRECISION.value}] detected a drift in trace: {change_point}')
+                    drift_detected = True
+                # check for drift in precision calculated using the window
+                elif detector_dict[QualityDimension.PRECISION_WINDOW.name].detected_change():
+                    change_point = i - window_size + 1
+                    drifts[QualityDimension.PRECISION_WINDOW.name].append(change_point)
+                    print(f'Metric [{QualityDimension.PRECISION_WINDOW.value}] detected a drift in trace: {change_point}')
+                    drift_detected = True
+
+
+            if drift_detected:
+                change_points.append(change_point)
+                change_points_info.add_change_point(change_point)
+                change_points_info.add_timestamp(self.get_current_date(event_data[change_point]))
+                # process new window
+                final_trace_id = initial_trace_id + window_size
+                if final_trace_id > total_of_traces:
+                    final_trace_id = total_of_traces
+                self.new_window(initial_trace_id, final_trace_id)
+                # get the current case id
+                case_id = self.get_case_id(event_data[initial_trace_id])
+                # save the initial of the processed window
+                self.initial_case_ids[initial_trace_id] = case_id
+                # update the beginning of the next window
+                initial_trace_id_for_stable_period = i + 1
+                initial_trace_id = change_point
+                for m in metrics:
+                    # reset the detectors to avoid a new drift during the stable period
+                    detector_dict[m].reset()
+                if self.current_parameters.update_model:
+                    # Discover a new model using window
+                    log_for_model = EventLog(event_data[change_point:change_point + window_size])
+                    net, im, fm = pm4py.discover_petri_net_inductive(log_for_model, activity_key='concept:name',
+                                                                     case_id_key='case:concept:name',
+                                                                     timestamp_key='time:timestamp')
+                    pnml_filename = os.path.join(self.output_path_adaptive_models_detector,
+                                                 f'model{self.window_count + 1}_{change_point}-{change_point + window_size - 1}.pnml')
+                    pnml_exporter.apply(net, im, pnml_filename, final_marking=fm)
+                    tree = pm4py.discover_process_tree_inductive(log_for_model, activity_key='concept:name',
+                                                                 case_id_key='case:concept:name',
+                                                                 timestamp_key='time:timestamp')
+                    print(f'New model discovered using traces [{change_point}-{change_point + window_size - 1}]')
+
+        # process remaining items as the last window
+        if 0 < initial_trace_id < total_of_traces:
+            final_trace_id = initial_trace_id + window_size
+            if final_trace_id > total_of_traces:
+                final_trace_id = total_of_traces
+            print(
+                f'Analyzing final window... size {final_trace_id - initial_trace_id} window_count {self.window_count}')
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            # process final window for all activities where a drift has been detected
+            self.new_window(initial_trace_id, final_trace_id)
+            case_id = self.get_case_id(event_data[initial_trace_id])
+            self.initial_case_ids[initial_trace_id] = case_id
+        elif initial_trace_id == 0:
+            # if no drift is detected, generate the complete model and the plot with attribute values for each activity
+            print(f'Analyzing unique window because no drift is detected...')
+            # process the unique window
+            case_id = self.get_case_id(event_data[initial_trace_id])
+            self.initial_case_ids[0] = case_id
+            # set the final window used by metrics manager to identify all the metrics have been calculated
+            self.metrics.set_final_window(self.window_count)
+            self.new_window(initial_trace_id, total_of_traces)
+
+        # join all detected drifts for the plot
+        all_drifts = []
+        for m in metrics.keys():
+            all_drifts += drifts[m]
+        all_drifts = list(set(all_drifts))
+        all_drifts.sort()
+        # save plot and data
+        self.plot_signal_adaptive_controlflow(values, metrics, all_drifts)
+        # save information about drifts
+        if len(all_drifts) > 0:
+            approach = get_value_of_parameter(self.current_parameters.adaptive_controlflow_approach)
+            filename = os.path.join(self.output_path_adaptive_detector, f'drifts_{approach}.txt')
+            self.save_change_points(filename, change_points, change_points_info)
+        return self.window_count, self.metrics, self.initial_case_ids
+
 
     def get_current_timestamp(self, item):
         # use the date of the first event within the trace

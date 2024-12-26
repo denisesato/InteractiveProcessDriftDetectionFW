@@ -326,6 +326,13 @@ def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=
                                   out_filename, dataset_config, True)
 
 
+def run_massive_adaptive_controlflow_mixed(dataset_config, metrics=None, evaluate=False,
+                                                    save_sublogs=False, save_model_svg=False):
+    run_massive_adaptive_controlflow(dataset_config,
+                                     ControlflowAdaptiveApproach.MIXED,
+                                     metrics, evaluate, save_sublogs, save_model_svg)
+
+
 def run_massive_adaptive_controlflow_trace_by_trace(dataset_config, metrics=None, evaluate=False,
                                                     save_sublogs=False, save_model_svg=False):
     run_massive_adaptive_controlflow(dataset_config,
