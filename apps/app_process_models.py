@@ -222,7 +222,7 @@ parameters_panel = [
 models_card = [
     dbc.Row([
         dbc.Col([
-            dbc.CardImg(id='adaptive-plot', top=True),
+            dbc.CardImg(id='adaptive-plot'),
             dbc.Card(
                 dbc.CardBody([
                     html.Div([
@@ -235,7 +235,7 @@ models_card = [
                     html.Div(id='div-similarity-metrics-value', children=''),
                     html.Div(id='div-differences', children=''),
                 ]),
-                style={'backgroundColor': 'rgba(232, 236, 241, 1)'}, className='mt-1'
+                style={'backgroundColor': 'rgba(232, 236, 241, 1)', 'z-index': '10'}, className='mt-1'
             )
         ], width=3),
 
@@ -248,7 +248,8 @@ models_card = [
                 max=0,
                 value=0,
                 marks={}),
-            dash_interactive_graphviz.DashInteractiveGraphviz(id="current-model", dot_source=''),
+            dash_interactive_graphviz.DashInteractiveGraphviz(id="current-model", dot_source='',
+                                                              style={'left': '0px', 'z-index': '1'}),
         ], width=9, style={'height': '75vh'})
     ], className='mt-1'),
 

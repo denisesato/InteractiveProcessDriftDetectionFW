@@ -57,11 +57,11 @@ class DiscoveryDfg(Discovery):
             output_filename_svg = os.path.join(models_path, self.model_type_definitions.get_model_filename_svg(w_count))
 
         print(f'Saving {models_path} - {output_filename}')
-        pm4py.save_vis_dfg(dfg, sa, ea, output_filename)
+        pm4py.save_vis_dfg(dfg, sa, ea, output_filename, rankdir="TB")
 
         if save_model_svg:
             print(f'Saving {models_path} - {output_filename} - SVG format')
             # TODO define a parameter for choose betwee performance or frequency DFG
             # pm4py.save_vis_performance_dfg(dfg, sa, ea, output_filename_svg)
-            pm4py.save_vis_dfg(dfg, sa, ea, output_filename_svg)
+            pm4py.save_vis_dfg(dfg, sa, ea, output_filename_svg, rankdir="TB")
         return dfg

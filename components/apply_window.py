@@ -141,7 +141,13 @@ class AnalyzeDrift:
     # generate the plot with the attribute selected for a specific activity
     # used for adaptive change detection in an activity attribute (time or data perspectives)
     def plot_signal_adaptive_time_data(self, values_for_activity, activity_name, change_points=None,
-                                       change_points_time_based=None):
+                                       change_points_time_based=None, parameters=None):
+        # for plotting real drifts - included for IPDD for conditional maintenance paper
+        real_drifts_for_plot = None
+        if parameters and hasattr(parameters, "real_drifts_for_plot") and parameters.real_drifts_for_plot:
+            real_drifts_for_plot = parameters.real_drifts_for_plot[activity_name][self.current_parameters.logname]
+
+
         df = pd.DataFrame(values_for_activity).T.reset_index()
 
         # save temporal series to a csv file
@@ -175,13 +181,15 @@ class AnalyzeDrift:
             x_name_event_based = 'event index'
             df.reset_index(inplace=True)
             self.plot_signal(df, x_column_name_event_based, x_name_event_based, activity_name, attribute,
-                             change_points)
+                             change_points, real_drifts_for_plot=real_drifts_for_plot)
         else:
             x_colum_name = 'index'
             x_name = 'trace'
-            self.plot_signal(df, x_colum_name, x_name, activity_name, attribute, change_points)
+            self.plot_signal(df, x_colum_name, x_name, activity_name, attribute, change_points,
+                             real_drifts_for_plot=real_drifts_for_plot)
 
-    def plot_signal(self, df_plot, x_column_name, x_axis_name, activity_name, attribute, change_points):
+    def plot_signal(self, df_plot, x_column_name, x_axis_name, activity_name, attribute, change_points,
+                    real_drifts_for_plot=None):
         sns.set_style("whitegrid")
         plot = sns.lineplot(data=df_plot, x=x_column_name, y='value')
         plot.set_xlabel(x_axis_name)
@@ -190,6 +198,11 @@ class AnalyzeDrift:
         if change_points:
             for cp in change_points:
                 plt.axvline(x=cp, color='r', linestyle=':')
+
+        if real_drifts_for_plot:
+            for rd in real_drifts_for_plot:
+                plt.axvline(x=rd, color='g', linestyle=':')
+
         # save the plot
         filename = os.path.join(self.output_path_adaptive_detector, f'{activity_name}_{x_axis_name}.png')
         plt.title(f'Adaptive Time/Data - {activity_name}')
@@ -573,15 +586,19 @@ class AnalyzeDrift:
                     if self.current_parameters.activities_for_plot:
                         self.plot_signal_adaptive_time_data(attribute_values[a],
                                                             self.current_parameters.activities_for_plot[j],
-                                                            change_points[a])
+                                                            change_points[a],
+                                                            parameters=self.current_parameters)
                     else:
-                        self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a])
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a],
+                                                            parameters=self.current_parameters)
                 else:
                     if self.current_parameters.activities_for_plot:
                         self.plot_signal_adaptive_time_data(attribute_values[a],
-                                                            self.current_parameters.activities_for_plot[j])
+                                                            self.current_parameters.activities_for_plot[j],
+                                                            parameters=self.current_parameters)
                     else:
-                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a,
+                                                            parameters=self.current_parameters)
             if find_any_drift:
                 # save the change points for the activity
                 filename = os.path.join(self.output_path_adaptive_detector,
@@ -594,9 +611,11 @@ class AnalyzeDrift:
                 for j, a in enumerate(activities):
                     if self.current_parameters.activities_for_plot:
                         self.plot_signal_adaptive_time_data(attribute_values[a],
-                                                            self.current_parameters.activities_for_plot[j])
+                                                            self.current_parameters.activities_for_plot[j],
+                                                            parameters=self.current_parameters)
                     else:
-                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a,
+                                                            parameters=self.current_parameters)
                 # process the unique window
                 initial_index[Activity.ALL.value] = 0
                 initial_case_ids[Activity.ALL.value] = {}
@@ -677,16 +696,20 @@ class AnalyzeDrift:
                         self.plot_signal_adaptive_time_data(attribute_values[a],
                                                             self.current_parameters.activities_for_plot[j],
                                                             change_points[a],
-                                                            change_points_time_based[a])
+                                                            change_points_time_based[a],
+                                                            parameters=self.current_parameters)
                     else:
                         self.plot_signal_adaptive_time_data(attribute_values[a], a, change_points[a],
-                                                            change_points_time_based[a])
+                                                            change_points_time_based[a],
+                                                            parameters=self.current_parameters)
                 else:
                     if self.current_parameters.activities_for_plot:
                         self.plot_signal_adaptive_time_data(attribute_values[a],
-                                                            self.current_parameters.activities_for_plot[j])
+                                                            self.current_parameters.activities_for_plot[j],
+                                                            parameters=self.current_parameters)
                     else:
-                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a,
+                                                            parameters=self.current_parameters)
             if find_any_drift:
                 # save the change points for the activity
                 filename = os.path.join(self.output_path_adaptive_detector, f'drifts_{attribute_class.name}.txt')
@@ -698,9 +721,11 @@ class AnalyzeDrift:
                 for j, a in enumerate(activities):
                     if self.current_parameters.activities_for_plot:
                         self.plot_signal_adaptive_time_data(attribute_values[a],
-                                                            self.current_parameters.activitie_for_plot[j])
+                                                            self.current_parameters.activitie_for_plot[j],
+                                                            parameters=self.current_parameters)
                     else:
-                        self.plot_signal_adaptive_time_data(attribute_values[a], a)
+                        self.plot_signal_adaptive_time_data(attribute_values[a], a,
+                                                            parameters=self.current_parameters)
                 # process the unique window
                 initial_index[Activity.ALL.value] = 0
                 initial_case_ids[Activity.ALL.value] = {}

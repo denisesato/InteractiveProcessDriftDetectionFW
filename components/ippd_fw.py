@@ -151,7 +151,7 @@ class IPDDParametersFixed(IPDDParameters):
 class IPDDParametersAdaptive(IPDDParameters):
     def __init__(self, logname, approach, perspective, read_log_as, metrics, detector_class, attribute,
                  attribute_name=None, activities=[], save_sublogs=False, save_model_svg=False,
-                 update_model=True, attribute_name_for_plot=None, activities_for_plot=None):
+                 update_model=True, attribute_name_for_plot=None, activities_for_plot=None, real_drifts_for_plot=None):
         super().__init__(logname, approach, read_log_as, metrics, save_sublogs, save_model_svg)
         self.perspective = perspective
         self.attribute = attribute
@@ -162,6 +162,7 @@ class IPDDParametersAdaptive(IPDDParameters):
         self.save_model_svg = save_model_svg
         self.update_model = update_model
         self.detector_class = detector_class
+        self.real_drifts_for_plot = real_drifts_for_plot
 
     def print(self):
         super().print()
@@ -231,7 +232,6 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.status_similarity_metrics = ''
         self.status_mining = ''
         self.control = Control()
-        self.script = False
         self.user_id = None
         self.model_type_definitions = None
         self.discovery = None
@@ -461,6 +461,7 @@ class InteractiveProcessDriftDetectionFW(metaclass=SingletonMeta):
         self.run(parameters, user_id)
 
     def run_script(self, parameters):
+        self.script = True
         self.run(parameters, 'script')
 
     def run(self, parameters, user_id='script'):

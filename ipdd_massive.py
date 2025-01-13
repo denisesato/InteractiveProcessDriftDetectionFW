@@ -167,14 +167,14 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
     dict_results = {}
     for log in dataset_config.lognames:
         dict_results[log] = {}
-        for delta in dataset_config.deltas:
-
+        for detector in dataset_config.detectors:
             print('----------------------------------------------')
             print(f'Running new scenario')
             print(f'Approach: {Approach.ADAPTIVE.value}')
             print(f'Metrics: {[m.value for m in metrics]}')
             print(f'Attribute: {dataset_config.attribute}')
             print(f'Attribute name: {dataset_config.attribute_name}')
+            print(f'Detector: {detector}')
             attribute_name_for_plot = None
             if hasattr(dataset_config, "attribute_name_for_plot"):
                 attribute_name_for_plot = dataset_config.attribute_name_for_plot
@@ -190,14 +190,25 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
             print(f'Event log: {log}')
             print('----------------------------------------------')
             log_filename = os.path.join(dataset_config.input_path, log)
-            detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name,
-                                                                  {'delta': delta})
-            parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
+
+            if evaluate and hasattr(dataset_config, 'actual_change_points'):
+                parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
+                                                    perspective=AdaptivePerspective.TIME_DATA.name,
+                                                    read_log_as=read_log_as, metrics=metrics,
+                                                    attribute=dataset_config.attribute,
+                                                    attribute_name=dataset_config.attribute_name,
+                                                    detector_class=detector,
+                                                    attribute_name_for_plot=attribute_name_for_plot,
+                                                    activities=activities,
+                                                    activities_for_plot=activities_for_plot,
+                                                    real_drifts_for_plot=dataset_config.actual_change_points,)
+            else:
+                parameters = IPDDParametersAdaptive(logname=log_filename, approach=Approach.ADAPTIVE.name,
                                                 perspective=AdaptivePerspective.TIME_DATA.name,
                                                 read_log_as=read_log_as, metrics=metrics,
                                                 attribute=dataset_config.attribute,
                                                 attribute_name=dataset_config.attribute_name,
-                                                detector_class=detector_class,
+                                                detector_class=detector,
                                                 attribute_name_for_plot=attribute_name_for_plot,
                                                 activities=activities,
                                                 activities_for_plot=activities_for_plot)
@@ -217,7 +228,7 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
                 print(
                     f'Adaptive IPDD detect drifts for attribute {dataset_config.attribute} in activity {activity} in '
                     f'traces {detected_drifts}')
-                dict_results[log][f'{DRIFTS_KEY}{DETECTOR_KEY}={delta} {ACTIVITY_KEY}={activity}'] = detected_drifts[activity]
+                dict_results[log][f'{DRIFTS_KEY} {DETECTOR_KEY}={detector.get_name()}{detector.get_parameters_string()} {ACTIVITY_KEY}={activity}'] = detected_drifts[activity]
 
     out_filepath = framework.get_evaluation_path('script')
     out_filename = f'{dataset_config.dataset_name}_results_IPDD_{Approach.ADAPTIVE.name}_'\
@@ -394,9 +405,9 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
         for configuration in change_points.keys():
             if hasattr(dataset_config, "activities") and dataset_config.activities is not None:
                 # get the activity name in the configuration
-                regexp = f"{DETECTOR_KEY}=(\d.*) {ACTIVITY_KEY}=(.*)"
+                regexp = fr'{ACTIVITY_KEY}=(.*)'
                 if match := re.search(regexp, configuration):
-                    activity_reported = match.group(2)
+                    activity_reported = match.group(1)
                 else:
                     print('Could not find the activity name in the results')
                     return
@@ -405,8 +416,12 @@ def calculate_metrics_massive(filepath, filename, dataset_config, save_input_for
                 for a in dataset_config.activities:
                     if a == activity_reported:
                         # get the actual change points
-                        real_change_points = dataset_config.actual_change_points[activity_reported][logsize]
-                        instances = dataset_config.number_of_instances[activity_reported][logsize]
+                        if (logsize in dataset_config.actual_change_points[activity_reported]):
+                            real_change_points = dataset_config.actual_change_points[activity_reported][logsize]
+                            instances = dataset_config.number_of_instances[activity_reported][logsize]
+                        else:
+                            real_change_points = dataset_config.actual_change_points[activity_reported][logname]
+                            instances = dataset_config.number_of_instances[activity_reported][logname]
 
                         # get the detected at information if available and convert to a list of integers
                         metrics_summary = framework.evaluate(real_change_points,
