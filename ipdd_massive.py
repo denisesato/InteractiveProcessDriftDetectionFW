@@ -241,7 +241,7 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
         calculate_metrics_massive(out_filepath, out_filename, dataset_config, True)
 
 
-def run_massive_fixed_controlflow(dataset_config, metrics=None):
+def run_massive_fixed_controlflow(dataset_config, metrics=None, evaluate=None):
     # getting instance of the IPDD
     framework = InteractiveProcessDriftDetectionFW(script=True)
     if not metrics:
@@ -272,10 +272,15 @@ def run_massive_fixed_controlflow(dataset_config, metrics=None):
             windows_with_drifts, detected_drifts = framework.get_windows_with_drifts()
             dict_results[log][f'{DRIFTS_KEY}w={w}'] = detected_drifts
             print(f'Fixed IPDD detect control-flow drift in windows {windows_with_drifts} - traces {detected_drifts}')
-    out_filename = os.path.join(framework.get_evaluation_path('script'),
-                                f'{dataset_config.dataset_name}_results_IPDD_{Approach.FIXED.name}.xlsx')
+
+    out_filename = f'{dataset_config.dataset_name}_results_IPDD_{Approach.FIXED.name}.xlsx'
+    out_complete_filename = os.path.join(framework.get_evaluation_path('script'),
+                                         out_filename)
     df = pd.DataFrame.from_dict(dict_results, orient='index')
-    df.to_excel(out_filename)
+    df.to_excel(out_complete_filename)
+    if evaluate:
+        calculate_metrics_massive(framework.get_evaluation_path('script'),
+                                  out_filename, dataset_config, True)
 
 
 def run_massive_adaptive_controlflow(dataset_config, adaptive_approach, metrics=None, evaluate=False,
