@@ -20,6 +20,8 @@ from components.parameters import Approach, AdaptivePerspective
 
 class EvaluationMetricList(str, Enum):
     F_SCORE = 'F-score'
+    PRECISION = 'Precision'
+    RECALL = 'Recall'
     FPR = 'False positive rate (FPR)'
     MEAN_DELAY = 'Mean delay'
 
@@ -101,6 +103,30 @@ class Fscore(EvaluationMetric):
             if precision > 0 or recall > 0:
                 f_score = 2 * ((precision * recall) / (precision + recall))
                 return f_score
+        return 0
+
+class Recall(EvaluationMetric):
+    def __init__(self, real_drifts, detected_drifts, items):
+        super().__init__(real_drifts, detected_drifts, items)
+
+    def calculate(self):
+        self.calculate_basic_metrics()
+        if self.tp + self.fn > 0:
+            if self.tp + self.fn > 0:
+                recall = self.tp / (self.tp + self.fn)
+                return recall
+        return 0
+
+
+class Precision(EvaluationMetric):
+    def __init__(self, real_drifts, detected_drifts, items):
+        super().__init__(real_drifts, detected_drifts, items)
+
+    def calculate(self):
+        self.calculate_basic_metrics()
+        if self.tp + self.fp > 0:
+            precision = self.tp / (self.tp + self.fp)
+            return precision
         return 0
 
 
@@ -207,6 +233,8 @@ class ManageEvaluationMetrics:
         detected_drifts_copy = detected_drifts.copy()
         classes = {
             EvaluationMetricList.F_SCORE.value: Fscore(real_drifts_copy, detected_drifts_copy, items),
+            EvaluationMetricList.PRECISION.value: Precision(real_drifts_copy, detected_drifts_copy, items),
+            EvaluationMetricList.RECALL.value: Recall(real_drifts_copy, detected_drifts_copy, items),
             EvaluationMetricList.FPR.value: FPR(real_drifts_copy, detected_drifts_copy, items),
             EvaluationMetricList.MEAN_DELAY.value: MeanDelay(real_drifts_copy, detected_drifts_copy, items),
         }

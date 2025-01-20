@@ -11,10 +11,8 @@
     You should have received a copy of the GNU General Public License
     along with IPDD. If not, see <https://www.gnu.org/licenses/>.
 """
-from unittest.mock import inplace
-
-from apps.app_process_models import evaluate
 from components.adaptive.detectors import SelectDetector, ConceptDriftDetector
+from components.evaluate.manage_evaluation_metrics import EvaluationMetricList
 from components.parameters import AttributeAdaptive
 from ipdd_massive import run_massive_adaptive_time, DETECTOR_KEY, ACTIVITY_KEY
 import matplotlib.pyplot as plt
@@ -24,9 +22,9 @@ import pm4py
 import pandas as pd
 import re
 from autorank import autorank, plot_stats, create_report, latex_table
+from itertools import chain
 
 plots_path = 'plots'
-f_score_key = 'F-score'
 detector_key = 'detector'
 
 class AllSyntheticEventLogsConfiguration:
@@ -76,50 +74,14 @@ class SyntheticEventLogsConfiguration:
     ###############################################################
     # Information about the data for performing the experiments
     ###############################################################
-    input_path = 'C:\\Users\\denise\\OneDrive\\Documents\\Doutorado\\Bases de ' \
-                 'Dados\\DadosConceptDrift\\LogsProducao\\SelecionadosArtigo\\1stRevision'
-    lognames = [
-        'ST_01.xes.gz',
-        'ST_02.xes.gz',
-        'ST_03.xes.gz',
-        'ST_04.xes.gz',
-        'ST_05.xes.gz',
-        'ST_06.xes.gz',
-        'ST_07.xes.gz',
-        'ST_08.xes.gz',
-        'ST_09.xes.gz',
-        'ST_10.xes.gz',
-        'DR_01.xes.gz',
-        'DR_02.xes.gz',
-        'DR_03.xes.gz',
-        'DR_04.xes.gz',
-        'DR_05.xes.gz',
-        'DR_06.xes.gz',
-        'DR_07.xes.gz',
-        'DR_08.xes.gz',
-        'DR_09.xes.gz',
-        'DR_10.xes.gz',
-        'DR_MS_01.xes.gz',
-        'DR_MS_02.xes.gz',
-        'DR_MS_03.xes.gz',
-        'DR_MS_04.xes.gz',
-        'DR_MS_05.xes.gz',
-        'DR_MS_06.xes.gz',
-        'DR_MS_07.xes.gz',
-        'DR_MS_08.xes.gz',
-        'DR_MS_09.xes.gz',
-        'DR_MS_10.xes.gz',
-        'DR_MS_ST_01.xes.gz',
-        'DR_MS_ST_02.xes.gz',
-        'DR_MS_ST_03.xes.gz',
-        'DR_MS_ST_04.xes.gz',
-        'DR_MS_ST_05.xes.gz',
-        'DR_MS_ST_06.xes.gz',
-        'DR_MS_ST_07.xes.gz',
-        'DR_MS_ST_08.xes.gz',
-        'DR_MS_ST_09.xes.gz',
-        'DR_MS_ST_10.xes.gz',
-    ]
+    input_path = 'datasets\\dataset_manufacturing'
+    samples = 30
+    ST = [f'ST_{(i+1):02d}.xes.gz' for i in range(samples)]
+    DR = [f'DR_{(i + 1):02d}.xes.gz' for i in range(samples)]
+    DR_MS = [f'DR_MS_{(i + 1):02d}.xes.gz' for i in range(samples)]
+    DR_MS_ST = [f'DR_MS_ST_{(i + 1):02d}.xes.gz' for i in range(samples)]
+    lognames = ST + DR + DR_MS + DR_MS_ST
+
     detectors = [
         SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
         SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
@@ -128,13 +90,6 @@ class SyntheticEventLogsConfiguration:
         SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 1}),
     ]
 
-    # deltas = [
-    #     0.002,
-    #     0.05,
-    #     0.1,
-    #     0.3,
-    #     1
-    # ]
 
     attribute = AttributeAdaptive.SOJOURN_TIME.name
     attribute_name = AttributeAdaptive.SOJOURN_TIME
@@ -144,94 +99,42 @@ class SyntheticEventLogsConfiguration:
     ###############################################################
     activities = ['Machine_Operating']
     activities_for_plot = ['Machine_Operating']
+
+    # ST
+    ST_drifts = dict(zip(ST, [[] for i in range(samples*4)]))
+
+    # DR
+    DR_drifts = dict(zip(DR, [[(i+1)*11] for i in range(samples*4)]))
+
+    # DR_MS
+    DR_MS_current_change_points = [i*100+1 for i in range(5)]
+    DR_MS_change_points = [DR_MS_current_change_points]
+    for i in range(samples - 1):
+        DR_MS_current_change_points = [1] + [x+1 for x in DR_MS_current_change_points[1:]]
+        DR_MS_change_points = DR_MS_change_points + [DR_MS_current_change_points]
+    DR_MS_drifts = dict(zip(DR_MS, DR_MS_change_points))
+
+    # DR_MS_ST
+    DR_MS_ST_current_change_points = [(i*40)+21 for i in range(5)]
+    DR_MS_ST_increment = [1, 3, 5, 7, 9]
+    DR_MS_ST_change_points = [DR_MS_ST_current_change_points]
+    for i in range(samples-1):
+        DR_MS_ST_current_change_points = [x + y for x, y in zip(DR_MS_ST_current_change_points, DR_MS_ST_increment)]
+        DR_MS_ST_change_points = DR_MS_ST_change_points + [DR_MS_ST_current_change_points]
+    DR_MS_ST_drifts = dict(zip(DR_MS_ST, DR_MS_ST_change_points))
+
     actual_change_points = {
-        'Machine_Operating': {
-            'ST_01.xes.gz': [],
-            'ST_02.xes.gz': [],
-            'ST_03.xes.gz': [],
-            'ST_04.xes.gz': [],
-            'ST_05.xes.gz': [],
-            'ST_06.xes.gz': [],
-            'ST_07.xes.gz': [],
-            'ST_08.xes.gz': [],
-            'ST_09.xes.gz': [],
-            'ST_10.xes.gz': [],
-            'DR_01.xes.gz': [250],
-            'DR_02.xes.gz': [250],
-            'DR_03.xes.gz': [250],
-            'DR_04.xes.gz': [250],
-            'DR_05.xes.gz': [250],
-            'DR_06.xes.gz': [250],
-            'DR_07.xes.gz': [250],
-            'DR_08.xes.gz': [250],
-            'DR_09.xes.gz': [250],
-            'DR_10.xes.gz': [250],
-            'DR_MS_01.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_02.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_03.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_04.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_05.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_06.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_07.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_08.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_09.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_10.xes.gz': [0, 52, 103, 154, 205, 256, 307, 358, 409, 460],
-            'DR_MS_ST_01.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_02.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_03.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_04.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_05.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_06.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_07.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_08.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_09.xes.gz': [50, 150, 250, 350, 450],
-            'DR_MS_ST_10.xes.gz': [50, 150, 250, 350, 450],
-        }
+        'Machine_Operating': dict(chain.from_iterable(d.items() for d in (ST_drifts, DR_drifts, DR_MS_drifts, DR_MS_ST_drifts)))
     }
 
+    no_of_instances = [500 for i in range(samples * 4)]
+    ST_inst = dict(zip(ST, no_of_instances))
+    DR_inst = dict(zip(DR, no_of_instances))
+    DR_MS_inst = dict(zip(DR_MS, no_of_instances))
+    DR_MS_ST_inst = dict(zip(DR_MS_ST, no_of_instances))
+
     number_of_instances = {
-        'Machine_Operating': {
-            'ST_01.xes.gz': 5000,
-            'ST_02.xes.gz': 5000,
-            'ST_03.xes.gz': 5000,
-            'ST_04.xes.gz': 5000,
-            'ST_05.xes.gz': 5000,
-            'ST_06.xes.gz': 5000,
-            'ST_07.xes.gz': 5000,
-            'ST_08.xes.gz': 5000,
-            'ST_09.xes.gz': 5000,
-            'ST_10.xes.gz': 5000,
-            'DR_01.xes.gz': 500,
-            'DR_02.xes.gz': 500,
-            'DR_03.xes.gz': 500,
-            'DR_04.xes.gz': 500,
-            'DR_05.xes.gz': 500,
-            'DR_06.xes.gz': 500,
-            'DR_07.xes.gz': 500,
-            'DR_08.xes.gz': 500,
-            'DR_09.xes.gz': 500,
-            'DR_10.xes.gz': 500,
-            'DR_MS_01.xes.gz': 5000,
-            'DR_MS_02.xes.gz': 5000,
-            'DR_MS_03.xes.gz': 5000,
-            'DR_MS_04.xes.gz': 5000,
-            'DR_MS_05.xes.gz': 5000,
-            'DR_MS_06.xes.gz': 5000,
-            'DR_MS_07.xes.gz': 5000,
-            'DR_MS_08.xes.gz': 5000,
-            'DR_MS_09.xes.gz': 5000,
-            'DR_MS_10.xes.gz': 5000,
-            'DR_MS_ST_01.xes.gz': 500,
-            'DR_MS_ST_02.xes.gz': 500,
-            'DR_MS_ST_03.xes.gz': 500,
-            'DR_MS_ST_04.xes.gz': 500,
-            'DR_MS_ST_05.xes.gz': 500,
-            'DR_MS_ST_06.xes.gz': 500,
-            'DR_MS_ST_07.xes.gz': 500,
-            'DR_MS_ST_08.xes.gz': 500,
-            'DR_MS_ST_09.xes.gz': 500,
-            'DR_MS_ST_10.xes.gz': 500,
-        }
+        'Machine_Operating': dict(chain.from_iterable(d.items() for d in (ST_inst, DR_inst, DR_MS_inst, DR_MS_ST_inst)))
     }
 
 
@@ -247,12 +150,12 @@ class TemperatureLogConfiguration:
         'TD.xes',
     ]
 
-    deltas = [
-        0.002,
-        0.05,
-        0.1,
-        0.3,
-        1
+    detectors = [
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.05}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.1}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.3}),
+        SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 1}),
     ]
 
     attribute = AttributeAdaptive.OTHER.name
@@ -476,10 +379,10 @@ def generate_ipdd_plot_detectors_by_type(approach, folder, filename, metric_name
     # maintain only the information about detector in the column names
     detector_complete_name = 'adwin_delta'
     detector_name = 'adwin delta'
-    df_detectors = df_filtered.rename(
+    df_filtered = df_filtered.rename(
         columns={element: re.sub(fr'{metric_name}  {DETECTOR_KEY}={detector_complete_name}(.*) ({ACTIVITY_KEY}=.*)', r'\1', element, count=2)
                  for element in df_filtered.columns.tolist()})
-    df_detectors.reset_index(inplace=True)
+    df_detectors = df_filtered.reset_index()
     df_detectors['log type'] = df_detectors['log type'].replace(to_replace=r'([a-zA-Z]+)_\d.(.*)',  value=r'\1\2', regex=True)
     df_plot = df_detectors.groupby('log type').mean()
 
@@ -505,12 +408,17 @@ def generate_ipdd_plot_detectors_by_type(approach, folder, filename, metric_name
     plt.close()
 
     print('Usando autorank para calcular os testes estatísticos - exportando gráfico com CD')
-    df_analysis = df_detectors.set_index('log type', drop=True)
-    result = autorank(df_analysis, alpha=0.05, verbose=True)
-    plot_stats(result)
-    create_report(result)
-    latex_table(result)
-    filename = os.path.join(output_path, f'{dataset_config.dataset_name}_{metric_name}_Nemenyi_CD_by_type')
+    # df_analysis = df_detectors.set_index('log type', drop=True)
+    logtypes = df_detectors['log type'].unique()
+    for type in logtypes:
+        simplified_type = type.replace('.xes.gz', '')
+        df_type = df_filtered.loc[df_filtered.index.str.startswith(simplified_type, na=False)]
+        # df_type = df_filtered.filter(like=simplified_type, axis=0)
+        result = autorank(df_type, alpha=0.05, verbose=True)
+        plot_stats(result)
+        create_report(result)
+        latex_table(result)
+        filename = os.path.join(output_path, f'{dataset_config.dataset_name}_{metric_name}_Nemenyi_CD_by_type_{type}')
     # plt.savefig(f'{filename}.eps', format='eps', bbox_inches='tight')
     # plt.savefig(f'{filename}.png', bbox_inches='tight')
     plt.savefig(f'{filename}.pdf', bbox_inches='tight')
@@ -531,8 +439,12 @@ def analyze_IPDD_time():
     plot_name = 'Adaptive IPDD for Time Drifts'
     folder = 'data/output/script/evaluation'
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_TIME_DATA_SOJOURN_TIME.xlsx'
-    generate_ipdd_plot_detectors(plot_name, folder, file, f_score_key, dataset_config, print_plot_name=False)
-    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, f_score_key, dataset_config, print_plot_name=True)
+    generate_ipdd_plot_detectors(plot_name, folder, file, EvaluationMetricList.F_SCORE.value, dataset_config, print_plot_name=False)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.F_SCORE.value, dataset_config, print_plot_name=True)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.PRECISION.value, dataset_config, print_plot_name=True)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.RECALL.value, dataset_config, print_plot_name=True)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.MEAN_DELAY.value, dataset_config,
+                                         print_plot_name=True)
 
 
 if __name__ == '__main__':

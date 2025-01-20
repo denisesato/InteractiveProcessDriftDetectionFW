@@ -224,7 +224,10 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
             # get the activities that report a drift using the change detector
             for activity in framework.get_all_activities():
                 indexes = framework.get_initial_trace_indexes(activity)
-                detected_drifts[activity] = indexes[1:]
+                if indexes:
+                    detected_drifts[activity] = indexes[1:]
+                else:
+                    detected_drifts[activity] = []
                 print(
                     f'Adaptive IPDD detect drifts for attribute {dataset_config.attribute} in activity {activity} in '
                     f'traces {detected_drifts}')
