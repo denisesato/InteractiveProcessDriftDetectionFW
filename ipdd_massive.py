@@ -211,7 +211,8 @@ def run_massive_adaptive_time(dataset_config, metrics=None, evaluate=False):
                                                 detector_class=detector,
                                                 attribute_name_for_plot=attribute_name_for_plot,
                                                 activities=activities,
-                                                activities_for_plot=activities_for_plot)
+                                                activities_for_plot=activities_for_plot,
+                                                    save_model_svg=True)
             framework.run_script(parameters)
 
             running = framework.get_status_running()
