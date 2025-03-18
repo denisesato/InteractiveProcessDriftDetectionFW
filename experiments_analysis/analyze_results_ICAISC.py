@@ -1,7 +1,10 @@
+import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import re
+
+from matplotlib.rcsetup import cycler
 from pm4py.algo.evaluation.simplicity import algorithm as simplicity_evaluator
 from pm4py.algo.evaluation.earth_mover_distance import algorithm as emd_evaluator
 from pm4py.objects.petri_net.importer import importer as pnml_importer
@@ -34,6 +37,7 @@ class ApproachesConfiguration:
     def __init__(self, dataset_name, metric_name, metric_name_other_tools, detector_configuration):
         self.dataset_name = dataset_name
         self.metric_name = metric_name
+        self.black_white = False
         self.approaches = {
             # 'Adaptive IPDD Trace by Trace':
             'Adaptive IPDD':
@@ -85,6 +89,7 @@ class ApproachesConfiguration_CombineDatasets:
     def __init__(self, datasets, metric_name, metric_name_other_tools, detector_configuration):
         self.dataset_name = 'datasets_1_2'
         self.metric_name = metric_name
+        self.black_white = False
         self.approaches = {
             'Adaptive IPDD':
                 {
@@ -123,7 +128,7 @@ class ApproachesConfiguration_CombineDatasets:
         }
 
 def plot_window_size_grouping_by_logsize(path, df, selected_column, title, dataset, order=None, detector_config=None,
-                                         scale=None, print_plot_name=True):
+                                         scale=None, print_plot_name=True, black_white=False):
     ############################################################
     # Grouping by logsize
     ############################################################
@@ -141,6 +146,18 @@ def plot_window_size_grouping_by_logsize(path, df, selected_column, title, datas
         df_plot = df_filtered.rename(
             columns={element: re.sub(r'.*(?:\D|^)(\d+)', r'\1', element, count=1)
                      for element in df_filtered.columns.tolist()})
+
+    # configure lines for black and white option
+    if black_white:
+        cmap = plt.get_cmap('Greys')
+        colors = cmap(np.linspace(0.5, 0.8, 5))
+    else:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:5]
+
+    plt.rc('axes', prop_cycle=(cycler('color', colors) +
+                               cycler('linestyle', ['-', '--', ':', '-.', '-']) +
+                               cycler('lw', [1.5, 1.5, 1.5, 1.5, 1.5]) +
+                               cycler('marker', ['none', 'none', 'none', 'none', '.'])))
 
     # sort columns
     ordered_columns = [int(w) for w in df_plot.columns]
@@ -383,7 +400,8 @@ def analyze_dataset_vdd(dataset_config, dataset_name):
     analyze_metrics(dataset_config, vdd_path, vdd_filename, 'mean_delay cluster', 'CLUSTER', dataset_name)
 
 
-def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_name=None, scale=None, print_plot_name=True):
+def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_name=None, scale=None,
+                        print_plot_name=True, black_white=False):
     # firstly enrich dict with dataframe from excel
     for key in approaches.keys():
         input_path = approaches[key][path_key]
@@ -412,6 +430,18 @@ def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_na
         series.name = key
         approaches[key][series_key] = series
 
+    # configure lines for black and white option
+    if black_white:
+        cmap = plt.get_cmap('Greys')
+        colors = cmap(np.linspace(0.5, 0.8, 5))
+    else:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:5]
+
+    plt.rc('axes', prop_cycle=(cycler('color', colors) +
+                               cycler('linestyle', ['-', '--', ':', '-.', '-']) +
+                              cycler('lw', [1.5, 1.5, 1.5, 1.5, 1.5]) +
+                               cycler('marker', ['.', 'none', 'none', 'none', 'none'])))
+
     # combine all approaches into one dataframe
     df_plot = pd.concat([approaches[approach][series_key] for approach in approaches.keys()], axis=1)
     df_plot.sort_index(axis=1, inplace=True)
@@ -420,7 +450,6 @@ def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_na
     df_plot.plot(kind='line')
     plt.xlabel('Window size')
     plt.ylabel(metric_name)
-    output_filename = ''
 
     if plot_name:
         if print_plot_name:
@@ -447,7 +476,7 @@ def generate_plot_tools(output_folder, approaches, metric_name, dataset, plot_na
 
 # Simular to generate_plot_tools, but handles more than one dataset
 def generate_plot_tools_combined(output_folder, approaches, metric_name, dataset, plot_name=None, scale=None,
-                                 print_plot_name=True):
+                                 print_plot_name=True, black_white=False):
     # firstly enrich dict with dataframe from excel
     for key in approaches.keys():
         input_path = approaches[key][path_key]
@@ -482,6 +511,18 @@ def generate_plot_tools_combined(output_folder, approaches, metric_name, dataset
         df_series.name = key
         approaches[key][series_key] = df_series
 
+    # configure lines for black and white option
+    if black_white:
+        cmap = plt.get_cmap('Greys')
+        colors = cmap(np.linspace(0.5, 0.8, 5))
+    else:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color'][:5]
+
+    plt.rc('axes', prop_cycle=(cycler('color', colors) +
+                               cycler('linestyle', ['-', '--', ':', '-.', '-']) +
+                               cycler('lw', [1.5, 1.5, 1.5, 1.5, 1.5]) +
+                               cycler('marker', ['.', 'none', 'none', 'none', 'none'])))
+
     # combine all approaches into one dataframe
     df_plot = pd.concat([approaches[approach][series_key] for approach in approaches.keys()], axis=1)
     filename = os.path.join(output_folder, f'{dataset}_{metric_name}_data.xlsx')
@@ -492,7 +533,6 @@ def generate_plot_tools_combined(output_folder, approaches, metric_name, dataset
     df_plot.plot(kind='line')
     plt.xlabel('Window size')
     plt.ylabel(metric_name)
-    output_filename = ''
 
     if plot_name:
         if print_plot_name:
@@ -797,74 +837,74 @@ if __name__ == '__main__':
     # EVALUATION OF THE IPDD ADAPTIVE ON SYNTHETIC EVENT LOGS
     ######################################################################
 
-    # ######################################################################
-    # # ANALYSIS 1 - Trace by Trace approach
-    # # F-score and mean delay for all configurations to select the best
-    # # configuration
-    # ######################################################################
-    # scale = [0.0, 70.0]
-    # experiments_path = f'experiments_october_2024/IPDD_controlflow_adaptive_trace'
-    # dataset_config = Dataset1Configuration()
-    # analyze_dataset_trace(experiment_path=experiments_path,
-    #                       dataset_config=dataset_config,
-    #                       scale=scale,
-    #                       print_plot_name=False)
-    # scale = [0.0, 120.0]
-    # dataset_config = Dataset2Configuration()
-    # analyze_dataset_trace(experiment_path=experiments_path,
-    #                       dataset_config=dataset_config,
-    #                       scale=scale,
-    #                       print_plot_name=False)
+    ######################################################################
+    # ANALYSIS 1 - Trace by Trace approach
+    # F-score and mean delay for all configurations to select the best
+    # configuration
+    ######################################################################
+    scale = [0.0, 70.0]
+    experiments_path = f'experiments_ICAISC_10_2024_01_2025/IPDD_controlflow_adaptive_trace'
+    dataset_config = Dataset1Configuration()
+    analyze_dataset_trace(experiment_path=experiments_path,
+                          dataset_config=dataset_config,
+                          scale=scale,
+                          print_plot_name=False)
+    scale = [0.0, 120.0]
+    dataset_config = Dataset2Configuration()
+    analyze_dataset_trace(experiment_path=experiments_path,
+                          dataset_config=dataset_config,
+                          scale=scale,
+                          print_plot_name=False)
 
 
-    # ######################################################################
-    # # ANALYSIS 2 - Trace by Trace approach
-    # # Accuracy per change pattern
-    # # Best parameter configuration window size - 100 0 delta 0.002
-    # ######################################################################
-    # dataset_config = Dataset1Configuration()
-    # experiments_path = f'experiments_october_2024/IPDD_controlflow_adaptive_trace'
-    # ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    # detector = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
-    # ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-    #                          'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
-    #                          100, detector)
-    # # ipdd_plot_change_pattern_all(input_path=experiments_path,
-    # #                              filename=ipdd_adaptive_trace_filename,
-    # #                              selected_column=f_score_key,
-    # #                              title='Adaptive IPDD Trace by Trace',
-    # #                              dataset_config=dataset_config,
-    # #                              print_plot_name=False)
-    # dataset_config = Dataset2Configuration()
-    # ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
-    # ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
-    #                          'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
-    #                          100, detector)
-    # # ipdd_plot_change_pattern_all(input_path=experiments_path,
-    # #                              filename=ipdd_adaptive_trace_filename,
-    # #                              selected_column=f_score_key,
-    # #                              title='Adaptive IPDD Trace by Trace',
-    # #                              dataset_config=dataset_config,
-    # #                              print_plot_name=False)
+    ######################################################################
+    # ANALYSIS 2 - Trace by Trace approach
+    # Accuracy per change pattern
+    # Best parameter configuration window size - 100 0 delta 0.002
+    ######################################################################
+    dataset_config = Dataset1Configuration()
+    experiments_path = f'experiments_ICAISC_10_2024_01_2025/IPDD_controlflow_adaptive_trace'
+    ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
+    detector = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
+    ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
+                             'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
+                             100, detector)
+    # ipdd_plot_change_pattern_all(input_path=experiments_path,
+    #                              filename=ipdd_adaptive_trace_filename,
+    #                              selected_column=f_score_key,
+    #                              title='Adaptive IPDD Trace by Trace',
+    #                              dataset_config=dataset_config,
+    #                              print_plot_name=False)
+    dataset_config = Dataset2Configuration()
+    ipdd_adaptive_trace_filename = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_CONTROL_FLOW_TRACE.xlsx'
+    ipdd_plot_change_pattern(experiments_path, ipdd_adaptive_trace_filename, f_score_key,
+                             'Adaptive IPDD Trace by Trace', dataset_config.dataset_name,
+                             100, detector)
+    # ipdd_plot_change_pattern_all(input_path=experiments_path,
+    #                              filename=ipdd_adaptive_trace_filename,
+    #                              selected_column=f_score_key,
+    #                              title='Adaptive IPDD Trace by Trace',
+    #                              dataset_config=dataset_config,
+    #                              print_plot_name=False)
 
 
 
-    # ######################################################################
-    # # ANALYSIS 4 - Trace by Trace approach
-    # # Investigating pattern cd
-    # # Evaluating simplicity of the change patterns
-    # ######################################################################
-    # path = '../datasets/datasets1_2_models'
-    # files = [
-    #     'base', 'cb', 'cd', 'cf', 'cm', 'cp', 'IOR', 'IRO', 'lp', 'OIR', 'ORI', 'pl',
-    #     'pm', 're', 'RIO', 'ROI', 'rp', 'sw'
-    # ]
-    # print(f'Simplicity information:')
-    # for f in files:
-    #     net, im, fm = pnml_importer.apply(os.path.join(path, f'{f}.pnml'))
-    #     simp = simplicity_evaluator.apply(net)
-    #     print(f'{f}: {simp:.2f}')
-    #
+    ######################################################################
+    # ANALYSIS 4 - Trace by Trace approach
+    # Investigating pattern cd
+    # Evaluating simplicity of the change patterns
+    ######################################################################
+    path = '../datasets/datasets1_2_models'
+    files = [
+        'base', 'cb', 'cd', 'cf', 'cm', 'cp', 'IOR', 'IRO', 'lp', 'OIR', 'ORI', 'pl',
+        'pm', 're', 'RIO', 'ROI', 'rp', 'sw'
+    ]
+    print(f'Simplicity information:')
+    for f in files:
+        net, im, fm = pnml_importer.apply(os.path.join(path, f'{f}.pnml'))
+        simp = simplicity_evaluator.apply(net)
+        print(f'{f}: {simp:.2f}')
+
     ######################################################################
     # Comparing tools using the synthetic event logs
     # Analysis used for the thesis document
@@ -877,14 +917,18 @@ if __name__ == '__main__':
     scale = [0.0, 360.0]
     detector_config = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
     config = ApproachesConfiguration("dataset1", f_score_key, f_score_key_other_tools, detector_config)
-    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, print_plot_name=False)
+    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, print_plot_name=False,
+                        black_white=config.black_white)
     config = ApproachesConfiguration("dataset1", mean_delay_key, 'mean_delay', detector_config)
-    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale, print_plot_name=False)
+    generate_plot_tools(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale, print_plot_name=False,
+                        black_white=config.black_white)
 
     config = ApproachesConfiguration("dataset2", f_score_key, f_score_key_other_tools, detector_config)
-    generate_plot_tools(output_folder, config.approaches, f_score_key, config.dataset_name, print_plot_name=False)
+    generate_plot_tools(output_folder, config.approaches, f_score_key, config.dataset_name, print_plot_name=False,
+                        black_white=config.black_white)
     config = ApproachesConfiguration("dataset2", mean_delay_key, mean_delay_key_other_tools, detector_config)
-    generate_plot_tools(output_folder, config.approaches, mean_delay_key, config.dataset_name, scale=scale, print_plot_name=False)
+    generate_plot_tools(output_folder, config.approaches, mean_delay_key, config.dataset_name, scale=scale, print_plot_name=False,
+                        black_white=config.black_white)
 
     # performing friedman test
     windows = [str(i) for i in range(50, 301, 25)]
@@ -910,14 +954,16 @@ if __name__ == '__main__':
     detector_config = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 0.002})
     scale = [0.0, 360.0]
 
-    config = ApproachesConfiguration_CombineDatasets(["dataset1", "dataset2"],  f_score_key, f_score_key_other_tools, detector_config)
+    config = ApproachesConfiguration_CombineDatasets(["dataset1", "dataset2"],  f_score_key,
+                                                     f_score_key_other_tools, detector_config)
     generate_plot_tools_combined(output_folder, config.approaches, config.metric_name, config.dataset_name,
-                        print_plot_name=False)
+                        print_plot_name=False, black_white=config.black_white)
     statistical_analysis_comparing_tools(output_folder, config.approaches, f_score_key, windows)
-    config = ApproachesConfiguration_CombineDatasets(["dataset1", "dataset2"], mean_delay_key, mean_delay_key_other_tools,
+    config = ApproachesConfiguration_CombineDatasets(["dataset1", "dataset2"], mean_delay_key,
+                                                     mean_delay_key_other_tools,
                                                      detector_config)
     generate_plot_tools_combined(output_folder, config.approaches, config.metric_name, config.dataset_name, scale=scale,
-                        print_plot_name=False)
+                        print_plot_name=False, black_white=config.black_white)
     statistical_analysis_comparing_tools(output_folder, config.approaches, mean_delay_key, windows, order='ascending')
 
     # ######################################################################
