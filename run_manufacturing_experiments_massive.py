@@ -25,20 +25,16 @@ import pandas as pd
 import re
 from autorank import autorank, plot_stats, create_report, latex_table
 from itertools import chain
-from pymoo.core.problem import ElementwiseProblem
-from pymoo.visualization.scatter import Scatter
-from pymoo.decomposition.asf import ASF
 import numpy as np
-from pymoo.util.misc import stack
-
 
 plots_path = 'plots'
 detector_key = 'detector'
 
+
 class MCDM(str, Enum):
     MAX = 'maximize'
     MIN = 'minimize'
-    
+
 
 class AllSyntheticEventLogsConfiguration:
     dataset_name = 'synthetic_datasets_production'
@@ -76,7 +72,6 @@ class AllSyntheticEventLogsConfiguration:
     attribute_name = AttributeAdaptive.SOJOURN_TIME
 
 
-
 class SyntheticEventLogsConfiguration:
     dataset_name = 'synthetic_datasets_production'
 
@@ -89,7 +84,7 @@ class SyntheticEventLogsConfiguration:
     ###############################################################
     input_path = 'datasets\\dataset_manufacturing'
     samples = 30
-    ST = [f'ST_{(i+1):02d}.xes.gz' for i in range(samples)]
+    ST = [f'ST_{(i + 1):02d}.xes.gz' for i in range(samples)]
     DR = [f'DR_{(i + 1):02d}.xes.gz' for i in range(samples)]
     DR_MS = [f'DR_MS_{(i + 1):02d}.xes.gz' for i in range(samples)]
     DR_MS_ST = [f'DR_MS_ST_{(i + 1):02d}.xes.gz' for i in range(samples)]
@@ -103,7 +98,6 @@ class SyntheticEventLogsConfiguration:
         SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name, parameters={'delta': 1}),
     ]
 
-
     attribute = AttributeAdaptive.SOJOURN_TIME.name
     attribute_name = AttributeAdaptive.SOJOURN_TIME
 
@@ -114,30 +108,31 @@ class SyntheticEventLogsConfiguration:
     activities_for_plot = ['Machine_Operating']
 
     # ST
-    ST_drifts = dict(zip(ST, [[] for i in range(samples*4)]))
+    ST_drifts = dict(zip(ST, [[] for i in range(samples * 4)]))
 
     # DR
-    DR_drifts = dict(zip(DR, [[((i+1)*11)-1] for i in range(samples*4)]))
+    DR_drifts = dict(zip(DR, [[((i + 1) * 11) - 1] for i in range(samples * 4)]))
 
     # DR_MS
-    DR_MS_current_change_points = [i*100 for i in range(5)]
+    DR_MS_current_change_points = [i * 100 for i in range(5)]
     DR_MS_change_points = [DR_MS_current_change_points]
     for i in range(samples - 1):
-        DR_MS_current_change_points = [0] + [x+1 for x in DR_MS_current_change_points[1:]]
+        DR_MS_current_change_points = [0] + [x + 1 for x in DR_MS_current_change_points[1:]]
         DR_MS_change_points = DR_MS_change_points + [DR_MS_current_change_points]
     DR_MS_drifts = dict(zip(DR_MS, DR_MS_change_points))
 
     # DR_MS_ST
-    DR_MS_ST_current_change_points = [(i*40)+20 for i in range(5)]
+    DR_MS_ST_current_change_points = [(i * 40) + 20 for i in range(5)]
     DR_MS_ST_increment = [1, 3, 5, 7, 9]
     DR_MS_ST_change_points = [DR_MS_ST_current_change_points]
-    for i in range(samples-1):
+    for i in range(samples - 1):
         DR_MS_ST_current_change_points = [x + y for x, y in zip(DR_MS_ST_current_change_points, DR_MS_ST_increment)]
         DR_MS_ST_change_points = DR_MS_ST_change_points + [DR_MS_ST_current_change_points]
     DR_MS_ST_drifts = dict(zip(DR_MS_ST, DR_MS_ST_change_points))
 
     actual_change_points = {
-        'Machine_Operating': dict(chain.from_iterable(d.items() for d in (ST_drifts, DR_drifts, DR_MS_drifts, DR_MS_ST_drifts)))
+        'Machine_Operating': dict(
+            chain.from_iterable(d.items() for d in (ST_drifts, DR_drifts, DR_MS_drifts, DR_MS_ST_drifts)))
     }
 
     no_of_instances = [500 for i in range(samples * 4)]
@@ -239,7 +234,6 @@ def generate_plot(plot_df, attribute_name, duration_activity, output_path, logna
                       lw=2,
                       label="drifts")
 
-
     # save the plot
     # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     # ax.legend(loc="best")
@@ -252,6 +246,7 @@ def generate_plot(plot_df, attribute_name, duration_activity, output_path, logna
     plt.close()
     plt.cla()
     plt.clf()
+
 
 def extract_durations_from_log(log_configuration):
     # create output_path if does not exist
@@ -331,11 +326,11 @@ def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, datase
         df_detectors = df_filtered.filter(like=f'{detector_key}={d.get_complete_configuration()}', axis=1)
         # maintain only the information about detector in the column names
         df_detectors = df_detectors.rename(
-            columns={element: re.sub(fr'{metric_for_re}  {DETECTOR_KEY}=(.*) ({ACTIVITY_KEY}=.*)', r'\1', element, count=2)
-                     for element in df_detectors.columns.tolist()})
+            columns={
+                element: re.sub(fr'{metric_for_re}  {DETECTOR_KEY}=(.*) ({ACTIVITY_KEY}=.*)', r'\1', element, count=2)
+                for element in df_detectors.columns.tolist()})
 
         dict_mean_metric[d.get_complete_configuration()] = df_detectors.mean()[d.get_complete_configuration()]
-
 
     # combine all approaches into one dataframe
     # df_plot = pd.concat([s for s in series], axis=1)
@@ -373,7 +368,6 @@ def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, datase
     else:
         df_autorank = df_autorank[~df_autorank.index.isin(index_ST)]
 
-
     result = autorank(df_autorank, alpha=0.05, verbose=True)
     plot_stats(result)
     create_report(result)
@@ -410,7 +404,8 @@ def generate_ipdd_plot_detectors_by_type(approach, folder, filename, metric_name
             for element in df_filtered.columns.tolist()})
 
     df_detectors = df_filtered.reset_index()
-    df_detectors['log type'] = df_detectors['log type'].replace(to_replace=r'([a-zA-Z]+)_\d.(.*).xes.gz',  value=r'\1\2', regex=True)
+    df_detectors['log type'] = df_detectors['log type'].replace(to_replace=r'([a-zA-Z]+)_\d.(.*).xes.gz', value=r'\1\2',
+                                                                regex=True)
     df_plot = df_detectors.groupby('log type').mean()
 
     plt.cla()
@@ -471,7 +466,8 @@ def MCDM_analysis(plot_name, folder, file, metrics_MCDM):
         detector_name = 'adwin delta'
         df_filtered = df_filtered.rename(
             columns={
-                element: re.sub(fr'{metric_name}  {DETECTOR_KEY}={detector_complete_name}(.*) ({ACTIVITY_KEY}=.*)', r'\1',
+                element: re.sub(fr'{metric_name}  {DETECTOR_KEY}={detector_complete_name}(.*) ({ACTIVITY_KEY}=.*)',
+                                r'\1',
                                 element, count=2)
                 for element in df_filtered.columns.tolist()})
         df_detectors = df_filtered.reset_index()
@@ -487,8 +483,8 @@ def MCDM_analysis(plot_name, folder, file, metrics_MCDM):
                          metric_series[EvaluationMetricList.RECALL.value].index.to_list(),
                          True, False)
 
-
-    problem = AdwinDeltaProblem(metric_series[EvaluationMetricList.RECALL], metric_series[EvaluationMetricList.MEAN_DELAY])
+    problem = AdwinDeltaProblem(metric_series[EvaluationMetricList.RECALL],
+                                metric_series[EvaluationMetricList.MEAN_DELAY])
 
     pf_a, pf_b = problem.pareto_front(use_cache=False, flatten=False)
 
@@ -496,7 +492,7 @@ def MCDM_analysis(plot_name, folder, file, metrics_MCDM):
     # plt.scatter(metric_series[EvaluationMetricList.RECALL], metric_series[EvaluationMetricList.MEAN_DELAY], s=30,
     #             facecolors='none', edgecolors='b', label="Solutions")
     plt.scatter(metric_values[EvaluationMetricList.RECALL], metric_values[EvaluationMetricList.MEAN_DELAY], s=30,
-                             facecolors='none', edgecolors='b', label="Solutions")
+                facecolors='none', edgecolors='b', label="Solutions")
     # plt.plot(pf_a[:, 0], pf_a[:, 1], alpha=0.5, linewidth=2.0, color="red", label="Pareto-front")
     # plt.plot(pf_b[:, 0], pf_b[:, 1], alpha=0.5, linewidth=2.0, color="red")
     plt.title("Objective Space")
@@ -528,50 +524,6 @@ def plot_pareto_frontier(Xs, Ys, obj1, obj2, solutions, maxX=True, maxY=True):
     plt.show()
 
 
-class AdwinDeltaProblem(ElementwiseProblem):
-    def __init__(self, recall_series, mean_delay_series):
-        super().__init__(n_var=2,
-                         n_obj=2,
-                         n_ieq_constr=2,
-                         xl=np.array([0, 0]),
-                         xu=np.array([1.0, mean_delay_series.max()]))
-        self.recall = recall_series
-        self.mean_delay = mean_delay_series
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        f1 = self.recall
-        f2 = self.mean_delay
-
-        g1 = x
-        g2 = -x
-
-        out["F"] = [f1, f2]
-        out["G"] = [g1, g2]
-
-    def _calc_pareto_front(self, flatten=True, *args, **kwargs):
-        f_max = lambda f1: np.linspace(f1.max(), f1.min())
-        f_min = lambda f1: np.linspace(f1.min(), f1.max())
-        f_max = lambda f1: f1
-        f_min = lambda f1: f1
-        F1_a, F1_b = self.recall, self.mean_delay
-        F2_a, F2_b = f_max(F1_a), f_min(F1_b)
-
-        pf_a = np.column_stack([F1_a, F1_b])
-        pf_b = np.column_stack([F2_a, F2_b])
-
-        return stack(pf_a, pf_b, flatten=flatten)
-
-    # def _calc_pareto_set(self, *args, **kwargs):
-    #     x1_a = self.recall
-    #     x1_b = self.mean_delay
-    #     x2 = np.zeros(50)
-    #
-    #     a, b = np.column_stack([x1_a, x2]), np.column_stack([x1_b, x2])
-    #     return stack(a, b, flatten=flatten)
-
-
-
-
 def analyze_IPDD_time():
     plt.rcParams.update({'pdf.fonttype': 42})
     # I suggest to only uncomment one analysis per execution
@@ -586,12 +538,16 @@ def analyze_IPDD_time():
     plot_name = 'Adaptive IPDD for Time Drifts'
     folder = 'data/output/script/evaluation'
     file = f'metrics_{dataset_config.dataset_name}_results_IPDD_ADAPTIVE_TIME_DATA_SOJOURN_TIME.xlsx'
-    generate_ipdd_plot_detectors(plot_name, folder, file, EvaluationMetricList.F_SCORE.value, dataset_config, print_plot_name=False)
+    generate_ipdd_plot_detectors(plot_name, folder, file, EvaluationMetricList.F_SCORE.value, dataset_config,
+                                 print_plot_name=False)
     generate_ipdd_plot_detectors(plot_name, folder, file, EvaluationMetricList.FPR.value, dataset_config,
                                  print_plot_name=False)
-    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.F_SCORE.value, dataset_config, print_plot_name=True)
-    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.PRECISION.value, dataset_config, print_plot_name=True)
-    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.RECALL.value, dataset_config, print_plot_name=True)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.F_SCORE.value, dataset_config,
+                                         print_plot_name=True)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.PRECISION.value, dataset_config,
+                                         print_plot_name=True)
+    generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.RECALL.value, dataset_config,
+                                         print_plot_name=True)
     generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.FPR.value, dataset_config,
                                          print_plot_name=True)
     generate_ipdd_plot_detectors_by_type(plot_name, folder, file, EvaluationMetricList.MEAN_DELAY.value, dataset_config,
@@ -660,18 +616,17 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
     # =============================================================================
     data_points = []
     for d, r, m, f in zip(deltas, metric_mean_values_without_ST[EvaluationMetricList.RECALL.value],
-                       metric_mean_values_without_ST[EvaluationMetricList.MEAN_DELAY.value],
+                          metric_mean_values_without_ST[EvaluationMetricList.MEAN_DELAY.value],
                           metric_mean_values_ST[EvaluationMetricList.FPR.value]):
         data_points.append((d, r, m, f))
 
     # =============================================================================
     # 2) SEPARATING DATA INTO ARRAYS
     # =============================================================================
-    delta_values      = np.array([d[0] for d in data_points])
-    recall_values     = np.array([d[1] for d in data_points])
+    delta_values = np.array([d[0] for d in data_points])
+    recall_values = np.array([d[1] for d in data_points])
     mean_delay_values = np.array([d[2] for d in data_points])
-    fpr_values        = np.array([d[3] for d in data_points])
-
+    fpr_values = np.array([d[3] for d in data_points])
 
     # =============================================================================
     # 3) CHOOSE NORMALIZATION (if desired)
@@ -682,13 +637,13 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
     fpr_min, fpr_max = fpr_values.min(), fpr_values.max()
 
     # Exemplo: normalização Min-Max (comentado)
-    #recall_norm     = (recall_values - r_min) / (r_max - r_min)
-    #mean_delay_norm = (mean_delay_values - md_min) / (md_max - md_min)
+    # recall_norm     = (recall_values - r_min) / (r_max - r_min)
+    # mean_delay_norm = (mean_delay_values - md_min) / (md_max - md_min)
 
     # Exemplo: normalização Max
-    recall_norm     = recall_values / r_max
+    recall_norm = recall_values / r_max
     mean_delay_norm = mean_delay_values / md_max
-    fpr_norm        = fpr_values / fpr_max
+    fpr_norm = fpr_values / fpr_max
 
     # =============================================================================
     # 4) REGRESSION FUNCTIONS
@@ -708,8 +663,8 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
             return a * (x_val ** b)
 
         y_pred = f(x)
-        ss_res = np.sum((y - y_pred)**2)
-        ss_tot = np.sum((y - np.mean(y))**2)
+        ss_res = np.sum((y - y_pred) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
         r2 = 1 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
         return a, b, r2, f
 
@@ -729,8 +684,8 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
             return a * (x_val ** (-b))
 
         y_pred = f(x)
-        ss_res = np.sum((y - y_pred)**2)
-        ss_tot = np.sum((y - np.mean(y))**2)
+        ss_res = np.sum((y - y_pred) ** 2)
+        ss_tot = np.sum((y - np.mean(y)) ** 2)
         r2 = 1 - (ss_res / ss_tot) if ss_tot != 0 else 1.0
         return a, b, r2, f
 
@@ -741,7 +696,7 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
         delta_s, recall_s, delay_s, fpr_s = solution
         for (delta_o, recall_o, delay_o, fpr_o) in solutions_list:
             if (recall_o >= recall_s) and (delay_o <= delay_s) and \
-               ((recall_o > recall_s) or (delay_o < delay_s)):
+                    ((recall_o > recall_s) or (delay_o < delay_s)):
                 return True
         return False
 
@@ -775,7 +730,7 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
                         f"  y={a_md:.3f}/x^{b_md:.3f}, R²={r2_md:.2f}")
 
     fpr_label = (f"FPR (Norm=x/max)\n"
-                        f"  y={a_fpr:.3f}/x^{b_fpr:.3f}, R²={r2_fpr:.2f}")
+                 f"  y={a_fpr:.3f}/x^{b_fpr:.3f}, R²={r2_fpr:.2f}")
 
     # =============================================================================
     # 7) PLOTTING (DATA ONLY), COM LEGENDA DA EQUAÇÃO
@@ -800,17 +755,17 @@ def delta_analysis(plot_name, folder, file, metrics_MCDM):
     # =============================================================================
     intersections = []
     for i in range(len(delta_values) - 1):
-        x0, y0 = delta_values[i],   recall_norm[i]
-        x1, y1 = delta_values[i+1], recall_norm[i+1]
+        x0, y0 = delta_values[i], recall_norm[i]
+        x1, y1 = delta_values[i + 1], recall_norm[i + 1]
 
         d0 = mean_delay_norm[i]
-        d1 = mean_delay_norm[i+1]
+        d1 = mean_delay_norm[i + 1]
 
         slope_r = (y1 - y0) / (x1 - x0) if (x1 != x0) else 0
         slope_d = (d1 - d0) / (x1 - x0) if (x1 != x0) else 0
         denom = slope_r - slope_d
         if abs(denom) > 1e-15:
-            x_star = x0 + (d0 - y0)/denom
+            x_star = x0 + (d0 - y0) / denom
             if min(x0, x1) <= x_star <= max(x0, x1):
                 y_star = y0 + slope_r * (x_star - x0)
                 intersections.append((x_star, y_star))
@@ -844,18 +799,17 @@ if __name__ == '__main__':
     # datasets used on paper 1st revision
     dataset1 = SyntheticEventLogsConfiguration()
     dataset2 = TemperatureLogConfiguration()
-    dataset3 = RealEventLogConfiguration()
-
+    # dataset3 = RealEventLogConfiguration()
 
     # run experiments
-    # run_massive_adaptive_time(dataset1, evaluate=True)
-    # run_massive_adaptive_time(dataset2)
-    run_massive_adaptive_time(dataset3)
+    run_massive_adaptive_time(dataset1, evaluate=True)
+    run_massive_adaptive_time(dataset2)
+    # run_massive_adaptive_time(dataset3)
 
     # extract sojourn times and generate plots
     # also save information about real drifts
     # based on the attribute Potential_Failure
-    # extract_durations_from_log(dataset1)
+    extract_durations_from_log(dataset1)
 
     # analyze experiments results
-    # analyze_IPDD_time()
+    analyze_IPDD_time()
