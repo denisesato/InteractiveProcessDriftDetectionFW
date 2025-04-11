@@ -163,8 +163,7 @@ def test_adaptive_control_flow_windowing_ok1():
 
 
 def test_adaptive_time_ok1():
-    input_path = ('C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de '
-                  'Dados/DadosConceptDrift/LogsProducao/SelecionadosArtigo')
+    input_path = ('datasets/dataset_manufacturing/initial_scenarios')
     log = 'DR_MS.xes'
     log_filename = os.path.join(input_path, log)
     detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name,
@@ -190,8 +189,7 @@ def test_adaptive_time_ok1():
 
 
 def test_adaptive_time_ok2():
-    input_path = ('C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de '
-                  'Dados/DadosConceptDrift/LogsProducao/SelecionadosArtigo')
+    input_path = ('datasets/dataset_manufacturing/initial_scenarios')
     log = 'DR.xes'
     log_filename = os.path.join(input_path, log)
     detector_class = SelectDetector.get_detector_instance(ConceptDriftDetector.ADWIN.name)

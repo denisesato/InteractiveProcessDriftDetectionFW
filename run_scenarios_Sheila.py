@@ -152,7 +152,7 @@ class Dataset1Configuration:
 
 
 def run_adaptive_control_flow():
-    input_path = 'C:/Users/Denise/OneDrive/Documents/Doutorado/Bases de Dados/DadosConceptDrift/IPDD_Datasets/dataset1'
+    input_path = 'datasets/dataset1'
     log = 'pm2.5k.xes'
     log_filename = os.path.join(input_path, log)
     window = 100
@@ -165,7 +165,8 @@ def run_adaptive_control_flow():
                                                    read_log_as=ReadLogAs.TRACE.name,
                                                    win_size=window,
                                                    metrics=[Metric.NODES.name, Metric.EDGES.name],
-                                                   adaptive_controlflow_approach=ControlflowAdaptiveApproach.TRACE.name,
+                                                   # adaptive_controlflow_approach=ControlflowAdaptiveApproach.TRACE.name,
+                                                   adaptive_controlflow_approach=ControlflowAdaptiveApproach.WINDOW.name,
                                                    detector_class=detector_class,
                                                    save_sublogs=True)
     real_drifts = [250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250]

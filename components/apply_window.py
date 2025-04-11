@@ -815,6 +815,18 @@ class AnalyzeDrift:
 
             # if at least one metric report a drift a new model is discovered
             if drift_detected:
+                # save the sublog
+                if self.current_parameters.save_sublogs:
+                    if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+                        # generate the sub-log
+                        window = event_data[initial_trace_id:i]
+                        sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+                    elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+                        sub_log = EventLog(self.event_data[initial_trace_id:i])
+                    else:
+                        print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+                        return
+                    self.save_sublog(sub_log, initial_trace_id, i)
                 # save information about change point for saving the file
                 change_points.append(i)
                 change_points_info.add_change_point(i)
@@ -857,6 +869,19 @@ class AnalyzeDrift:
                 final_trace_id = total_of_traces
             print(
                 f'Analyzing final window... size {final_trace_id - initial_trace_id} window_count {self.window_count}')
+            # save the sublog for the final window
+            if self.current_parameters.save_sublogs:
+                if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+                    # generate the sub-log
+                    window = event_data[initial_trace_id:total_of_traces]
+                    sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+                elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+                    sub_log = EventLog(self.event_data[initial_trace_id:total_of_traces])
+                else:
+                    print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+                    return
+                self.save_sublog(sub_log, initial_trace_id, total_of_traces)
+
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
@@ -991,6 +1016,20 @@ class AnalyzeDrift:
                 change_points.append(change_point)
                 change_points_info.add_change_point(change_point)
                 change_points_info.add_timestamp(self.get_current_date(event_data[change_point]))
+
+                # save the sublog
+                if self.current_parameters.save_sublogs:
+                    if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+                        # generate the sub-log
+                        window = event_data[initial_trace_id:i]
+                        sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+                    elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+                        sub_log = EventLog(self.event_data[initial_trace_id:i])
+                    else:
+                        print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+                        return
+                    self.save_sublog(sub_log, initial_trace_id, i)
+
                 # process new window
                 final_trace_id = initial_trace_id + window_size
                 if final_trace_id > total_of_traces:
@@ -1027,6 +1066,20 @@ class AnalyzeDrift:
                 final_trace_id = total_of_traces
             print(
                 f'Analyzing final window... size {final_trace_id - initial_trace_id} window_count {self.window_count}')
+
+            # save the sublog for the final window
+            if self.current_parameters.save_sublogs:
+                if self.current_parameters.read_log_as == ReadLogAs.EVENT.name:
+                    # generate the sub-log
+                    window = event_data[initial_trace_id:total_of_traces]
+                    sub_log = log_converter.apply(window, variant=log_converter.Variants.TO_EVENT_LOG)
+                elif self.current_parameters.read_log_as == ReadLogAs.TRACE.name:
+                    sub_log = EventLog(self.event_data[initial_trace_id:total_of_traces])
+                else:
+                    print(f'Incorrect window type: {self.current_parameters.read_log_as}.')
+                    return
+                self.save_sublog(sub_log, initial_trace_id, total_of_traces)
+
             # set the final window used by metrics manager to identify all the metrics have been calculated
             self.metrics.set_final_window(self.window_count)
             # process final window for all activities where a drift has been detected
@@ -1104,7 +1157,13 @@ class AnalyzeDrift:
             return
 
         # save the sublog
-        if self.current_parameters.save_sublogs:
+        # only save the sublog here for fixed approach or adaptive approach for TIME and DATA drifts
+        # when the approach is ADAPTIVE for CONTROL FLOW drifts, the end trace is based on the window size
+        # parameter, so the sublog cannot be saved here
+        if (self.current_parameters.save_sublogs and
+                self.current_parameters.approach == Approach.FIXED or
+                (self.current_parameters.approach == Approach.ADAPTIVE and
+                 self.current_parameters.perspective == AdaptivePerspective.TIME_DATA)):
             self.save_sublog(sub_log, begin, end)
 
         self.execute_processes_for_window(sub_log, begin, initial_timestamp, activity)
