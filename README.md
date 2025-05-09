@@ -6,9 +6,12 @@ This installation process was tested on a Windows 10 machine with Python 3.12.2.
 
 ## Install dependencies:
 1) Graphviz available at: https://graphviz.org/download/
-2) Microsoft C++ Build Tools - select option "Desktop Development using C++"
-https://visualstudio.microsoft.com/visual-cpp-build-tools/
-3) Install library dependencies using pip:
+   
+3) Microsoft C++ Build Tools - select option "Desktop Development using C++":
+   
+	https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+4) Install library dependencies using pip:
    
 	pip install -r requirements.txt
 
