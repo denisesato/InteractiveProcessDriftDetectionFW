@@ -4,17 +4,17 @@ This is a public repository for Interactive Process Drift Detection (IPDD) Frame
 # Installation from source-code repository
 This installation process was tested on a Windows 10 machine with Python 3.12.2. 
 
-After you cloned the git repository, go to the project directory and install the dependencies (using pip):
+## Install dependencies:
+1) Graphviz available at: https://graphviz.org/download/
+   
+3) Microsoft C++ Build Tools - select option "Desktop Development using C++":
+   
+	https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
+4) Install library dependencies using pip:
+   
 	pip install -r requirements.txt
 
-We also must install Graphviz available at: https://graphviz.org/download/
-
-In a Windows Machine install 
-1) Microsoft Visual C++ Redistributable package.
-Latest supported Visual C++ Redistributable downloads | Microsoft Learn available at https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version.
-2) Microsoft C++ Build Tools
-https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
 # New release
 We have updated IPDD to use the ADWIN detector implementation from River package (https://github.com/online-ml/river).
