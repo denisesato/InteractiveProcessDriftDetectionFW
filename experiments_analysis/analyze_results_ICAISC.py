@@ -555,6 +555,7 @@ def generate_plot_tools_combined(output_folder, approaches, metric_name, dataset
     # plt.savefig(os.path.join(output_folder, f'{output_filename}.png'), bbox_inches='tight')
     plt.savefig(os.path.join(output_folder, f'{output_filename}.pdf'), bbox_inches='tight')
     plt.close()
+    plt.rcdefaults()
 
 
 def generate_ipdd_plot_detectors(approach, folder, filename, metric_name, dataset_config, print_plot_name=True):
